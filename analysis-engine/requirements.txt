@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+tree-sitter
+tree-sitter-python
+tree-sitter-javascript
+spacy
+scikit-learn
+numpy
+psycopg2-binary
+pgvector
