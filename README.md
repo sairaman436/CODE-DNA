@@ -102,5 +102,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 <p align="center">
-  Built with ❤️ for the global developer community by <b>Sairaman</b>
+  Built with ❤️ for the global developer community by <b>Sairamana</b>
 </p>
