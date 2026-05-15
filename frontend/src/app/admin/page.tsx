@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { 
   Shield, Users, Activity, Settings, Search, 
@@ -251,15 +252,18 @@ export default function AdminDashboard() {
                         {users.map((u) => (
                           <tr key={u.id} className="group hover:bg-white/[0.01] transition-all">
                             <td className="p-6 px-10">
-                              <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[12px] font-black text-emerald-500 uppercase">
+                              <Link href={u.codedna_username ? `/u/${u.codedna_username}` : "#"} className="flex items-center gap-4 group/id">
+                                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[12px] font-black text-emerald-500 uppercase group-hover/id:border-emerald-500/50 transition-all">
                                   {u.display_name?.charAt(0) || u.email.charAt(0)}
                                 </div>
                                 <div>
-                                  <p className="text-sm font-black text-zinc-100">{u.display_name || 'Anonymous'}</p>
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <p className="text-sm font-black text-zinc-100 group-hover/id:text-emerald-400 transition-colors">{u.display_name || 'Anonymous'}</p>
+                                    <RoleBadge role={u.role} type={u.staff_type} />
+                                  </div>
                                   <p className="text-[11px] text-zinc-500 font-medium">{u.email}</p>
                                 </div>
-                              </div>
+                              </Link>
                             </td>
                             <td className="p-6">
                               <div className="flex justify-center">
@@ -632,6 +636,27 @@ function X({ className }: { className?: string }) {
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
     </svg>
+  );
+}
+
+function RoleBadge({ role, type }: { role: string, type?: string }) {
+  const configs: any = {
+    ADMIN: { label: "Master Admin", color: "bg-amber-500/10 border-amber-500/20 text-amber-500", icon: <Shield className="w-3 h-3" /> },
+    MANAGER: { label: "Manager", color: "bg-blue-500/10 border-blue-500/20 text-blue-500", icon: <ShieldCheck className="w-3 h-3" /> },
+    PR: { label: "Public Relations", color: "bg-purple-500/10 border-purple-500/20 text-purple-500", icon: <Activity className="w-3 h-3" /> },
+    SENIOR_DEV: { label: "Senior Dev", color: "bg-sky-500/10 border-sky-500/20 text-sky-500", icon: <Settings className="w-3 h-3" /> },
+    MODERATOR: { label: "Moderator", color: "bg-indigo-500/10 border-indigo-500/20 text-indigo-500", icon: <Shield className="w-3 h-3" /> },
+    STAFF: { label: "Staff Member", color: "bg-zinc-500/10 border-zinc-500/20 text-zinc-400", icon: <ShieldCheck className="w-3 h-3" /> },
+    USER: { label: "Community", color: "bg-zinc-800/50 border-white/5 text-zinc-500", icon: <Users className="w-3 h-3" /> },
+  };
+
+  const config = configs[type as string] || configs[role] || configs.USER;
+
+  return (
+    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${config.color}`}>
+      {config.icon}
+      {config.label}
+    </div>
   );
 }
 

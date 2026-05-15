@@ -23,7 +23,7 @@ export function Navbar() {
   const isAuthPage = pathname === "/login" || pathname === "/onboarding";
   if (isAuthPage) return null;
 
-  const username = (session as any)?.githubLogin || session?.user?.name;
+  const username = (session as any)?.codedna_username || (session as any)?.githubLogin || session?.user?.name;
   const avatar = session?.user?.image || `https://avatar.vercel.sh/${username}`;
 
   return (
