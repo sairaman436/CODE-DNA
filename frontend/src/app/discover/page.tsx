@@ -119,6 +119,7 @@ function normalizeDevs(raw: any[]): NormalizedDev[] {
 }
 
 import { DynamicBackground } from "@/components/DynamicBackground";
+import { SilkBackground } from "@/components/SilkBackground";
 import { Navbar } from "@/components/Navbar";
 
 export default function DiscoverPage() {
@@ -163,7 +164,8 @@ export default function DiscoverPage() {
   }, []);
 
   return (
-    <div className="min-h-screen text-zinc-100 font-sans selection:bg-white/20 relative overflow-x-hidden pb-24">
+    <div className="min-h-screen bg-[#050505] text-zinc-100 font-sans selection:bg-white/20 relative overflow-x-hidden pb-24">
+      <SilkBackground color="#050505" />
       <DynamicBackground />
       <Navbar />
 
@@ -199,14 +201,17 @@ export default function DiscoverPage() {
 
         {/* Archetype Distribution */}
         <div className="max-w-6xl mx-auto mb-20">
-          <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black mb-8">Archetype Distribution</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-white/[0.08] border border-white/[0.08] rounded-[32px] overflow-hidden shadow-2xl">
+          <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black mb-8">System Distribution</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-white/[0.08] border border-white/[0.08] rounded-[32px] overflow-hidden shadow-2xl group/grid">
             {ARCHETYPES.map((arch) => (
               <Link key={arch.type} href={`/archetype/${arch.slug}`}>
-                <div className="bg-white/[0.04] p-6 group hover:bg-white/[0.08] transition-all cursor-pointer h-full backdrop-blur-xl relative">
-                  <div className="text-[24px] font-black text-zinc-100 mb-2 group-hover:text-emerald-500 transition-colors tracking-tighter">{arch.count}</div>
-                  <div className="text-[13px] font-bold text-zinc-300 mb-3 group-hover:text-zinc-100 transition-colors">{arch.type}</div>
-                  <div className="text-[11px] text-zinc-600 leading-relaxed group-hover:text-zinc-500 transition-colors">{arch.desc}</div>
+                <div className="bg-white/[0.03] p-8 group hover:bg-white/[0.08] transition-all cursor-pointer h-full backdrop-blur-xl relative overflow-hidden">
+                  <div className="absolute inset-0 bg-emerald-500/0 group-hover:bg-emerald-500/[0.02] transition-colors" />
+                  <div className="relative z-10">
+                    <div className="text-[28px] font-black text-zinc-100 mb-2 group-hover:text-emerald-500 transition-colors tracking-tighter drop-shadow-2xl">{arch.count}</div>
+                    <div className="text-[13px] font-bold text-zinc-400 mb-3 group-hover:text-zinc-100 transition-colors uppercase tracking-tight">{arch.type}</div>
+                    <div className="text-[11px] text-zinc-600 leading-relaxed group-hover:text-zinc-500 transition-colors font-medium">{arch.desc}</div>
+                  </div>
                 </div>
               </Link>
             ))}
@@ -215,12 +220,18 @@ export default function DiscoverPage() {
 
         {/* Developer Talent Grid */}
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-10">
-            <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black">Featured Talents</h3>
-            <div className="flex items-center gap-6 text-[10px] text-zinc-700 font-black uppercase tracking-widest">
-              <span className="text-zinc-800">Order By</span>
-              <button className="text-zinc-100 hover:text-emerald-500 transition-colors">DNA Score</button>
-              <button className="text-zinc-600 hover:text-zinc-400 transition-colors">Latest Scans</button>
+          <div className="flex items-center justify-between mb-12">
+            <div className="flex items-center gap-3">
+              <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black">Featured Talents</h3>
+              <div className="h-px w-8 bg-white/10" />
+            </div>
+            <div className="flex items-center gap-8 text-[10px] font-black uppercase tracking-widest">
+              <span className="text-zinc-800">Filter By Sequence</span>
+              <div className="flex items-center gap-6">
+                <button className="text-emerald-500 border-b border-emerald-500 pb-1">DNA Score</button>
+                <button className="text-zinc-600 hover:text-zinc-300 transition-colors pb-1 border-b border-transparent">Latest Scans</button>
+                <button className="text-zinc-600 hover:text-zinc-300 transition-colors pb-1 border-b border-transparent">Activity</button>
+              </div>
             </div>
           </div>
           

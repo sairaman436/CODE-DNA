@@ -33,7 +33,7 @@ export const DynamicBackground = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-[#050505]">
+    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
       {/* ─── Dot Grid ─── */}
       <div className="absolute inset-0 dot-grid opacity-[0.05]" />
 

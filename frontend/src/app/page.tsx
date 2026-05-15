@@ -42,8 +42,14 @@ function PublicLanding() {
             initial={{ opacity: 0, x: -50, rotate: -3 }}
             animate={{ opacity: 1, x: 0, rotate: -3 }}
             whileHover={{ rotate: 0, scale: 1.05 }}
-            transition={{ duration: 1.2, delay: 0.4 }}
-            className="hidden lg:block absolute left-6 top-32 w-72 p-6 rounded-[32px] bg-white/[0.03] border border-white/[0.08] backdrop-blur-2xl shadow-2xl transition-all duration-700 group/term"
+            transition={{ 
+              type: "spring",
+              stiffness: 260,
+              damping: 20,
+              duration: 0.6, 
+              delay: 0.1 
+            }}
+            className="hidden lg:block absolute left-6 top-32 w-72 p-6 rounded-[32px] bg-white/[0.03] border border-white/[0.08] backdrop-blur-2xl shadow-2xl transition-colors group/term"
           >
             <div className="absolute inset-0 bg-emerald-500/5 blur-[40px] opacity-0 group-hover/term:opacity-100 transition-opacity" />
             <div className="flex gap-2 mb-6">
@@ -90,8 +96,14 @@ function PublicLanding() {
             initial={{ opacity: 0, x: 50, rotate: 3 }}
             animate={{ opacity: 1, x: 0, rotate: 3 }}
             whileHover={{ rotate: 0, scale: 1.05 }}
-            transition={{ duration: 1.2, delay: 0.6 }}
-            className="hidden lg:block absolute right-6 top-[32rem] w-64 p-7 rounded-[32px] bg-white/[0.03] border border-white/[0.08] backdrop-blur-2xl shadow-2xl transition-all duration-700 group/metrics"
+            transition={{ 
+              type: "spring",
+              stiffness: 260,
+              damping: 20,
+              duration: 0.6, 
+              delay: 0.2 
+            }}
+            className="hidden lg:block absolute right-6 top-[32rem] w-64 p-7 rounded-[32px] bg-white/[0.03] border border-white/[0.08] backdrop-blur-2xl shadow-2xl transition-colors group/metrics"
           >
             <div className="absolute inset-0 bg-violet-500/5 blur-[40px] opacity-0 group-hover/metrics:opacity-100 transition-opacity" />
             <div className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.25em] mb-6 flex items-center justify-between">
