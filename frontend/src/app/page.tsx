@@ -39,51 +39,84 @@ function PublicLanding() {
         <section className="pt-32 pb-32 px-6 relative flex flex-col items-center text-center overflow-visible">
           {/* ── Left Side Decoration: Floating Code Terminal ── */}
           <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, x: -50, rotate: -3 }}
+            animate={{ opacity: 1, x: 0, rotate: -3 }}
+            whileHover={{ rotate: 0, scale: 1.05 }}
             transition={{ duration: 1.2, delay: 0.4 }}
-            className="hidden lg:block absolute left-6 top-32 w-64 p-5 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl shadow-2xl rotate-[-3deg] hover:rotate-0 transition-transform duration-700"
+            className="hidden lg:block absolute left-6 top-32 w-72 p-6 rounded-[32px] bg-white/[0.03] border border-white/[0.08] backdrop-blur-2xl shadow-2xl transition-all duration-700 group/term"
           >
-            <div className="flex gap-1.5 mb-4">
-              <div className="w-2 h-2 rounded-full bg-white/20" />
-              <div className="w-2 h-2 rounded-full bg-white/20" />
-              <div className="w-2 h-2 rounded-full bg-white/20" />
+            <div className="absolute inset-0 bg-emerald-500/5 blur-[40px] opacity-0 group-hover/term:opacity-100 transition-opacity" />
+            <div className="flex gap-2 mb-6">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500/40" />
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/40" />
             </div>
-            <div className="space-y-2 font-mono text-[10px] text-zinc-500">
-              <div className="text-zinc-400">def analyze_dna(repo):</div>
-              <div className="pl-4">ast = parse_structure(repo)</div>
-              <div className="pl-4 text-zinc-600"># Mapping nesting depth</div>
-              <div className="pl-4">return generate_hash(ast)</div>
-              <div className="h-2" />
-              <div className="flex items-center gap-2">
-                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+            <div className="space-y-2.5 font-mono text-[11px] leading-relaxed relative z-10">
+              <div className="flex gap-2">
+                <span className="text-emerald-400">def</span>
+                <span className="text-sky-400">analyze_dna</span>
+                <span className="text-zinc-500">(</span>
+                <span className="text-amber-400">repo</span>
+                <span className="text-zinc-500">):</span>
+              </div>
+              <div className="pl-4 flex gap-2">
+                <span className="text-zinc-300">ast</span>
+                <span className="text-zinc-500">=</span>
+                <span className="text-violet-400">parse_structure</span>
+                <span className="text-zinc-500">(repo)</span>
+              </div>
+              <div className="pl-4 text-zinc-600 font-italic italic"># Mapping nesting depth</div>
+              <div className="pl-4 flex gap-2">
+                <span className="text-emerald-400">return</span>
+                <span className="text-rose-400">generate_hash</span>
+                <span className="text-zinc-500">(ast)</span>
+              </div>
+              <div className="h-4" />
+              <div className="flex items-center gap-3">
+                <div className="w-full h-1.5 bg-white/[0.05] rounded-full overflow-hidden border border-white/[0.03]">
                   <motion.div 
                     animate={{ x: ["-100%", "100%"] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                    className="w-1/2 h-full bg-zinc-600"
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    className="w-1/3 h-full bg-gradient-to-r from-emerald-500/0 via-emerald-500 to-emerald-500/0 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
                   />
                 </div>
+                <div className="text-[9px] font-black text-emerald-500/60 uppercase tracking-tighter">PARSING</div>
               </div>
             </div>
           </motion.div>
 
           {/* ── Right Side Decoration: System Metrics ── */}
           <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, x: 50, rotate: 3 }}
+            animate={{ opacity: 1, x: 0, rotate: 3 }}
+            whileHover={{ rotate: 0, scale: 1.05 }}
             transition={{ duration: 1.2, delay: 0.6 }}
-            className="hidden lg:block absolute right-6 top-[32rem] w-56 p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl shadow-2xl rotate-[3deg] hover:rotate-0 transition-transform duration-700"
+            className="hidden lg:block absolute right-6 top-[32rem] w-64 p-7 rounded-[32px] bg-white/[0.03] border border-white/[0.08] backdrop-blur-2xl shadow-2xl transition-all duration-700 group/metrics"
           >
-            <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-4">Real-time Metrics</div>
-            <div className="space-y-4">
+            <div className="absolute inset-0 bg-violet-500/5 blur-[40px] opacity-0 group-hover/metrics:opacity-100 transition-opacity" />
+            <div className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.25em] mb-6 flex items-center justify-between">
+              Real-time Metrics
+              <Activity className="w-3 h-3 text-emerald-500 animate-pulse" />
+            </div>
+            <div className="space-y-5 relative z-10">
               {[
-                { label: "Complexity", val: "84%", color: "text-zinc-300" },
-                { label: "Modularity", val: "0.92", color: "text-zinc-400" },
-                { label: "Safety", val: "Secure", color: "text-zinc-100" }
+                { label: "Complexity", val: "84%", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+                { label: "Modularity", val: "0.92", color: "text-sky-400", bg: "bg-sky-500/10" },
+                { label: "Safety", val: "Secure", color: "text-violet-400", bg: "bg-violet-500/10" }
               ].map((m, i) => (
-                <div key={i} className="flex justify-between items-center">
-                   <span className="text-[10px] text-zinc-500">{m.label}</span>
-                   <span className={`text-[10px] font-bold ${m.color}`}>{m.val}</span>
+                <div key={i} className="space-y-1.5">
+                  <div className="flex justify-between items-center px-0.5">
+                    <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">{m.label}</span>
+                    <span className={`text-[11px] font-bold ${m.color} tracking-tighter`}>{m.val}</span>
+                  </div>
+                  <div className="h-1 w-full bg-white/[0.03] rounded-full overflow-hidden border border-white/[0.02]">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: m.val.includes('%') ? m.val : '92%' }}
+                      transition={{ duration: 1.5, delay: 0.8 + i * 0.1 }}
+                      className={`h-full ${m.bg.replace('/10', '/40')} rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]`}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

@@ -23,6 +23,7 @@ const FEATURED_DEVS: NormalizedDev[] = [
     name: "Sairaman", 
     archetype: "The Architect", 
     readability: 92, 
+    complexity: 45,
     overall: 88, 
     languages: [{ name: "TS", color: "#3178c6", value: 60 }, { name: "PY", color: "#3776ab", value: 30 }, { name: "RS", color: "#dea584", value: 10 }],
     radar: [
@@ -37,6 +38,7 @@ const FEATURED_DEVS: NormalizedDev[] = [
     name: "alex-chen", 
     archetype: "The Hacker", 
     readability: 65, 
+    complexity: 95,
     overall: 72,
     languages: [{ name: "GO", color: "#00add8", value: 70 }, { name: "C++", color: "#f34b7d", value: 20 }, { name: "JS", color: "#f1e05a", value: 10 }],
     radar: [
@@ -51,6 +53,7 @@ const FEATURED_DEVS: NormalizedDev[] = [
     name: "sarah-dev", 
     archetype: "The Perfectionist", 
     readability: 98, 
+    complexity: 30,
     overall: 91,
     languages: [{ name: "RS", color: "#dea584", value: 80 }, { name: "TS", color: "#3178c6", value: 15 }, { name: "PY", color: "#3776ab", value: 5 }],
     radar: [
@@ -65,6 +68,7 @@ const FEATURED_DEVS: NormalizedDev[] = [
     name: "maya-code", 
     archetype: "The Polyglot", 
     readability: 82, 
+    complexity: 70,
     overall: 85,
     languages: [{ name: "PY", color: "#3776ab", value: 40 }, { name: "JS", color: "#f1e05a", value: 30 }, { name: "GO", color: "#00add8", value: 30 }],
     radar: [
@@ -100,12 +104,13 @@ function normalizeDevs(raw: any[]): NormalizedDev[] {
     name: d.username || d.display_name || d.name || "Unknown",
     archetype: d.developer_type || d.archetype || "Unknown",
     readability: d.readability_score ?? d.readability ?? 0,
+    complexity: d.complexity_score ?? d.complexity ?? 0,
     overall: d.overall_score ?? d.overall ?? 0,
     avatar_url: d.avatar_url || null,
     languages: d.languages || [{ name: "JS", color: "#f1e05a", value: 100 }],
     radar: d.radar || [
       { axis: "Readability", value: d.readability_score ?? 80 },
-      { axis: "Complexity", value: 60 },
+      { axis: "Complexity", value: d.complexity_score ?? 60 },
       { axis: "Refactoring", value: 70 },
       { axis: "Testing", value: 50 },
       { axis: "Docs", value: 40 }
