@@ -7,13 +7,15 @@ import { useEffect, useState } from "react";
 import { 
   Shield, Users, Activity, Settings, Search, 
   MoreVertical, Edit3, Trash2, ShieldCheck, 
-  Eye, Filter, ArrowRight, Loader2, Lock, ShieldAlert 
+  Eye, Filter, ArrowRight, Loader2, Lock, ShieldAlert,
+  RefreshCcw, X
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SilkBackground } from "@/components/SilkBackground";
 import { DynamicBackground } from "@/components/DynamicBackground";
+import { RoleBadge } from "@/components/RoleBadge";
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -59,6 +61,29 @@ export default function AdminDashboard() {
     setObservingUser(user);
   };
 
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to REVOKE the identity of ${name}? This action is irreversible.`)) return;
+    setLoading(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${apiUrl}/api/admin/users/${id}`, {
+        method: "DELETE",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": (session?.user as any)?.id || "" 
+        },
+      });
+
+      if (res.ok) {
+        setUsers(users.filter(u => u.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleUpdate = async () => {
     if (!editingUser) return;
     setLoading(true);
@@ -85,11 +110,15 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    // Basic protection: In a real app, use Middleware or server components
     if (status === "unauthenticated") router.push("/login");
-    // We check if role is ADMIN in the data fetch
-    fetchAdminData();
-  }, [status, router]);
+    if (status === "authenticated") {
+      fetchAdminData();
+      
+      // Auto-refresh every 30 seconds for real-time observation
+      const interval = setInterval(fetchAdminData, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [status, router, (session?.user as any)?.id]);
 
   async function fetchAdminData() {
     setLoading(true);
@@ -631,34 +660,7 @@ function MetaItem({ label, value }: { label: string, value: string }) {
   );
 }
 
-function X({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  );
-}
 
-function RoleBadge({ role, type }: { role: string, type?: string }) {
-  const configs: any = {
-    ADMIN: { label: "Master Admin", color: "bg-amber-500/10 border-amber-500/20 text-amber-500", icon: <Shield className="w-3 h-3" /> },
-    MANAGER: { label: "Manager", color: "bg-blue-500/10 border-blue-500/20 text-blue-500", icon: <ShieldCheck className="w-3 h-3" /> },
-    PR: { label: "Public Relations", color: "bg-purple-500/10 border-purple-500/20 text-purple-500", icon: <Activity className="w-3 h-3" /> },
-    SENIOR_DEV: { label: "Senior Dev", color: "bg-sky-500/10 border-sky-500/20 text-sky-500", icon: <Settings className="w-3 h-3" /> },
-    MODERATOR: { label: "Moderator", color: "bg-indigo-500/10 border-indigo-500/20 text-indigo-500", icon: <Shield className="w-3 h-3" /> },
-    STAFF: { label: "Staff Member", color: "bg-zinc-500/10 border-zinc-500/20 text-zinc-400", icon: <ShieldCheck className="w-3 h-3" /> },
-    USER: { label: "Community", color: "bg-zinc-800/50 border-white/5 text-zinc-500", icon: <Users className="w-3 h-3" /> },
-  };
-
-  const config = configs[type as string] || configs[role] || configs.USER;
-
-  return (
-    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${config.color}`}>
-      {config.icon}
-      {config.label}
-    </div>
-  );
-}
 
 function TabButton({ active, onClick, icon, label }: any) {
   return (

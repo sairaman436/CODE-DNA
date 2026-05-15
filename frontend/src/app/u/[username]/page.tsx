@@ -3,11 +3,19 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Share2, ArrowUpRight, ExternalLink, MapPin, Globe, Copy, Check } from "lucide-react";
+import { Share2, ArrowUpRight, ExternalLink, MapPin, Globe, Copy, Check, Dna, Fingerprint, Activity, Code, Layers, MessageSquare, Terminal, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { DynamicBackground } from "@/components/DynamicBackground";
+import { AdminControls } from "@/components/AdminControls";
+import { RoleBadge } from "@/components/RoleBadge";
+
+interface RadarData {
+  axis: string;
+  value: number;
+}
 
 interface ProfileData {
   user: { username: string; codedna_username: string | null; display_name: string | null; avatar_url: string | null; last_analyzed_at: string | null };
@@ -27,8 +35,6 @@ interface ProfileData {
   analyzed_at: string;
 }
 
-import { DynamicBackground } from "@/components/DynamicBackground";
-import { AdminControls } from "@/components/AdminControls";
 
 export default function PublicProfilePage() {
   const params = useParams();
@@ -41,7 +47,10 @@ export default function PublicProfilePage() {
   const [copiedBadge, setCopiedBadge] = useState(false);
   const { data: session } = useSession();
 
-  const isOwnProfile = session?.githubLogin === username || session?.user?.name === username;
+  const isOwnProfile = 
+    (session as any)?.codedna_username === username || 
+    (session as any)?.githubLogin === username || 
+    session?.user?.name === username;
 
   useEffect(() => {
     async function fetchProfile() {
@@ -134,24 +143,32 @@ export default function PublicProfilePage() {
   }
 
   if (error || !profile) {
-    return (
-      <div className="min-h-screen bg-[#050505] text-zinc-100 font-sans selection:bg-white/10 relative overflow-hidden">
-        <DynamicBackground />
-        <div className="min-h-screen flex items-center justify-center text-center px-6 relative z-10">
-          <div className="max-w-md">
-            <div className="w-20 h-20 mx-auto mb-8 rounded-[32px] bg-zinc-900/50 border border-white/[0.05] flex items-center justify-center text-3xl opacity-50 grayscale">🧬</div>
-            <h1 className="text-4xl font-bold text-zinc-100 mb-4 tracking-tight">Sequence Terminated</h1>
-            <p className="text-zinc-500 mb-10 text-[16px] leading-relaxed">{error || "This developer hasn't been analyzed yet. Start the sequence to generate their DNA."}</p>
-            <Link href="/">
-              <Button className="h-14 px-10 rounded-2xl bg-white text-black hover:bg-zinc-200 font-bold transition-all shadow-xl active:scale-95">
-                Return to Command
-              </Button>
-            </Link>
+    const isNoAnalysis = error?.includes("No analysis found") || error?.includes("not yet initialized");
+    
+    if (!isNoAnalysis && error !== "Profile not found") {
+      return (
+        <div className="min-h-screen bg-[#050505] text-zinc-100 font-sans selection:bg-white/10 relative overflow-hidden">
+          <DynamicBackground />
+          <div className="min-h-screen flex items-center justify-center text-center px-6 relative z-10">
+            <div className="max-w-md">
+              <div className="w-20 h-20 mx-auto mb-8 rounded-[32px] bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shadow-[0_0_40px_rgba(244,63,94,0.1)]">
+                <AlertCircle className="w-8 h-8 text-rose-500" />
+              </div>
+              <h1 className="text-4xl font-bold text-zinc-100 mb-4 tracking-tight">Sequence Terminated</h1>
+              <p className="text-zinc-500 mb-10 text-[16px] leading-relaxed">{error || "Internal system fault detected during DNA traversal."}</p>
+              <Link href="/">
+                <Button className="h-14 px-10 rounded-2xl bg-white text-black hover:bg-zinc-200 font-bold transition-all shadow-xl active:scale-95">
+                  Return to Command
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
+
+  const isAnalyzed = !!profile?.analyzed_at;
 
   const displayName = profile.user.display_name || profile.user.codedna_username || profile.user.username;
   const handle = profile.user.codedna_username || profile.user.username;
@@ -195,8 +212,11 @@ export default function PublicProfilePage() {
                 <h1 className="text-3xl font-bold text-zinc-100 mb-1 tracking-tight">{displayName}</h1>
                 <p className="text-[14px] text-zinc-600 font-mono mb-4">@{handle}</p>
 
-                <div className="px-5 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
-                  {badgeRank}
+                <div className="mb-6">
+                  <RoleBadge 
+                    role={(profile.user as any).role || 'USER'} 
+                    type={(profile.user as any).staff_type} 
+                  />
                 </div>
                 
                 <div className="flex gap-2 w-full">
@@ -231,11 +251,11 @@ export default function PublicProfilePage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-6 rounded-[28px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
                     <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-700 mb-1">Score</h3>
-                    <p className="text-3xl font-black text-zinc-100 tracking-tighter">{overallScore}</p>
+                    <p className="text-3xl font-black text-zinc-100 tracking-tighter">{isAnalyzed ? overallScore : "---"}</p>
                   </div>
                   <div className="p-6 rounded-[28px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
                     <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-700 mb-1">Repos</h3>
-                    <p className="text-3xl font-black text-zinc-100 tracking-tighter">{profile.repos_analyzed}</p>
+                    <p className="text-3xl font-black text-zinc-100 tracking-tighter">{isAnalyzed ? profile.repos_analyzed : "0"}</p>
                   </div>
                 </div>
               </div>
@@ -317,9 +337,32 @@ export default function PublicProfilePage() {
               className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[40px] p-10 relative shadow-2xl"
             >
               <div className="absolute inset-0 bg-white/5 blur-[80px] -z-10 rounded-[40px]" />
-              <h3 className="text-[11px] uppercase tracking-[0.2em] font-black text-zinc-600 mb-10">Sequence Analysis</h3>
-              <div className="space-y-6">
-                {profile.radar.map((axis, i) => {
+              <div className="flex items-center justify-between mb-10">
+                <h3 className="text-[11px] uppercase tracking-[0.2em] font-black text-zinc-600">Sequence Analysis</h3>
+                {!isAnalyzed && <div className="px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-black uppercase tracking-widest">Incomplete</div>}
+              </div>
+              
+              {!isAnalyzed ? (
+                <div className="py-20 flex flex-col items-center text-center">
+                  <div className="w-20 h-20 rounded-[32px] bg-zinc-900 border border-white/10 flex items-center justify-center mb-8 shadow-2xl">
+                    <Fingerprint className="w-8 h-8 text-zinc-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-zinc-100 mb-4 tracking-tight">Identity Not Decoded</h2>
+                  <p className="text-zinc-500 max-w-sm mb-10 text-[15px] leading-relaxed">
+                    This developer's technical DNA sequence has not been initialized. No fingerprints are available for traversal.
+                  </p>
+                  {isOwnProfile && (
+                    <Link href="/discover">
+                      <Button className="h-14 px-10 rounded-2xl bg-white text-black hover:bg-zinc-200 font-bold transition-all shadow-2xl active:scale-95">
+                        <Dna className="w-4 h-4 mr-2" />
+                        Initialize DNA Sequence
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {profile.radar.map((axis, i) => {
                   const barColor = axis.value >= 80 
                     ? 'bg-white' 
                     : axis.value >= 60 
@@ -355,6 +398,7 @@ export default function PublicProfilePage() {
                   );
                 })}
               </div>
+              )}
             </motion.section>
 
             {/* Cognitive Summary — Full Width */}

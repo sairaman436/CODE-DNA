@@ -44,6 +44,8 @@ router.post('/register', async (req, res) => {
     let user;
     const existingUser = await prisma.user.findUnique({ where: { email } });
     
+    const codedna_username = name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + crypto.randomInt(1000, 9999);
+    
     if (existingUser) {
       user = await prisma.user.update({
         where: { email },
@@ -52,6 +54,7 @@ router.post('/register', async (req, res) => {
           password: hashedPassword,
           phone_number: phone,
           country_code: countryCode,
+          codedna_username: existingUser.codedna_username || codedna_username,
         }
       });
     } else {
@@ -62,6 +65,7 @@ router.post('/register', async (req, res) => {
           password: hashedPassword,
           phone_number: phone,
           country_code: countryCode,
+          codedna_username,
         }
       });
     }
@@ -263,12 +267,23 @@ router.post('/link-github', async (req, res) => {
       return res.status(400).json({ error: 'Email and GitHub ID are required' });
     }
 
+    // Check if another user already has this github_id
+    const duplicateUser = await prisma.user.findUnique({ 
+      where: { github_id: github_id.toString() } 
+    });
+
+    if (duplicateUser && duplicateUser.email !== email) {
+      // For simplicity, we delete the "ghost" user created by the analyzer or other flows
+      await prisma.user.delete({ where: { id: duplicateUser.id } });
+    }
+
     const user = await prisma.user.update({
       where: { email },
       data: {
-        github_id,
+        github_id: github_id.toString(),
         github_username,
         avatar_url,
+        codedna_username: github_username, // Sync with GitHub username by default
       }
     });
 

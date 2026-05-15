@@ -16,10 +16,10 @@ const limiter = rateLimit({
   message: { error: "System limit reached. Please try again later." }
 });
 
-// Stricter limit for talent discovery to prevent mass-scraping
+// Increased limit for technical discovery to ensure Master Admin is not throttled
 const discoveryLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 50, // Limit to 50 profile views/searches per hour
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // High limit for development and admin traversal
   message: { error: "Discovery limit reached. Slow down your analysis." }
 });
 

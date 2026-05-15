@@ -15,14 +15,41 @@ router.post('/', async (req, res) => {
     // 1. Create or Update User in DB
     let user = await prisma.user.findUnique({ where: { github_id: github_id.toString() } });
     
+    if (!user) {
+      // Fallback: Comprehensive check across all possible identifiers
+      user = await prisma.user.findFirst({ 
+        where: { 
+          OR: [
+            { github_username: username },
+            { username: username },
+            { codedna_username: username }
+          ]
+        } 
+      });
+    }
+
     if (user) {
       user = await prisma.user.update({
-        where: { github_id: github_id.toString() },
-        data: { username, display_name, avatar_url }
+        where: { id: user.id },
+        data: { 
+          github_id: github_id.toString(), 
+          github_username: username,
+          username: user.username || username, 
+          display_name: user.display_name || display_name, 
+          avatar_url: user.avatar_url || avatar_url,
+          codedna_username: user.codedna_username || username
+        }
       });
     } else {
       user = await prisma.user.create({
-        data: { github_id: github_id.toString(), username, display_name, avatar_url }
+        data: { 
+          github_id: github_id.toString(), 
+          github_username: username,
+          username: username, 
+          display_name, 
+          avatar_url,
+          codedna_username: username
+        }
       });
     }
 
