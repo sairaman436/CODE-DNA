@@ -55,7 +55,7 @@ export default function TeamPage() {
             <h1 className="text-4xl font-bold tracking-tight mb-2">Alpha Engineering Team</h1>
             <p className="text-xl text-zinc-400">Aggregated DNA profile for your team.</p>
           </div>
-          <Button className="bg-white text-black hover:bg-zinc-200">
+          <Button className="bg-white text-black hover:bg-emerald-400 transition-all font-semibold shadow-lg">
             + Invite Member
           </Button>
         </div>
@@ -121,7 +121,7 @@ export default function TeamPage() {
                 <p className="text-sm text-zinc-400 mb-4">
                   Add another developer to see how they would shift your team's DNA.
                 </p>
-                <Button variant="outline" className="w-full border-zinc-700 text-zinc-300 hover:text-white">
+                <Button variant="outline" className="w-full border-white/[0.06] bg-zinc-950/50 text-zinc-300 hover:text-white hover:bg-white/5 transition-all">
                   Simulate New Hire
                 </Button>
               </div>

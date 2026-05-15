@@ -3,13 +3,14 @@ const prisma = require('../lib/prisma');
 
 const router = express.Router();
 
-// GET /api/profile/:username — full profile data
+// GET /api/profile/:username — full profile data (public, LinkedIn-style)
 router.get('/:username', async (req, res) => {
   try {
     const { username } = req.params;
 
-    const user = await prisma.user.findFirst({
-      where: { username },
+    // Try codedna_username first, then fall back to GitHub username
+    let user = await prisma.user.findFirst({
+      where: { codedna_username: username },
       include: {
         fingerprints: {
           orderBy: { created_at: 'desc' },
@@ -21,6 +22,22 @@ router.get('/:username', async (req, res) => {
         }
       }
     });
+
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: { username },
+        include: {
+          fingerprints: {
+            orderBy: { created_at: 'desc' },
+            take: 1,
+            include: {
+              language_stats: true,
+              commit_patterns: true
+            }
+          }
+        }
+      });
+    }
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -35,6 +52,7 @@ router.get('/:username', async (req, res) => {
     const profileData = {
       user: {
         username: user.username,
+        codedna_username: user.codedna_username,
         display_name: user.display_name,
         avatar_url: user.avatar_url,
         last_analyzed_at: user.last_analyzed_at,

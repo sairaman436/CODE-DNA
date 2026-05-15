@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
       take: 200,
       include: {
         user: {
-          select: { username: true, display_name: true, avatar_url: true }
+          select: { username: true, codedna_username: true, display_name: true, avatar_url: true }
         }
       }
     });
@@ -39,7 +39,8 @@ router.get('/', async (req, res) => {
          (fp.refactor_tendency_score || 0) + (fp.error_handling_score || 0)) / 8
       );
       leaderboard.push({
-        username: fp.user.username,
+        username: fp.user.codedna_username || fp.user.username,
+        github_username: fp.user.username,
         display_name: fp.user.display_name,
         avatar_url: fp.user.avatar_url,
         developer_type: fp.developer_type,
@@ -75,7 +76,7 @@ router.get('/:axis', async (req, res) => {
       take: 100,
       include: {
         user: {
-          select: { username: true, display_name: true, avatar_url: true }
+          select: { username: true, codedna_username: true, display_name: true, avatar_url: true }
         }
       }
     });
@@ -88,7 +89,8 @@ router.get('/:axis', async (req, res) => {
       seen.add(fp.user.username);
       leaderboard.push({
         rank: leaderboard.length + 1,
-        username: fp.user.username,
+        username: fp.user.codedna_username || fp.user.username,
+        github_username: fp.user.username,
         display_name: fp.user.display_name,
         avatar_url: fp.user.avatar_url,
         score: fp[dbField],

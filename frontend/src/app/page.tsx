@@ -1,54 +1,17 @@
 "use client";
 
-import { signIn, signOut, useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowRight, Sparkles, Scale, LayoutGrid, Zap, Target, Globe, Activity, Clock } from "lucide-react";
+import { 
+  ArrowUpRight, Activity, Trophy, Clock, Zap, Sparkles, 
+  Globe, Target, LayoutGrid, ArrowRight, Scale 
+} from "lucide-react";
 import { motion } from "framer-motion";
-import { RadarChart } from "@/components/RadarChart";
 import { useState, useEffect, useRef } from "react";
-
-const SAMPLE_RADAR = [
-  { axis: "Readability", value: 85 },
-  { axis: "Complexity", value: 72 },
-  { axis: "Documentation", value: 68 },
-  { axis: "Test Mindset", value: 45 },
-  { axis: "Commit Discipline", value: 78 },
-  { axis: "Language Depth", value: 62 },
-  { axis: "Refactor Tendency", value: 80 },
-  { axis: "Error Handling", value: 55 },
-];
-
-const DIMENSIONS = [
-  { label: "Readability", value: 85, desc: "How clean and scannable your code is" },
-  { label: "Complexity", value: 72, desc: "Your comfort with deep nesting and algorithms" },
-  { label: "Documentation", value: 68, desc: "Inline comments, docstrings, and READMEs" },
-  { label: "Test Mindset", value: 45, desc: "Test coverage and assertion patterns" },
-  { label: "Commit Discipline", value: 78, desc: "Message quality and atomic commits" },
-  { label: "Language Depth", value: 62, desc: "Idiomatic usage of your primary languages" },
-  { label: "Refactor Tendency", value: 80, desc: "How often you revisit and improve code" },
-  { label: "Error Handling", value: 55, desc: "Try-catch depth and defensive patterns" },
-];
-
-const CODE_SNIPPET = `function analyzeAST(node, depth = 0) {
-  const metrics = {
-    nesting: depth,
-    branches: 0,
-    complexity: 1
-  };
-
-  for (const child of node.children) {
-    if (child.type === 'IfStatement') {
-      metrics.branches++;
-      metrics.complexity += 1;
-    }
-    const sub = analyzeAST(child, depth + 1);
-    metrics.complexity += sub.complexity;
-  }
-
-  return metrics;
-}`;
+import { DynamicBackground } from "@/components/DynamicBackground";
+import { RadarChart } from "@/components/RadarChart";
 
 export default function LandingPage() {
   const { data: session, status } = useSession();
@@ -63,267 +26,343 @@ export default function LandingPage() {
   return <PublicLanding />;
 }
 
-/* ========================================================================
-   PUBLIC LANDING — For visitors who haven't signed in
-   ======================================================================== */
 function PublicLanding() {
-  const router = useRouter();
-
   return (
-    <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-emerald-500/20 overflow-x-hidden relative noise">
-      {/* Subtle dot grid texture */}
-      <div className="fixed inset-0 dot-grid pointer-events-none z-0" />
+    <div className="min-h-screen text-white font-sans selection:bg-emerald-500/20 relative overflow-x-hidden">
 
-      {/* Nav */}
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.04] bg-black/60 backdrop-blur-2xl">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 font-semibold text-[15px] tracking-tight text-white">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-500">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-            Code DNA
-          </Link>
-          <div className="flex items-center gap-6 text-[13px]">
-            <Link href="/how-it-works" className="text-zinc-500 hover:text-white transition-colors">How it works</Link>
-            <Link href="/discover" className="text-zinc-500 hover:text-white transition-colors">Discover</Link>
-            <Link href="/leaderboard" className="text-zinc-500 hover:text-white transition-colors">Leaderboard</Link>
-            <Link href="/pricing" className="text-zinc-500 hover:text-white transition-colors">Pricing</Link>
-            <Link href="/login">
-              <Button size="sm" className="h-8 px-4 rounded-lg bg-white/[0.06] text-zinc-300 hover:bg-white/10 hover:text-white border border-white/[0.06] text-xs font-medium">
-                Sign In
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
 
       <main className="relative z-10">
-        {/* ─── Hero ─── */}
-        <section className="pt-40 pb-32 px-6">
-          <div className="max-w-4xl mx-auto">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}
-              className="flex items-center gap-2 mb-8"
-            >
-              <div className="h-px flex-1 max-w-[60px] bg-gradient-to-r from-emerald-500/60 to-transparent" />
-              <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-emerald-500/80">Parallel AST Engine</span>
-            </motion.div>
-
-            <motion.h1 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.05 }}
-              className="text-[clamp(2.5rem,6vw,5rem)] font-semibold tracking-[-0.03em] leading-[1.05] text-white mb-6"
-            >
-              Every developer writes code<br />
-              <span className="text-zinc-500">differently.</span>
-            </motion.h1>
-
-            <motion.p initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-[17px] text-zinc-500 max-w-xl leading-[1.7] mb-10"
-            >
-              Code DNA parses the structure of your GitHub repositories — function nesting, naming conventions, error patterns, commit messages — and maps your style across 8 dimensions.
-            </motion.p>
-
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.15 }}
-              className="flex items-center gap-4"
-            >
-              <Button onClick={() => router.push('/login')}
-                className="h-11 px-7 rounded-xl bg-white text-black hover:bg-emerald-400 transition-all font-semibold text-sm gap-2"
-              >
-                Analyze Your GitHub <ArrowRight className="w-4 h-4" />
-              </Button>
-              <Link href="/how-it-works">
-                <span className="text-sm text-zinc-500 hover:text-white transition-colors cursor-pointer">Learn more</span>
-              </Link>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ─── Radar + Code Side-by-Side ─── */}
-        <section className="px-6 pb-40">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 rounded-2xl border border-white/[0.04] overflow-hidden bg-zinc-950/40">
-              
-              {/* Left: Code Snippet */}
-              <div className="p-8 lg:p-12 border-b lg:border-b-0 lg:border-r border-white/[0.04]">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="w-2.5 h-2.5 rounded-full bg-zinc-800" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-zinc-800" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-zinc-800" />
-                  <span className="ml-3 text-[11px] text-zinc-600 font-mono">analyzer.ts</span>
+        {/* ─── Hero Section ─── */}
+        <section className="pt-32 pb-32 px-6 relative flex flex-col items-center text-center overflow-visible">
+          {/* ── Left Side Decoration: Floating Code Terminal ── */}
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1.2, delay: 0.4 }}
+            className="hidden lg:block absolute left-6 top-32 w-64 p-5 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl shadow-2xl rotate-[-3deg] hover:rotate-0 transition-transform duration-700"
+          >
+            <div className="flex gap-1.5 mb-4">
+              <div className="w-2 h-2 rounded-full bg-rose-500/30" />
+              <div className="w-2 h-2 rounded-full bg-amber-500/30" />
+              <div className="w-2 h-2 rounded-full bg-emerald-500/30" />
+            </div>
+            <div className="space-y-2 font-mono text-[10px] text-zinc-500">
+              <div className="text-emerald-500/70">def analyze_dna(repo):</div>
+              <div className="pl-4">ast = parse_structure(repo)</div>
+              <div className="pl-4 text-indigo-400/60"># Mapping nesting depth</div>
+              <div className="pl-4">return generate_hash(ast)</div>
+              <div className="h-2" />
+              <div className="flex items-center gap-2">
+                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                  <motion.div 
+                    animate={{ x: ["-100%", "100%"] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="w-1/2 h-full bg-emerald-500/40"
+                  />
                 </div>
-                <pre className="text-[12px] leading-[1.8] font-mono text-zinc-500 overflow-x-auto">
-                  <code>{CODE_SNIPPET.split('\n').map((line, i) => (
-                    <span key={i} className="block">
-                      <span className="text-zinc-700 select-none inline-block w-6 text-right mr-4">{i + 1}</span>
-                      <span className="text-zinc-400">{line}</span>
-                    </span>
-                  ))}</code>
-                </pre>
-              </div>
-
-              {/* Right: Radar Preview */}
-              <div className="p-8 lg:p-12 flex flex-col items-center justify-center bg-black/30">
-                <p className="text-[11px] uppercase tracking-[0.15em] text-zinc-600 font-bold mb-6">Generated Fingerprint</p>
-                <div className="opacity-80">
-                  <RadarChart data={SAMPLE_RADAR} width={360} height={300} color="#10b981" />
-                </div>
-                <p className="text-xs text-zinc-600 mt-4 font-medium">The Architect — Readability-first</p>
               </div>
             </div>
-          </div>
-        </section>
+          </motion.div>
 
-        {/* ─── 8 Dimensions Grid ─── */}
-        <section className="px-6 pb-40">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center gap-3 mb-12">
-              <Sparkles className="w-4 h-4 text-emerald-500/60" />
-              <h2 className="text-xl font-semibold text-white tracking-tight">8 Dimensions of Your Code</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-white/[0.04] rounded-2xl overflow-hidden">
-              {DIMENSIONS.map((dim, i) => (
-                <motion.div key={dim.label}
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}
-                  className="bg-zinc-950 p-6 group hover:bg-zinc-900/50 transition-colors"
-                >
-                  <div className="flex items-baseline justify-between mb-3">
-                    <span className="text-[13px] font-semibold text-zinc-300">{dim.label}</span>
-                    <span className="text-[11px] font-mono text-zinc-600">{dim.value}</span>
-                  </div>
-                  <div className="h-1 bg-white/[0.04] rounded-full mb-4 overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }} animate={{ width: `${dim.value}%` }} 
-                      transition={{ duration: 1, delay: 0.3 + i * 0.08 }}
-                      className="h-full bg-emerald-500/50 rounded-full"
-                    />
-                  </div>
-                  <p className="text-[11px] text-zinc-600 leading-relaxed">{dim.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ─── How It Works (Inline) ─── */}
-        <section className="px-6 pb-40">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-xl font-semibold text-white tracking-tight mb-16">How it works</h2>
-            <div className="space-y-0">
+          {/* ── Right Side Decoration: System Metrics ── */}
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1.2, delay: 0.6 }}
+            className="hidden lg:block absolute right-6 top-[32rem] w-56 p-6 rounded-3xl bg-white/[0.03] border border-white/10 backdrop-blur-xl shadow-2xl rotate-[3deg] hover:rotate-0 transition-transform duration-700"
+          >
+            <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-4">Real-time Metrics</div>
+            <div className="space-y-4">
               {[
-                { num: "01", title: "Connect GitHub", desc: "OAuth read-only access. We never see private repos or credentials." },
-                { num: "02", title: "Parallel Clone", desc: "10 repositories cloned simultaneously with blob-filter. Only source code is fetched." },
-                { num: "03", title: "AST Analysis", desc: "Abstract Syntax Trees are parsed for nesting depth, naming style, and error patterns." },
-                { num: "04", title: "DNA Generated", desc: "8-axis fingerprint is computed. All cloned code is immediately purged from memory." },
-              ].map((step, i) => (
-                <div key={step.num} className="flex gap-8 py-8 border-b border-white/[0.04] group">
-                  <span className="text-[11px] font-mono text-zinc-700 pt-1 group-hover:text-emerald-500/60 transition-colors">{step.num}</span>
-                  <div>
-                    <h3 className="text-[15px] font-semibold text-white mb-2 group-hover:text-emerald-400 transition-colors">{step.title}</h3>
-                    <p className="text-[13px] text-zinc-500 leading-relaxed max-w-lg">{step.desc}</p>
-                  </div>
+                { label: "Complexity", val: "84%", color: "text-emerald-400" },
+                { label: "Modularity", val: "0.92", color: "text-indigo-400" },
+                { label: "Safety", val: "Secure", color: "text-white" }
+              ].map((m, i) => (
+                <div key={i} className="flex justify-between items-center">
+                  <span className="text-[10px] text-zinc-500">{m.label}</span>
+                  <span className={`text-[10px] font-bold ${m.color}`}>{m.val}</span>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
+          </motion.div>
 
-        {/* ─── Stats Counter ─── */}
-        <section className="px-6 pb-40">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/[0.04] rounded-2xl overflow-hidden">
-              <AnimatedStat value={2400} suffix="+" label="Profiles Analyzed" />
-              <AnimatedStat value={18000} suffix="+" label="Repos Scanned" />
-              <AnimatedStat value={8} suffix="" label="DNA Dimensions" />
-              <AnimatedStat value={60} suffix="s" label="Avg Analysis Time" />
-            </div>
-          </div>
-        </section>
-
-        {/* ─── Wall of DNA ─── */}
-        <section className="px-6 pb-40 overflow-hidden">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-16">
-              <div>
-                <h2 className="text-xl font-semibold text-white tracking-tight mb-3">Global Fingerprint Feed</h2>
-                <p className="text-zinc-500 text-sm max-w-sm leading-relaxed">The latest archetypes computed across the globe. Every developer is unique.</p>
-              </div>
-              <Link href="/discover">
-                <Button variant="outline" className="h-9 rounded-lg border-white/[0.06] text-zinc-400 hover:text-white text-[12px] font-medium">
-                  View Discover Feed
-                </Button>
-              </Link>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="max-w-4xl relative z-10"
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/5 border border-emerald-500/10 text-emerald-400 text-[11px] font-bold uppercase tracking-[0.15em] mb-8">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Advanced AST Engine V1.2 Stable
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {[
-                { name: "Saira", type: "Architect", color: "text-emerald-400" },
-                { name: "Dev0x", type: "Hacker", color: "text-amber-400" },
-                { name: "RefactorKing", type: "Perfectionist", color: "text-blue-400" },
-                { name: "AsyncCoder", type: "Explorer", color: "text-purple-400" },
-                { name: "Rustacean", type: "Pragmatist", color: "text-zinc-400" }
-              ].map((user, i) => (
-                <motion.div 
+            <h1 className="text-6xl md:text-8xl font-bold tracking-[-0.04em] leading-[0.9] text-white mb-8">
+              {["Every", "developer", "writes"].map((word, i) => (
+                <motion.span 
                   key={i}
                   initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="bg-zinc-950/50 border border-white/[0.04] p-5 rounded-2xl group hover:border-emerald-500/20 transition-all cursor-default"
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: i * 0.1, ease: [0.215, 0.61, 0.355, 1] }}
+                  className="inline-block mr-[0.2em]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-4 flex items-center justify-center text-[10px] font-bold text-zinc-500 group-hover:text-emerald-400 transition-colors">
-                    DNA
-                  </div>
-                  <div className="text-[13px] font-semibold text-white mb-1">{user.name}</div>
-                  <div className={`text-[10px] font-bold uppercase tracking-wider ${user.color}`}>{user.type}</div>
-                </motion.div>
+                  {word}
+                </motion.span>
+              ))}
+              <br /> 
+              <motion.span 
+                initial={{ opacity: 0, filter: "blur(10px)" }}
+                animate={{ opacity: 1, filter: "blur(0px)" }}
+                transition={{ duration: 1.2, delay: 0.5 }}
+                className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/40"
+              >
+                code differently.
+              </motion.span>
+            </h1>
+
+            <p className="text-lg md:text-xl text-zinc-500 max-w-2xl mx-auto mb-12 leading-relaxed">
+              Code DNA parses the structure of your repositories — mapping function nesting, 
+              naming patterns, and error handling to your unique developer fingerprint.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                className="relative group"
+              >
+                <div className="absolute -inset-1 bg-emerald-500 rounded-full blur opacity-30 group-hover:opacity-60 transition duration-500" />
+                <button className="relative px-8 py-4 bg-white text-black rounded-full font-bold text-sm flex items-center gap-2 hover:bg-emerald-50 transition-all">
+                  Analyze Your GitHub 
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </motion.div>
+              
+              <Link href="/u/sample_dev">
+                <motion.button 
+                  whileHover={{ x: 5 }}
+                  className="group flex items-center gap-2 text-zinc-400 hover:text-white transition-colors font-medium text-sm"
+                >
+                  View Sample Profile 
+                  <div className="w-8 h-px bg-zinc-800 group-hover:w-12 group-hover:bg-emerald-500 transition-all" />
+                </motion.button>
+              </Link>
+            </div>
+          </motion.div>
+        </section>
+
+        {/* ─── Bento Grid Features ─── */}
+        <section className="py-24 px-6 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <FeatureCard 
+              icon={<Activity className="w-5 h-5 text-emerald-400" />}
+              title="Deep Structural Analysis"
+              description="Our engine goes beyond git history. It parses your code into Abstract Syntax Trees (AST) to find patterns in how you nest functions, name variables, and handle errors."
+              delay={0.1}
+            />
+            <FeatureCard 
+              icon={<Target className="w-5 h-5 text-indigo-400" />}
+              title="Identity Verification"
+              description="Unique code fingerprints are generated across 8 distinct dimensions, ensuring your technical identity is as unique as your biological DNA."
+              delay={0.2}
+            />
+            <FeatureCard 
+              icon={<Sparkles className="w-5 h-5 text-emerald-400" />}
+              title="AI-Powered Insights"
+              description="Get automated suggestions on architectural improvements and stylistic consistency based on your historical patterns."
+              delay={0.3}
+            />
+          </div>
+        </section>
+
+        {/* ─── Work Flow Section ─── */}
+        <section className="py-32 px-6 relative overflow-hidden">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-20">
+              <h2 className="text-4xl md:text-6xl font-bold mb-6 tracking-tight">How It Works</h2>
+              <p className="text-zinc-500 max-w-2xl mx-auto text-lg leading-relaxed">From repository to fingerprint. The journey of your code through our structural AST engine.</p>
+            </div>
+
+            <div className="relative grid grid-cols-1 md:grid-cols-4 gap-8 items-start">
+              {[
+                { step: '01', title: 'Connect', desc: 'Securely link your GitHub account with read-only access.', icon: <Zap className="w-5 h-5" /> },
+                { step: '02', title: 'Parse', desc: 'Our engine builds Abstract Syntax Trees for every function.', icon: <Activity className="w-5 h-5" /> },
+                { step: '03', title: 'Map', desc: 'We plot your logic patterns across 8 core dimensions.', icon: <Target className="w-5 h-5" /> },
+                { step: '04', title: 'Reveal', desc: 'Generate your unique DNA and share your fingerprint.', icon: <Sparkles className="w-5 h-5" /> }
+              ].map((item, idx) => (
+                <div key={idx} className="relative group">
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: idx * 0.1 }}
+                    className="relative z-10 p-8 rounded-[32px] bg-zinc-900/40 border border-white/[0.05] backdrop-blur-sm group hover:border-emerald-500/30 transition-all flex flex-col items-center text-center h-full"
+                  >
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-emerald-500/5">
+                      {item.icon}
+                    </div>
+                    <div className="text-[10px] font-bold text-emerald-500/50 uppercase tracking-[0.2em] mb-4">Step {item.step}</div>
+                    <h4 className="text-xl font-bold mb-3 text-white tracking-tight">{item.title}</h4>
+                    <p className="text-[13px] text-zinc-500 leading-relaxed">{item.desc}</p>
+                  </motion.div>
+
+                  {/* Step Connector Arrow (Desktop) */}
+                  {idx < 3 && (
+                    <div className="hidden md:flex absolute -right-6 top-14 z-20 items-center justify-center">
+                      <motion.div
+                        animate={{ x: [0, 5, 0], opacity: [0.3, 1, 0.3] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: idx * 0.5 }}
+                      >
+                        <ArrowRight className="w-4 h-4 text-emerald-500/40" />
+                      </motion.div>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ─── FAQ ─── */}
-        <section className="px-6 pb-40">
+        {/* ─── FAQ Section ─── */}
+        <section className="py-32 px-6 bg-black/40">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-xl font-semibold text-white tracking-tight mb-12">Frequently asked questions</h2>
-            <div className="divide-y divide-white/[0.04]">
-              <FAQItem q="Is my source code stored anywhere?" a="No. Repositories are cloned into volatile memory, analyzed, and immediately purged. We only store your computed scores and archetype classification — never your actual code." />
-              <FAQItem q="How are the 8 scores calculated?" a="Each score is derived from weighted heuristics extracted from your Abstract Syntax Trees: function nesting depth, naming consistency, comment ratios, try-catch patterns, test file density, and commit message analysis." />
-              <FAQItem q="Can I analyze private repositories?" a="Yes! Code DNA now supports private repository analysis. We request the 'repo' scope during authentication, allowing our engine to securely clone and analyze your private codebases while maintaining read-only security." />
-              <FAQItem q="How long does analysis take?" a="With our parallel engine, most profiles complete in under 60 seconds. We clone up to 10 repos simultaneously and analyze the top 50 files per repo." />
-              <FAQItem q="Can I delete my data?" a="Yes. Go to Settings and click 'Delete My Data'. This permanently removes all fingerprints, scores, vectors, and associated data." />
-              <FAQItem q="What languages are supported?" a="Python, JavaScript, TypeScript, Go, Rust, Java, C, C++, C#, PHP, Swift, Kotlin, Ruby, and Dart. We're adding more continuously." />
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">FAQ</h2>
+              <p className="text-zinc-500">Frequently asked questions about Code DNA.</p>
+            </div>
+            <div className="space-y-4">
+              <FAQItem 
+                q="How does the AST engine actually work?" 
+                a="Unlike simple line counters, our engine parses your source code into an Abstract Syntax Tree. This allows us to understand logical structure, nesting depth, and structural complexity regardless of the programming language." 
+              />
+              <FAQItem 
+                q="Is my source code stored on your servers?" 
+                a="No. Code DNA performs analysis in-memory and immediately discards the source code. We only store the resulting metadata and scores to generate your fingerprint." 
+              />
+              <FAQItem 
+                q="Can I analyze private repositories?" 
+                a="Yes, if you grant the necessary permissions during GitHub OAuth. We strictly use read-only access and never modify your code." 
+              />
+              <FAQItem 
+                q="How does this differ from the standard GitHub contribution graph?" 
+                a="The GitHub graph measures 'how much' you code (commits, PRs). Code DNA measures 'how' you code. We analyze the actual logic structure, patterns, and architectural choices, providing a qualitative fingerprint rather than just a quantitative count." 
+              />
+              <FAQItem 
+                q="Is my developer fingerprint public?" 
+                a="Yes. Code DNA is a social-first platform designed for technical discovery and professional networking, similar to LinkedIn. By default, every analyzed profile is public, allowing you to rank on the leaderboard and showcase your verified coding persona to recruiters and the global developer community." 
+              />
+              <FAQItem 
+                q="Does Code DNA support team-wide analysis?" 
+                a="Yes. Our Enterprise tier allows engineering leaders to see the aggregate 'Team DNA'—helping identify if a team is trending towards technical debt, high modularity, or if there's a lack of architectural consistency across the board." 
+              />
+              <FAQItem 
+                q="What programming languages are supported?" 
+                a="We currently have deep AST support for TypeScript, JavaScript, Python, Rust, Go, and Java. We are constantly expanding our parsers to include more languages from the C-family and Ruby." 
+              />
             </div>
           </div>
         </section>
 
-        {/* ─── Bottom CTA ─── */}
-        <section className="px-6 pb-32">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-semibold text-white tracking-tight mb-4">Ready?</h2>
-            <p className="text-zinc-500 mb-10 text-[15px]">Takes less than 60 seconds. Zero code stored.</p>
-            <Button onClick={() => router.push('/login')}
-              className="h-11 px-8 rounded-xl bg-white text-black hover:bg-emerald-400 transition-all font-semibold text-sm"
-            >
-              Analyze My GitHub
-            </Button>
-          </div>
-        </section>
-      </main>
+        {/* Footer */}
+        <footer className="border-t border-white/[0.04] py-24 relative z-10 bg-[#050505]">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-16 mb-20">
+              <div className="md:col-span-4">
+                <Link href="/" className="flex items-center gap-3 font-bold text-2xl text-white mb-8 group">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:bg-emerald-500/20 transition-all">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-500">
+                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                  </div>
+                  Code DNA
+                </Link>
+                <p className="text-zinc-500 text-[15px] leading-relaxed mb-8 max-w-sm">
+                  Mapping the structural identity of the world's developers through advanced AST analysis and cognitive fingerprinting.
+                </p>
+                <div className="flex gap-5">
+                  {['Twitter', 'GitHub', 'LinkedIn'].map(social => (
+                    <Link key={social} href="#" className="text-zinc-600 hover:text-white transition-colors text-sm font-medium">
+                      {social}
+                    </Link>
+                  ))}
+                </div>
+              </div>
 
-      {/* Footer */}
-      <footer className="border-t border-white/[0.04] py-12 relative z-10">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-[12px] text-zinc-600">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
-            Code DNA © {new Date().getFullYear()}
+              <div className="md:col-span-2">
+                <h4 className="text-white font-bold text-[13px] uppercase tracking-widest mb-8">Platform</h4>
+                <ul className="space-y-4 text-[14px] text-zinc-500">
+                  <li><Link href="/discover" className="hover:text-emerald-400 transition-colors">Discover</Link></li>
+                  <li><Link href="/leaderboard" className="hover:text-emerald-400 transition-colors">Leaderboard</Link></li>
+                  <li><Link href="/how-it-works" className="hover:text-emerald-400 transition-colors">How it works</Link></li>
+                  <li><Link href="/login" className="hover:text-emerald-400 transition-colors">Sign In</Link></li>
+                </ul>
+              </div>
+
+              <div className="md:col-span-2">
+                <h4 className="text-white font-bold text-[13px] uppercase tracking-widest mb-8">Contact</h4>
+                <ul className="space-y-4 text-[14px] text-zinc-500">
+                  <li><a href="mailto:hello@codedna.dev" className="hover:text-emerald-400 transition-colors">Support</a></li>
+                  <li><a href="#" className="hover:text-emerald-400 transition-colors">Twitter DM</a></li>
+                  <li><a href="#" className="hover:text-emerald-400 transition-colors">Email Us</a></li>
+                </ul>
+              </div>
+
+              <div className="md:col-span-4">
+                <h4 className="text-white font-bold text-[13px] uppercase tracking-widest mb-8">Stay Updated</h4>
+                <p className="text-zinc-500 text-[14px] mb-6">Get notified about new engine updates and features.</p>
+                <div className="relative max-w-sm group">
+                  <input 
+                    type="email" 
+                    placeholder="you@email.com" 
+                    className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-2xl px-5 text-sm focus:outline-none focus:border-emerald-500/50 transition-all placeholder:text-zinc-700 pr-36"
+                  />
+                  <button className="absolute right-1.5 top-1.5 bottom-1.5 px-5 bg-white text-black text-[11px] font-bold rounded-xl hover:bg-emerald-400 transition-colors active:scale-95 whitespace-nowrap">
+                    Join Sequence
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-10 border-t border-white/[0.04] flex flex-col md:flex-row justify-between items-center gap-6 text-[12px] text-zinc-600 font-medium">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40" />
+                <span>© {new Date().getFullYear()} Code DNA. Built by developers for developers.</span>
+              </div>
+              <div className="flex gap-10">
+                <Link href="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</Link>
+                <Link href="/terms" className="hover:text-zinc-400 transition-colors">Terms</Link>
+                <Link href="/cookies" className="hover:text-zinc-400 transition-colors">Cookies</Link>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-8">
-            <Link href="/how-it-works" className="hover:text-zinc-300 transition-colors">Docs</Link>
-            <Link href="/pricing" className="hover:text-zinc-300 transition-colors">Pricing</Link>
-            <Link href="/discover" className="hover:text-zinc-300 transition-colors">Discover</Link>
-            <Link href="/compare" className="hover:text-zinc-300 transition-colors">Compare</Link>
-            <Link href="/leaderboard" className="hover:text-zinc-300 transition-colors">Leaderboard</Link>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      </main>
     </div>
+  );
+}
+
+function FeatureCard({ icon, title, description, delay }: any) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ y: -5, rotateY: 8, rotateX: -4 }}
+      style={{ perspective: 1000 }}
+      className="p-8 rounded-[32px] bg-white/[0.02] border border-white/[0.05] hover:border-emerald-500/20 hover:bg-white/[0.04] transition-all group relative overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="relative z-10">
+        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:bg-emerald-500/10 group-hover:scale-110 transition-all">
+          {icon}
+        </div>
+        <h3 className="text-xl font-bold mb-4 text-white">{title}</h3>
+        <p className="text-zinc-500 leading-relaxed group-hover:text-zinc-400 transition-colors">
+          {description}
+        </p>
+      </div>
+    </motion.div>
   );
 }
 
@@ -423,30 +462,14 @@ function UserDashboard({ session }: { session: any }) {
     <div className="min-h-screen bg-black text-zinc-100 font-sans relative noise">
       <div className="fixed inset-0 dot-grid pointer-events-none z-0" />
 
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.04] bg-black/60 backdrop-blur-2xl">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 font-semibold text-[15px] text-white">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-500">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-            Code DNA
-          </Link>
-          <div className="flex items-center gap-5">
-            <Link href={`/profile/${username}`} className="text-[13px] text-zinc-500 hover:text-white transition-colors">Profile</Link>
-            <Link href="/discover" className="text-[13px] text-zinc-500 hover:text-white transition-colors">Discover</Link>
-            <Link href="/leaderboard" className="text-[13px] text-zinc-500 hover:text-white transition-colors">Leaderboard</Link>
-            <button onClick={() => signOut()} className="text-[13px] text-zinc-600 hover:text-white transition-colors">Sign Out</button>
-            <img src={avatar} alt="" className="w-7 h-7 rounded-full border border-white/10" />
-          </div>
-        </div>
-      </nav>
 
-      <main className="relative z-10 pt-28 pb-20 px-6 max-w-6xl mx-auto">
+      <main className="relative z-10 pt-24 pb-20 px-6 max-w-6xl mx-auto">
         {/* Welcome & Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16 items-end">
           <div className="lg:col-span-8">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-emerald-500/70">Engine V1.2.4</span>
               <span className="text-[11px] uppercase tracking-[0.2em] text-zinc-600 font-bold">Authenticated Dashboard</span>
             </div>
             <h1 className="text-4xl font-semibold text-white tracking-tight mb-4">

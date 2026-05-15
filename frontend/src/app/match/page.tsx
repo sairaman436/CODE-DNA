@@ -120,11 +120,11 @@ export default function MatchPage() {
           <div className="text-center rounded-2xl border border-white/[0.04] bg-zinc-950/30 p-12">
             <Users className="w-8 h-8 text-zinc-700 mx-auto mb-4" />
             <p className="text-zinc-500 text-[15px] mb-2">Sign in to find your matches.</p>
-            <Link href="/login">
-              <button className="mt-4 h-10 px-6 rounded-xl bg-white text-black font-semibold text-sm hover:bg-emerald-400 transition-all">
+            <Button asChild className="mt-4 h-10 px-6 rounded-xl bg-white text-black font-semibold text-sm hover:bg-emerald-400 transition-all shadow-lg">
+              <Link href="/login">
                 Sign In
-              </button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         )}
 
@@ -175,11 +175,11 @@ export default function MatchPage() {
                 </p>
               )}
 
-              <Link href={`/compare?u1=${session?.user?.name}&u2=${match.username}`}>
-                <Button variant="outline" className="w-full bg-zinc-950/50 border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl h-9 text-xs font-medium">
+              <Button asChild variant="outline" className="w-full bg-zinc-950/50 border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl h-9 text-xs font-medium transition-all mt-2">
+                <Link href={`/compare?u1=${session?.user?.name}&u2=${match.username}`}>
                   Compare Profiles <ArrowRight className="w-3.5 h-3.5 ml-2" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </motion.div>
           ))}
         </div>

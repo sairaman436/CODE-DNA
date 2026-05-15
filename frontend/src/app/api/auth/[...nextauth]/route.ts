@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import GithubProvider from "next-auth/providers/github"
+import CredentialsProvider from "next-auth/providers/credentials"
 
 const handler = NextAuth({
   providers: [
@@ -8,30 +9,70 @@ const handler = NextAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
       authorization: { params: { scope: 'read:user user:email public_repo' } },
     }),
+    CredentialsProvider({
+      id: "otp",
+      name: "OTP",
+      credentials: {
+        email: { label: "Email", type: "text" },
+        user: { label: "User JSON", type: "text" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.user) return null;
+        try {
+          const user = JSON.parse(credentials.user);
+          return user;
+        } catch {
+          return null;
+        }
+      }
+    })
   ],
   callbacks: {
-    async jwt({ token, account, profile }) {
-      if (account && profile) {
-        // Extract the REAL GitHub data — not just name/email
+    async jwt({ token, account, profile, user }) {
+      if (account && profile && account.provider === 'github') {
         token.accessToken = account.access_token
-        token.githubId = (profile as any).id          // numeric GitHub user ID
-        token.githubLogin = (profile as any).login    // actual GitHub username (e.g. "saira")
-        token.githubName = (profile as any).name      // display name (e.g. "Saira")
+        token.githubId = (profile as any).id
+        token.githubLogin = (profile as any).login
         token.avatarUrl = (profile as any).avatar_url
+        
+        // Fetch or create user record to check for codedna_username
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+          const res = await fetch(`${apiUrl}/api/profile/${token.githubLogin}`);
+          const data = await res.json();
+          if (data && data.user) {
+            token.codedna_username = data.user.codedna_username;
+          }
+        } catch (e) {
+          console.error("Error fetching user codedna_username:", e);
+        }
       }
+      
+      if (user && account?.provider === 'otp') {
+        token.user = user;
+        token.codedna_username = (user as any).codedna_username;
+        token.email = (user as any).email;
+      }
+      
       return token
     },
     async session({ session, token }) {
-      // Expose GitHub data to the frontend session
       (session as any).accessToken = token.accessToken;
       (session as any).githubId = token.githubId;
       (session as any).githubLogin = token.githubLogin;
+      (session as any).codedna_username = token.codedna_username;
+      
       if (session.user) {
-        session.user.name = token.githubLogin as string; // Use login as name so routes work
-        session.user.image = token.avatarUrl as string;
+        // Prefer custom username if available
+        session.user.name = (token.codedna_username || token.githubLogin || session.user.name) as string;
+        session.user.image = (token.avatarUrl || session.user.image) as string;
+        session.user.email = (token.email || session.user.email) as string;
       }
       return session
     }
+  },
+  pages: {
+    signIn: '/login',
   }
 })
 

@@ -6,8 +6,19 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const rateLimit = require('express-rate-limit');
+
+// ─── Industrial Security: DDoS Protection ───
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: { error: "Too many requests from this IP, please try again after 15 minutes" }
+});
 
 // Middleware
+app.use(limiter); // Apply rate limiting to all requests
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true
@@ -24,6 +35,8 @@ const matchRouter = require('./routes/match');
 const settingsRouter = require('./routes/settings');
 const leaderboardRouter = require('./routes/leaderboard');
 const activityRouter = require('./routes/activity');
+const otpRouter = require('./routes/otp');
+const usernameRouter = require('./routes/username');
 
 app.use('/api/analyze', analyzeRouter);
 app.use('/api/webhook', webhookRouter);
@@ -34,6 +47,8 @@ app.use('/api/match', matchRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/activity', activityRouter);
+app.use('/api/auth/otp', otpRouter);
+app.use('/api/username', usernameRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

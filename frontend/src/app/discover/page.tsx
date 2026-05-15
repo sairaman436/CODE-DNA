@@ -5,12 +5,22 @@ import { Search, ArrowUpRight, Activity } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
-const FEATURED_DEVS = [
-  { name: "Sairaman", archetype: "The Architect", scores: { readability: 92, complexity: 45 }, lang: "TypeScript", repos: 6 },
-  { name: "alex-chen", archetype: "The Hacker", scores: { readability: 65, complexity: 95 }, lang: "Rust", repos: 12 },
-  { name: "sarah-dev", archetype: "The Perfectionist", scores: { readability: 98, complexity: 30 }, lang: "Python", repos: 8 },
-  { name: "devinross", archetype: "The Debugger", scores: { readability: 78, complexity: 60 }, lang: "Go", repos: 15 },
-  { name: "maya-code", archetype: "The Polyglot", scores: { readability: 82, complexity: 70 }, lang: "Kotlin", repos: 9 },
+// Normalized shape used everywhere in this page
+interface NormalizedDev {
+  name: string;
+  archetype: string;
+  readability: number;
+  complexity: number;
+  overall: number;
+  avatar_url?: string | null;
+}
+
+const FEATURED_DEVS: NormalizedDev[] = [
+  { name: "Sairaman", archetype: "The Architect", readability: 92, complexity: 45, overall: 78 },
+  { name: "alex-chen", archetype: "The Hacker", readability: 65, complexity: 95, overall: 72 },
+  { name: "sarah-dev", archetype: "The Perfectionist", readability: 98, complexity: 30, overall: 81 },
+  { name: "devinross", archetype: "The Debugger", readability: 78, complexity: 60, overall: 68 },
+  { name: "maya-code", archetype: "The Polyglot", readability: 82, complexity: 70, overall: 75 },
 ];
 
 const ARCHETYPES = [
@@ -30,11 +40,25 @@ const ACTIVITY_ITEMS = [
   { user: "jdoe-dev", action: "analyzed", result: "The Hacker", time: "25m ago" },
 ];
 
+/** Normalize API leaderboard entries into the shape this page expects */
+function normalizeDevs(raw: any[]): NormalizedDev[] {
+  return raw.map(d => ({
+    name: d.username || d.display_name || d.name || "Unknown",
+    archetype: d.developer_type || d.archetype || "Unknown",
+    readability: d.readability_score ?? d.readability ?? 0,
+    complexity: d.complexity_score ?? d.complexity ?? 0,
+    overall: d.overall_score ?? d.overall ?? 0,
+    avatar_url: d.avatar_url || null,
+  }));
+}
+
+import { DynamicBackground } from "@/components/DynamicBackground";
+
 export default function DiscoverPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [liveActivity, setLiveActivity] = useState(ACTIVITY_ITEMS);
 
-  const [developers, setDevelopers] = useState(FEATURED_DEVS);
+  const [developers, setDevelopers] = useState<NormalizedDev[]>(FEATURED_DEVS);
   const [loading, setLoading] = useState(true);
 
   const filteredDevs = developers.filter(d =>
@@ -47,16 +71,20 @@ export default function DiscoverPage() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
         
-        // Fetch all developers
+        // Fetch all developers from leaderboard
         const res = await fetch(`${apiUrl}/api/leaderboard?sortBy=overall`);
         const allDevs = await res.json();
-        setDevelopers(allDevs);
+        const entries = allDevs.leaderboard || allDevs || [];
+        if (Array.isArray(entries) && entries.length > 0) {
+          setDevelopers(normalizeDevs(entries));
+        }
 
         // Fetch real activity
         const activityRes = await fetch(`${apiUrl}/api/activity`);
         const realActivity = await activityRes.json();
-        if (realActivity.length > 0) {
-          setLiveActivity(realActivity);
+        const actItems = realActivity.activity || realActivity || [];
+        if (Array.isArray(actItems) && actItems.length > 0) {
+          setLiveActivity(actItems);
         }
       } catch (err) {
         console.error('Error fetching discover data:', err);
@@ -68,26 +96,8 @@ export default function DiscoverPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-emerald-500/20 relative noise">
-      <div className="fixed inset-0 dot-grid pointer-events-none z-0" />
+    <div className="min-h-screen text-white font-sans selection:bg-emerald-500/20 relative overflow-x-hidden">
 
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.04] bg-black/60 backdrop-blur-2xl">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 font-semibold text-[15px] text-white">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-500">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-            Code DNA
-          </Link>
-          <div className="flex items-center gap-6 text-[13px]">
-            <Link href="/" className="text-zinc-500 hover:text-white transition-colors">Home</Link>
-            <Link href="/compare" className="text-zinc-500 hover:text-white transition-colors">Compare</Link>
-            <Link href="/leaderboard" className="text-zinc-500 hover:text-white transition-colors">Leaderboard</Link>
-            <Link href="/pricing" className="text-zinc-500 hover:text-white transition-colors">Pricing</Link>
-            <Link href="/login" className="text-white hover:text-emerald-400 transition-colors">Sign In</Link>
-          </div>
-        </div>
-      </nav>
 
       <main className="relative z-10 pt-32 pb-24 px-6">
         {/* Header */}
@@ -141,44 +151,43 @@ export default function DiscoverPage() {
           {/* Table Header */}
           <div className="grid grid-cols-12 px-6 py-3 text-[10px] uppercase tracking-[0.12em] font-bold text-zinc-700 border-b border-white/[0.04]">
             <div className="col-span-4">Developer</div>
-            <div className="col-span-2">Archetype</div>
+            <div className="col-span-3">Archetype</div>
             <div className="col-span-2 text-center">Readability</div>
-            <div className="col-span-2 text-center">Complexity</div>
-            <div className="col-span-1 text-center">Repos</div>
+            <div className="col-span-2 text-center">Overall</div>
             <div className="col-span-1"></div>
           </div>
 
           {/* Table Rows */}
           <div className="divide-y divide-white/[0.03]">
             {filteredDevs.map((dev, i) => (
-              <Link key={dev.name} href={`/profile/${dev.name}`}>
+              <Link key={dev.name} href={`/u/${dev.name}`}>
                 <motion.div
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}
                   className="grid grid-cols-12 px-6 py-5 items-center group hover:bg-zinc-950/80 transition-colors cursor-pointer rounded-lg"
                 >
                   <div className="col-span-4 flex items-center gap-4">
-                    <div className="w-9 h-9 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-[11px] font-bold text-zinc-500 group-hover:text-emerald-400 group-hover:border-emerald-500/20 transition-all">
-                      {dev.name.substring(0, 2).toUpperCase()}
-                    </div>
+                    {dev.avatar_url ? (
+                      <img src={dev.avatar_url} alt="" className="w-9 h-9 rounded-lg border border-white/[0.06] object-cover" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-[11px] font-bold text-zinc-500 group-hover:text-emerald-400 group-hover:border-emerald-500/20 transition-all">
+                        {dev.name.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <span className="text-[13px] font-semibold text-zinc-300 group-hover:text-white transition-colors">{dev.name}</span>
-                      <span className="block text-[11px] text-zinc-600">{dev.lang}</span>
+                      <span className="block text-[11px] text-zinc-600">{dev.archetype}</span>
                     </div>
                   </div>
-                  <div className="col-span-2 text-[12px] text-zinc-500 font-medium">{dev.archetype}</div>
+                  <div className="col-span-3 text-[12px] text-zinc-500 font-medium">{dev.archetype}</div>
                   <div className="col-span-2 flex items-center justify-center gap-2">
                     <div className="w-12 h-1 bg-white/[0.04] rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500/50 rounded-full" style={{ width: `${dev.scores.readability}%` }} />
+                      <div className="h-full bg-emerald-500/50 rounded-full" style={{ width: `${dev.readability}%` }} />
                     </div>
-                    <span className="text-[12px] font-mono text-zinc-500">{dev.scores.readability}</span>
+                    <span className="text-[12px] font-mono text-zinc-500">{dev.readability}</span>
                   </div>
-                  <div className="col-span-2 flex items-center justify-center gap-2">
-                    <div className="w-12 h-1 bg-white/[0.04] rounded-full overflow-hidden">
-                      <div className="h-full bg-zinc-500/50 rounded-full" style={{ width: `${dev.scores.complexity}%` }} />
-                    </div>
-                    <span className="text-[12px] font-mono text-zinc-500">{dev.scores.complexity}</span>
+                  <div className="col-span-2 text-center">
+                    <span className="text-[14px] font-semibold text-white">{dev.overall}</span>
                   </div>
-                  <div className="col-span-1 text-center text-[12px] text-zinc-600">{dev.repos}</div>
                   <div className="col-span-1 flex justify-end">
                     <ArrowUpRight className="w-4 h-4 text-zinc-800 group-hover:text-emerald-500 transition-colors" />
                   </div>

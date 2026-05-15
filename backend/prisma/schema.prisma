@@ -1,31 +1,46 @@
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider   = "sqlite"
-  url        = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id               String            @id @default(uuid())
-  github_id        String            @unique
-  username         String
-  display_name     String?
-  avatar_url       String?
-  github_token     String?
-  plan             String?           @default("free")
-  created_at       DateTime?         @default(now())
-  last_analyzed_at DateTime?         
-  analysis_jobs    AnalysisJob[]
-  vectors          DeveloperVector[]
-  fingerprints     Fingerprint[]
+  id                  String            @id @default(uuid())
+  github_id           String            @unique
+  username            String
+  display_name        String?
+  avatar_url          String?
+  github_token        String?
+  plan                String?           @default("free")
+  created_at          DateTime?         @default(now())
+  last_analyzed_at    DateTime?
+  codedna_username    String?           @unique
+  email               String?           @unique
+  email_verified      Boolean?          @default(false)
+  username_changed_at DateTime?
+  analysis_jobs       AnalysisJob[]
+  vectors             DeveloperVector[]
+  fingerprints        Fingerprint[]
 
   @@map("users")
 }
 
+model OtpCode {
+  id         String   @id @default(uuid())
+  email      String
+  code       String
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@map("otp_codes")
+}
+
 model Fingerprint {
-  id                      String            @id @default(uuid())
+  id                      String          @id @default(uuid())
   user_id                 String?
   readability_score       Int?
   complexity_score        Int?
@@ -37,14 +52,14 @@ model Fingerprint {
   error_handling_score    Int?
   developer_type          String?
   personality_summary     String?
-  strengths               String? // Stored as stringified JSON in sqlite
-  growth_areas            String? // Stored as stringified JSON in sqlite
-  repos_analyzed          Int?      @default(0)
-  total_files_analyzed    Int?      @default(0)
-  activity_pulse          String?   // JSON array of activity density for 90 days
-  created_at              DateTime?         @default(now())
+  strengths               String?
+  growth_areas            String?
+  created_at              DateTime?       @default(now())
+  repos_analyzed          Int?            @default(0)
+  total_files_analyzed    Int?            @default(0)
+  activity_pulse          String?
   commit_patterns         CommitPattern[]
-  user                    User?             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user                    User?           @relation(fields: [user_id], references: [id], onDelete: Cascade)
   language_stats          LanguageStat[]
 
   @@map("fingerprints")
@@ -73,33 +88,33 @@ model CommitPattern {
   avg_commit_size      Int?
   fix_to_feature_ratio Float?
   emoji_usage_pct      Float?
-  naming_style         String?
   avg_fn_length        Int?
+  naming_style         String?
   fingerprint          Fingerprint? @relation(fields: [fingerprint_id], references: [id], onDelete: Cascade)
 
   @@map("commit_patterns")
 }
 
 model DeveloperVector {
-  id         String                               @id @default(uuid())
+  id         String    @id @default(uuid())
   user_id    String?
-  embedding  String?                              // Stored as stringified JSON array of 8 floats
-  updated_at DateTime?                            @default(now())
-  user       User?                                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  embedding  String?
+  updated_at DateTime? @default(now())
+  user       User?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("developer_vectors")
 }
 
 model AnalysisJob {
-  id           String    @id @default(uuid())
-  user_id      String?
-  status       String?   @default("pending")
-  progress     Int?      @default(0)
-  current_step String?
+  id            String    @id @default(uuid())
+  user_id       String?
+  status        String?   @default("pending")
+  progress      Int?      @default(0)
+  current_step  String?
   error_message String?
-  created_at   DateTime? @default(now())
-  completed_at DateTime? 
-  user         User?     @relation(fields: [user_id], references: [id])
+  created_at    DateTime? @default(now())
+  completed_at  DateTime?
+  user          User?     @relation(fields: [user_id], references: [id])
 
   @@map("analysis_jobs")
 }

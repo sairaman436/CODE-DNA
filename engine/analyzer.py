@@ -18,6 +18,18 @@ import concurrent.futures
 from pathlib import Path
 from collections import Counter, defaultdict
 
+try:
+    import tree_sitter
+    import tree_sitter_javascript
+    import tree_sitter_typescript
+    JS_LANG = tree_sitter.Language(tree_sitter_javascript.language())
+    TS_LANG = tree_sitter.Language(tree_sitter_typescript.language_typescript())
+    TSX_LANG = tree_sitter.Language(tree_sitter_typescript.language_tsx())
+    HAS_TREE_SITTER = True
+except Exception as e:
+    print(f"Tree-sitter not available: {e}")
+    HAS_TREE_SITTER = False
+
 # ──────────────────────────────────────────
 # Language detection
 # ──────────────────────────────────────────
@@ -34,6 +46,12 @@ SKIP_PATTERNS = [
     'node_modules', 'vendor', 'dist', 'build', '.git', '__pycache__',
     'package-lock.json', 'yarn.lock', '.min.js', '.min.css',
     'migrations', '.next', '.nuxt', 'venv', 'env',
+]
+
+# Strict blocklist for secrets (Engine Hard Rule 2)
+SECRET_PATTERNS = [
+    '.env', '.pem', '.key', '.p12', '.pfx', 'id_rsa', 'id_ed25519',
+    'credentials.json', 'secrets.json', '.secret', '.aws/credentials'
 ]
 
 # Test file patterns
@@ -72,9 +90,18 @@ NAMING_STANDARDS = {
 
 def should_skip_file(filepath: str) -> bool:
     """Check if a file should be skipped."""
+    filepath_lower = filepath.lower()
+    
+    # 1. Block secrets immediately
+    for secret in SECRET_PATTERNS:
+        if secret in filepath_lower:
+            return True
+            
+    # 2. Block generated/vendor files
     for pattern in SKIP_PATTERNS:
         if pattern in filepath:
             return True
+            
     return False
 
 
@@ -132,6 +159,71 @@ def analyze_python_ast(content: str) -> dict:
         'docstring_count': docstrings,
         'docstring_ratio': docstrings / len(functions) if functions else 0,
     }
+
+
+def analyze_jsts_ast(content: str, language: str) -> dict:
+    """Use Tree-sitter for deep analysis of JS/TS files."""
+    if not HAS_TREE_SITTER:
+        return {}
+    try:
+        if language == 'JavaScript':
+            parser = tree_sitter.Parser(JS_LANG)
+        elif language == 'TypeScript':
+            if '</div>' in content or 'react' in content.lower():
+                parser = tree_sitter.Parser(TSX_LANG)
+            else:
+                parser = tree_sitter.Parser(TS_LANG)
+        else:
+            return {}
+
+        if hasattr(parser, 'timeout_micros'):
+            parser.timeout_micros = 5_000_000  # 5 seconds
+        tree = parser.parse(bytes(content, "utf8"))
+        
+        functions = []
+        classes = 0
+        docstrings = 0
+        
+        def walk_tree(node, depth):
+            nonlocal classes, docstrings
+            max_d = depth
+            
+            if node.type in ['function_declaration', 'method_definition', 'arrow_function']:
+                start_line = node.start_point[0]
+                end_line = node.end_point[0]
+                func_lines = end_line - start_line + 1
+                functions.append(func_lines)
+            
+            if node.type == 'class_declaration':
+                classes += 1
+                
+            if node.type == 'comment':
+                if b'/**' in content.encode('utf8')[node.start_byte:node.end_byte]:
+                    docstrings += 1
+
+            if node.type in ['if_statement', 'for_statement', 'while_statement', 'try_statement', 'catch_clause']:
+                depth += 1
+                max_d = max(max_d, depth)
+                
+            for child in node.children:
+                max_d = max(max_d, walk_tree(child, depth))
+                
+            return max_d
+
+        max_nesting = walk_tree(tree.root_node, 0)
+        
+        return {
+            'function_lengths': functions,
+            'num_functions': len(functions),
+            'avg_function_length': sum(functions) / len(functions) if functions else 0,
+            'max_nesting_depth': max_nesting,
+            'num_classes': classes,
+            'docstring_count': docstrings,
+            'docstring_ratio': docstrings / len(functions) if functions else 0,
+        }
+    except Exception as e:
+        print(f"Tree-sitter parse failed: {e}")
+        return {}
 
 
 def analyze_file_generic(content: str, language: str) -> dict:
@@ -225,7 +317,7 @@ def clone_repo(clone_url: str, target_dir: str, token: str = None) -> bool:
         # Rule: Use --depth 50 to get enough history for the activity pulse without the extreme slowness of shallow-since
         subprocess.run(
             ['git', 'clone', '--depth', '50', '--single-branch', '--no-tags', '--filter=blob:none', final_url, target_dir],
-            capture_output=True, timeout=60, check=True, env=env
+            capture_output=True, timeout=180, check=True, env=env
         )
         return True
     except subprocess.TimeoutExpired:
@@ -263,35 +355,61 @@ def analyze_repository(repo_dir: str) -> dict:
         'most_active_hour': 12,
         'most_active_day': 'Monday',
         'fix_to_feature_ratio': 0.2,
-        'commit_style': 'Imperative'
+        'commit_style': 'Imperative',
+        'total_commits': 0,
+        'avg_commit_size': 0,
+        'emoji_usage_pct': 0,
     }
     try:
-        # Get last 100 commits to keep it fast
+        # Get last 100 commits, include shortstat for commit size, and special delimiter
         log_output = subprocess.check_output(
-            ['git', 'log', '-n', '100', '--format=%ad|%s', '--date=iso'],
-            cwd=repo_dir, env=os.environ, stderr=subprocess.DEVNULL
+            ['git', '--no-pager', 'log', '-n', '100', '--format=@@@%ad|%s', '--date=iso', '--shortstat'],
+            cwd=repo_dir, env=os.environ, stderr=subprocess.DEVNULL, timeout=60
         ).decode('utf-8', errors='ignore')
         
         if log_output:
-            lines = log_output.strip().split('\n')
+            commits_data = [c for c in log_output.split('@@@') if c.strip()]
             total_len = 0
             hours = []
             fixes = 0
-            for line in lines:
-                if '|' not in line: continue
-                date_str, msg = line.split('|', 1)
+            emojis = 0
+            total_lines_changed = 0
+            valid_commits = 0
+            
+            for c_data in commits_data:
+                lines = c_data.strip().split('\n')
+                if not lines: continue
+                
+                header = lines[0]
+                if '|' not in header: continue
+                date_str, msg = header.split('|', 1)
+                
                 total_len += len(msg)
-                # Parse hour (2024-05-14 13:48:17 +0530)
+                
                 hour_match = re.search(r' (\d{2}):', date_str)
                 if hour_match: hours.append(int(hour_match.group(1)))
                 
                 if re.search(r'\b(fix|bug|patch|issue)\b', msg, re.I): fixes += 1
+                if re.search(r'[\U0001F000-\U0001FAFF]', msg): emojis += 1
+                
+                stat_line = lines[-1] if len(lines) > 1 else ""
+                if ' changed' in stat_line and (' insertion' in stat_line or ' deletion' in stat_line):
+                    ins_match = re.search(r'(\d+) insertion', stat_line)
+                    del_match = re.search(r'(\d+) deletion', stat_line)
+                    ins = int(ins_match.group(1)) if ins_match else 0
+                    dels = int(del_match.group(1)) if del_match else 0
+                    total_lines_changed += (ins + dels)
+                
+                valid_commits += 1
             
-            if lines:
-                commit_metrics['avg_message_length'] = total_len / len(lines)
+            if valid_commits > 0:
+                commit_metrics['total_commits'] = valid_commits
+                commit_metrics['avg_message_length'] = total_len / valid_commits
                 if hours: commit_metrics['most_active_hour'] = Counter(hours).most_common(1)[0][0]
-                commit_metrics['fix_to_feature_ratio'] = fixes / len(lines)
-                commit_metrics['commit_style'] = 'Descriptive' if commit_metrics['avg_message_length'] > 50 else 'Imperative'
+                commit_metrics['fix_to_feature_ratio'] = fixes / valid_commits
+                commit_metrics['commit_style'] = 'Descriptive' if (total_len / valid_commits) > 50 else 'Imperative'
+                commit_metrics['avg_commit_size'] = total_lines_changed / valid_commits
+                commit_metrics['emoji_usage_pct'] = (emojis / valid_commits) * 100
 
     except Exception as e:
         print(f"  ! Git log analysis failed: {e}")
@@ -312,6 +430,14 @@ def analyze_repository(repo_dir: str) -> dict:
             if language == 'Python' and not is_test:
                 py_metrics = analyze_python_ast(content)
                 metrics.update(py_metrics)
+                if 'max_nesting_depth' in py_metrics:
+                    metrics['max_nesting_estimate'] = py_metrics['max_nesting_depth']
+            elif language in ['JavaScript', 'TypeScript'] and not is_test:
+                js_metrics = analyze_jsts_ast(content, language)
+                if js_metrics:
+                    metrics.update(js_metrics)
+                    if 'max_nesting_depth' in js_metrics:
+                        metrics['max_nesting_estimate'] = js_metrics['max_nesting_depth']
                 
             metrics['language'] = language
             metrics['is_test'] = is_test
@@ -319,18 +445,17 @@ def analyze_repository(repo_dir: str) -> dict:
         except:
             return None
 
-    # 3. Analyze files in parallel
+    # 3. Analyze files sequentially (avoids GIL thrashing since outer loop is already parallel)
     file_metrics = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        results = list(executor.map(analyze_file_task, source_files))
-        for m in results:
-            if m:
-                file_metrics.append(m)
-                language_line_counts[m['language']] += m['code_lines']
-                total_files += 1
-                if m['is_test']:
-                    test_file_count += 1
-                total_assertions += m.get('assertion_count', 0)
+    for file_info in source_files:
+        m = analyze_file_task(file_info)
+        if m:
+            file_metrics.append(m)
+            language_line_counts[m['language']] += m['code_lines']
+            total_files += 1
+            if m['is_test']:
+                test_file_count += 1
+            total_assertions += m.get('assertion_count', 0)
 
     return {
         'file_metrics': file_metrics,
@@ -339,6 +464,7 @@ def analyze_repository(repo_dir: str) -> dict:
         'total_files': total_files,
         'total_assertions': total_assertions,
         'activity': get_repo_activity(repo_dir),
+        'commit_metrics': commit_metrics,
     }
 
 
@@ -346,8 +472,8 @@ def get_repo_activity(repo_path: str) -> list:
     """Extract commit dates for the last 90 days using git log."""
     try:
         # Get commit timestamps from last 90 days
-        cmd = ["git", "log", "--format=%at"]
-        result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True, check=True)
+        cmd = ["git", "--no-pager", "log", "--format=%at"]
+        result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True, check=True, timeout=60)
         timestamps = result.stdout.splitlines()
         
         from datetime import datetime, timezone
@@ -384,6 +510,9 @@ def compute_scores(all_repo_results: list) -> dict:
     agg_hours = []
     agg_msg_lens = []
     agg_fix_ratios = []
+    agg_total_commits = 0
+    agg_commit_sizes = []
+    agg_emoji_pcts = []
 
     for repo in all_repo_results:
         all_metrics.extend(repo['file_metrics'])
@@ -398,6 +527,9 @@ def compute_scores(all_repo_results: list) -> dict:
         agg_hours.append(cm.get('most_active_hour', 12))
         agg_msg_lens.append(cm.get('avg_message_length', 0))
         agg_fix_ratios.append(cm.get('fix_to_feature_ratio', 0))
+        agg_total_commits += cm.get('total_commits', 0)
+        agg_commit_sizes.append(cm.get('avg_commit_size', 0))
+        agg_emoji_pcts.append(cm.get('emoji_usage_pct', 0))
 
     if not all_metrics:
         return _default_scores()
@@ -479,12 +611,15 @@ def compute_scores(all_repo_results: list) -> dict:
             'error_handling': min(error_handling, 100),
         },
         'patterns': {
-            'naming_style': Counter([m.get('naming_style', 'unknown') for m in all_metrics]).most_common(1)[0][0],
+            'naming_style': Counter([m.get('naming_style', 'unknown') for m in all_metrics]).most_common(1)[0][0] if all_metrics else 'unknown',
             'avg_fn_length': int(avg_func_len),
             'commit_style': Counter(agg_commit_styles).most_common(1)[0][0] if agg_commit_styles else 'Imperative',
             'most_active_hour': Counter(agg_hours).most_common(1)[0][0] if agg_hours else 12,
             'avg_message_length': sum(agg_msg_lens) / len(agg_msg_lens) if agg_msg_lens else 0,
-            'fix_to_feature_ratio': sum(agg_fix_ratios) / len(agg_fix_ratios) if agg_fix_ratios else 0.2
+            'fix_to_feature_ratio': sum(agg_fix_ratios) / len(agg_fix_ratios) if agg_fix_ratios else 0.2,
+            'avg_commit_size': sum(agg_commit_sizes) / len(agg_commit_sizes) if agg_commit_sizes else 0,
+            'emoji_usage_pct': sum(agg_emoji_pcts) / len(agg_emoji_pcts) if agg_emoji_pcts else 0,
+            'total_commits': agg_total_commits,
         }
     }
 
@@ -581,6 +716,13 @@ def perform_full_analysis(username: str, repositories: list, progress_callback=N
             if not clone_url:
                 return None
 
+            # Engine Hard Rule 4: Never penalize for learning repositories
+            repo_name = repo.get('name', '').lower()
+            learning_keywords = ['learn', 'practice', 'tutorial', 'course', 'exercise', 'kata', 'bootcamp', 'hello', 'test-', 'demo']
+            if any(k in repo_name for k in learning_keywords):
+                print(f"  > Skipping learning repo (Rule 4): {repo['name']}", flush=True)
+                return None
+
             print(f"  > Cloning {repo['name']} (Parallel)...", flush=True)
             if not clone_repo(clone_url, tmp_dir, token=access_token):
                 return None
@@ -590,8 +732,8 @@ def perform_full_analysis(username: str, repositories: list, progress_callback=N
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    # Use high-concurrency for I/O bound cloning tasks
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    # Use balanced concurrency for I/O bound cloning tasks to prevent network timeouts
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
         future_to_repo = {
             executor.submit(analyze_single_repo, i, repo): repo 
             for i, repo in enumerate(repositories[:10])
@@ -646,11 +788,12 @@ def perform_full_analysis(username: str, repositories: list, progress_callback=N
             'commit_style': patterns['commit_style'],
             'most_active_hour': patterns['most_active_hour'],
             'most_active_day': 'Analyzed Patterns',
-            'avg_commit_size': 0, # Still needs lines per commit
+            'avg_commit_size': int(patterns['avg_commit_size']),
             'fix_to_feature_ratio': round(patterns['fix_to_feature_ratio'], 2),
-            'emoji_usage_pct': 0,
+            'emoji_usage_pct': round(patterns['emoji_usage_pct'], 1),
             'naming_style': patterns['naming_style'],
-            'avg_fn_length': patterns['avg_fn_length'],
+            'avg_fn_length': int(patterns['avg_fn_length']),
+            'total_commits': patterns['total_commits'],
         },
         'repos_analyzed': repos_analyzed,
         'total_files_analyzed': sum(r['total_files'] for r in all_repo_results),

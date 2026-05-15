@@ -23,21 +23,33 @@ async function fetchAndFilterRepos(username, token) {
     headers['Authorization'] = `Basic ${credentials}`;
   }
 
-  // Fetch repositories (Explicitly request public repos only to respect privacy policy)
-  const url = token 
-    ? `https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner&visibility=public` 
-    : `https://api.github.com/users/${username}/repos?per_page=100&sort=updated&type=owner`;
+  let allRepos = [];
+  let page = 1;
+  let hasMore = true;
 
-  const response = await fetch(url, { headers });
-  
-  if (!response.ok) {
-    throw new Error(`GitHub API Error: ${response.status} ${response.statusText}`);
+  while (hasMore && page <= 5) { // Cap at 500 repos to prevent excessive requests
+    const url = token 
+      ? `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner&visibility=public` 
+      : `https://api.github.com/users/${username}/repos?per_page=100&page=${page}&sort=updated&type=owner`;
+
+    const response = await fetch(url, { headers });
+    
+    if (!response.ok) {
+      throw new Error(`GitHub API Error: ${response.status} ${response.statusText}`);
+    }
+
+    const repos = await response.json();
+    if (repos.length === 0) {
+      hasMore = false;
+    } else {
+      allRepos = allRepos.concat(repos);
+      if (repos.length < 100) hasMore = false;
+      page++;
+    }
   }
 
-  const repos = await response.json();
-
   // Apply filters from CodeDNA_Engine_DoNot.md
-  const filteredRepos = repos.filter(repo => {
+  const filteredRepos = allRepos.filter(repo => {
     // Exclude forks (Rule 10: authorship ambiguity)
     if (repo.fork) return false;
 
