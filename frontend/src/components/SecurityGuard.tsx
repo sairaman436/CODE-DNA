@@ -2,79 +2,53 @@
 
 import { useEffect } from "react";
 
+/**
+ * SecurityGuard: Technical Identity Protection System
+ * Transitions from aggressive blocking to professional diagnostic mode.
+ * Allows right-click and DevTools for mobile responsiveness testing.
+ */
 export function SecurityGuard() {
   useEffect(() => {
     // 1. Industrial Console Warning (Facebook/Discord style)
     const warningTitle = "color: #10b981; font-size: 50px; font-weight: bold; text-shadow: 0 0 20px rgba(16,185,129,0.5);";
-    const warningText = "color: #ffffff; font-size: 18px;";
+    const warningText = "color: #ffffff; font-size: 14px; font-family: sans-serif;";
     
-    console.log("%cSTOP!", warningTitle);
+    console.log("%cCODE DNA", warningTitle);
     console.log(
-      "%cThis is a browser feature intended for developers. If someone told you to copy-paste something here to enable a feature or 'hack' someone, it is a scam and will give them access to your account.",
+      "%c[SYSTEM INFO] Technical Identity Protection is ACTIVE.\n" +
+      "This console is for authorized system diagnostics only. If you are here to 'inspect' the DNA structure, " +
+      "note that the Abstract Syntax Tree mappings are proprietary and secured.\n\n" +
+      "Security Mode: Diagnostic (Allow Inspect)",
       warningText
     );
-    console.log("%cCode DNA Protection Active.", "color: #10b981; font-weight: bold;");
 
-    // 2. Keyboard Shortcut Blocking (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U)
+    // 2. View Source Deception (Ctrl+U / Cmd+U)
     const handleKeydown = (e: KeyboardEvent) => {
-      if (
-        e.key === 'F12' ||
-        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
-        (e.ctrlKey && e.key === 'U') ||
-        (e.metaKey && e.altKey && e.key === 'i') // Mac
-      ) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
         e.preventDefault();
-        console.warn("%c[SECURITY] Unauthorized inspection shortcut blocked.", "color: #ef4444; font-weight: bold;");
+        // Deceptive Redirect: Make it look like the source is inaccessible
+        document.body.innerHTML = `
+          <div style="background:#000;color:#fff;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;text-align:center;padding:20px;">
+            <h1 style="font-size:40px;margin-bottom:10px;color:#ef4444;">404 NOT FOUND</h1>
+            <p style="color:#666;font-size:14px;max-width:400px;line-height:1.6;">
+              The requested resource [CODE_DNA_SOURCE] is protected by structural encryption and is not available for public inspection.
+            </p>
+            <div style="margin-top:40px;color:#333;font-size:10px;letter-spacing:2px;text-transform:uppercase;">
+              Security Protocol Alpha-6 Active
+            </div>
+          </div>
+        `;
+        // Optional: Redirect after a delay
+        setTimeout(() => window.location.href = '/', 3000);
         return false;
       }
     };
     window.addEventListener('keydown', handleKeydown);
 
-    // 3. Right-Click Prevention (with context menu warning)
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      console.warn("%c[SECURITY] Context menu disabled for data protection.", "color: #ef4444; font-weight: bold;");
-    };
-    window.addEventListener('contextmenu', handleContextMenu);
-
-    // 4. Anti-Debugging Detection (Industrial Standard)
-    if (process.env.NODE_ENV === 'production') {
-      const threshold = 160;
-      const check = () => {
-        const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-        const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-
-        if (widthThreshold || heightThreshold) {
-          // Visual Lockdown: Blur the UI if tools are open
-          document.body.style.filter = "blur(20px)";
-          document.body.style.pointerEvents = "none";
-          // We can also trigger a debugger loop
-          (function() {}.constructor("debugger")());
-        } else {
-          document.body.style.filter = "none";
-          document.body.style.pointerEvents = "auto";
-        }
-      };
-
-      const interval = setInterval(check, 1000);
-      return () => {
-        clearInterval(interval);
-        window.removeEventListener('keydown', handleKeydown);
-        window.removeEventListener('contextmenu', handleContextMenu);
-      };
-    }
-
     return () => {
       window.removeEventListener('keydown', handleKeydown);
-      window.removeEventListener('contextmenu', handleContextMenu);
     };
   }, []);
 
   return null;
-}
-
-declare global {
-  interface Window {
-    Firebug: any;
-  }
 }
