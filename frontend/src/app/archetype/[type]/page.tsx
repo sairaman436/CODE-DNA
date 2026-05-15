@@ -143,20 +143,20 @@ export default function ArchetypePage() {
       <div className="min-h-screen bg-black flex items-center justify-center text-zinc-500">
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-white mb-4">Archetype not found</h1>
-          <Link href="/" className="text-emerald-500 hover:underline text-sm">Go home</Link>
+          <Link href="/" className="text-zinc-400 hover:underline text-sm">Go home</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-emerald-500/20 relative noise">
+    <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-white/20 relative noise">
       <div className="fixed inset-0 dot-grid pointer-events-none z-0" />
 
       <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.04] bg-black/60 backdrop-blur-2xl">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 font-semibold text-[15px] text-white">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-500">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
             Code DNA
@@ -165,7 +165,7 @@ export default function ArchetypePage() {
             <Link href="/" className="text-zinc-500 hover:text-white transition-colors">Home</Link>
             <Link href="/discover" className="text-zinc-500 hover:text-white transition-colors">Discover</Link>
             <Link href="/leaderboard" className="text-zinc-500 hover:text-white transition-colors">Leaderboard</Link>
-            <Link href="/login" className="text-white hover:text-emerald-400 transition-colors">Sign In</Link>
+            <Link href="/login" className="text-white hover:text-zinc-300 transition-colors">Sign In</Link>
           </div>
         </div>
       </nav>
@@ -187,7 +187,7 @@ export default function ArchetypePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-white/[0.04] rounded-2xl overflow-hidden">
             {arch.traits.map((trait) => (
               <div key={trait} className="bg-zinc-950 p-5 flex items-center gap-3">
-                <div className="w-1 h-1 rounded-full bg-emerald-500/60 shrink-0" />
+                <div className="w-1 h-1 rounded-full bg-white/60 shrink-0" />
                 <span className="text-[13px] text-zinc-300">{trait}</span>
               </div>
             ))}
@@ -201,7 +201,7 @@ export default function ArchetypePage() {
             {arch.scores.map((s) => (
               <div key={s.axis} className="flex items-center justify-between">
                 <span className="text-[13px] text-zinc-400 font-medium">{s.axis}</span>
-                <span className="text-[13px] font-mono text-emerald-500/80">{s.range}</span>
+                <span className="text-[13px] font-mono text-white/80">{s.range}</span>
               </div>
             ))}
           </div>
@@ -210,11 +210,11 @@ export default function ArchetypePage() {
         {/* Strengths & Weaknesses */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/[0.04] rounded-2xl overflow-hidden mb-16">
           <div className="bg-zinc-950 p-8">
-            <h3 className="text-[11px] uppercase tracking-[0.15em] text-emerald-500/70 font-bold mb-5">Strengths</h3>
+            <h3 className="text-[11px] uppercase tracking-[0.15em] text-white/70 font-bold mb-5">Strengths</h3>
             <ul className="space-y-3">
               {arch.strengths.map((s) => (
                 <li key={s} className="text-[13px] text-zinc-300 flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500/60" /> {s}
+                  <div className="w-1 h-1 rounded-full bg-white/60" /> {s}
                 </li>
               ))}
             </ul>
@@ -244,15 +244,15 @@ export default function ArchetypePage() {
         </section>
 
         {/* Pro Tip */}
-        <section className="rounded-2xl border border-emerald-500/10 bg-emerald-500/[0.03] p-8 mb-16">
-          <h3 className="text-[11px] uppercase tracking-[0.15em] text-emerald-500/70 font-bold mb-4">Pro Tip</h3>
+        <section className="rounded-2xl border border-white/10 bg-zinc-800/[0.03] p-8 mb-16">
+          <h3 className="text-[11px] uppercase tracking-[0.15em] text-white/70 font-bold mb-4">Pro Tip</h3>
           <p className="text-[14px] text-zinc-400 leading-relaxed">{arch.tip}</p>
         </section>
 
         {/* CTA */}
         <div className="text-center pt-8">
           <Link href="/login">
-            <button className="h-11 px-8 rounded-xl bg-white text-black font-semibold text-sm hover:bg-emerald-400 transition-all">
+            <button className="h-11 px-8 rounded-xl bg-white text-black font-semibold text-sm hover:bg-zinc-700 transition-all">
               Discover Your Archetype
             </button>
           </Link>

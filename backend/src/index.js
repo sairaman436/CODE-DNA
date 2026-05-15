@@ -8,13 +8,19 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const rateLimit = require('express-rate-limit');
 
-// ─── Industrial Security: DDoS Protection ───
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  message: { error: "Too many requests from this IP, please try again after 15 minutes" }
+  max: 200, // Global limit
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "System limit reached. Please try again later." }
+});
+
+// Stricter limit for talent discovery to prevent mass-scraping
+const discoveryLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 50, // Limit to 50 profile views/searches per hour
+  message: { error: "Discovery limit reached. Slow down your analysis." }
 });
 
 // Middleware
@@ -40,15 +46,15 @@ const usernameRouter = require('./routes/username');
 
 app.use('/api/analyze', analyzeRouter);
 app.use('/api/webhook', webhookRouter);
-app.use('/api/profile', profileRouter);
+app.use('/api/profile', discoveryLimiter, profileRouter);
 app.use('/api/status', statusRouter);
 app.use('/api/compare', compareRouter);
 app.use('/api/match', matchRouter);
 app.use('/api/settings', settingsRouter);
-app.use('/api/leaderboard', leaderboardRouter);
+app.use('/api/leaderboard', discoveryLimiter, leaderboardRouter);
 app.use('/api/activity', activityRouter);
 app.use('/api/auth/otp', otpRouter);
-app.use('/api/username', usernameRouter);
+app.use('/api/username', discoveryLimiter, usernameRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

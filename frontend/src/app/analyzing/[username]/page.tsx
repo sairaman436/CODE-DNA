@@ -130,13 +130,13 @@ export default function AnalyzingPage() {
   const progress = Math.round(((currentStep + 1) / STEPS.length) * 100);
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100 font-sans flex flex-col items-center justify-center selection:bg-emerald-500/20 relative noise">
+    <div className="min-h-screen bg-black text-zinc-100 font-sans flex flex-col items-center justify-center selection:bg-white/20 relative noise">
       <div className="fixed inset-0 dot-grid pointer-events-none z-0" />
       {showConfetti && <Confetti />}
 
       {/* Back to home */}
-      <Link href="/" className="fixed top-6 left-6 z-50 flex items-center gap-2.5 text-[13px] text-zinc-600 hover:text-white transition-colors">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-500">
+      <Link href="/" className="fixed top-6 left-6 z-50 flex items-center gap-2.5 text-[13px] text-zinc-600 hover:text-zinc-100 transition-colors">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400">
           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
         </svg>
         Code DNA
@@ -149,7 +149,7 @@ export default function AnalyzingPage() {
           {[0, 1, 2].map((i) => (
             <motion.div
               key={i}
-              className="absolute inset-0 rounded-full border border-emerald-500/20"
+              className="absolute inset-0 rounded-full border border-white/20"
               animate={{
                 rotate: [0, 360],
                 scale: [1, 1.05, 1],
@@ -163,25 +163,25 @@ export default function AnalyzingPage() {
               }}
             />
           ))}
-          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
         </div>
 
-        <h1 className="text-2xl font-semibold tracking-tight text-white mb-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-100 mb-1">
           Analyzing <span className="text-zinc-500">@{username}</span>
         </h1>
         <p className="text-[13px] text-zinc-600 mb-10">Building your unique developer fingerprint</p>
 
         {/* Error */}
         {error && (
-          <div className="w-full rounded-xl border border-rose-500/10 bg-rose-500/[0.03] p-5 mb-8 text-left">
+          <div className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl p-5 mb-8 text-left">
             <div className="flex items-center gap-2 mb-2">
-              <AlertCircle className="w-4 h-4 text-rose-400" />
-              <h3 className="text-[13px] font-semibold text-rose-400">Analysis Error</h3>
+              <AlertCircle className="w-4 h-4 text-zinc-300" />
+              <h3 className="text-[13px] font-semibold text-zinc-300">Analysis Error</h3>
             </div>
             <p className="text-[12px] text-zinc-500 mb-4">{error}</p>
             <Button
               variant="outline"
-              className="border-rose-500/15 text-rose-400 hover:bg-rose-500/10 rounded-lg h-8 text-xs font-medium"
+              className="border-white/15 text-zinc-300 hover:bg-white/10 rounded-lg h-8 text-xs font-medium"
               onClick={() => window.location.reload()}
             >
               Try Again
@@ -195,7 +195,7 @@ export default function AnalyzingPage() {
             {/* Progress bar */}
             <div className="w-full h-1 bg-white/[0.04] rounded-full mb-8 overflow-hidden">
               <motion.div
-                className="h-full bg-emerald-500/60 rounded-full"
+                className="h-full bg-white/60 rounded-full"
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
               />
@@ -209,7 +209,7 @@ export default function AnalyzingPage() {
                 return (
                   <div key={idx} className={`flex items-center gap-4 py-3 border-b border-white/[0.03] transition-all duration-500 ${isPast || isActive ? 'opacity-100' : 'opacity-20'}`}>
                     <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold transition-all ${
-                      isPast ? 'bg-emerald-500/10 text-emerald-500' :
+                      isPast ? 'bg-white/10 text-zinc-400' :
                       isActive ? 'bg-white text-black' :
                       'bg-white/[0.03] text-zinc-700'
                     }`}>
@@ -221,7 +221,7 @@ export default function AnalyzingPage() {
                         <span>{String(idx + 1).padStart(2, '0')}</span>
                       )}
                     </div>
-                    <span className={`text-[13px] font-medium ${isActive ? 'text-white' : isPast ? 'text-zinc-500' : 'text-zinc-700'}`}>
+                    <span className={`text-[13px] font-medium ${isActive ? 'text-zinc-100' : isPast ? 'text-zinc-500' : 'text-zinc-700'}`}>
                       {step.text}
                     </span>
                   </div>
@@ -231,7 +231,7 @@ export default function AnalyzingPage() {
 
             {/* Server status */}
             {serverStep && (
-              <div className="text-[11px] text-zinc-600 font-mono mb-6 px-3 py-1.5 rounded-md bg-white/[0.02] border border-white/[0.04]">
+              <div className="text-[11px] text-zinc-600 font-mono mb-6 px-3 py-1.5 rounded-md bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
                 {serverStep}
               </div>
             )}

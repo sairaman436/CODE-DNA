@@ -15,64 +15,59 @@ export function SecurityGuard() {
     );
     console.log("%cCode DNA Protection Active.", "color: #10b981; font-weight: bold;");
 
-    // 2. Anti-Debugging Detection (Industrial Standard)
-    // This script detects if DevTools is open and can trigger a 'debugger' trap.
+    // 2. Keyboard Shortcut Blocking (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U)
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.ctrlKey && e.key === 'U') ||
+        (e.metaKey && e.altKey && e.key === 'i') // Mac
+      ) {
+        e.preventDefault();
+        console.warn("%c[SECURITY] Unauthorized inspection shortcut blocked.", "color: #ef4444; font-weight: bold;");
+        return false;
+      }
+    };
+    window.addEventListener('keydown', handleKeydown);
+
+    // 3. Right-Click Prevention (with context menu warning)
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      console.warn("%c[SECURITY] Context menu disabled for data protection.", "color: #ef4444; font-weight: bold;");
+    };
+    window.addEventListener('contextmenu', handleContextMenu);
+
+    // 4. Anti-Debugging Detection (Industrial Standard)
     if (process.env.NODE_ENV === 'production') {
-      const devtools: { isOpen: boolean; orientation: "vertical" | "horizontal" | undefined } = {
-        isOpen: false,
-        orientation: undefined,
-      };
-
       const threshold = 160;
-      const emitEvent = (isOpen: boolean, orientation: any) => {
-        if (isOpen) {
-          // If DevTools is open, we can run a debugger trap to make logic analysis harder
-          // This doesn't stop the user, but it makes the 'Sources' tab chaotic.
-          (function() {
-            (function a() {
-              try {
-                (function b(i: number) {
-                  if (("" + i / i).length !== 1 || i % 20 === 0) {
-                    (function() {}.constructor("debugger")());
-                  } else {
-                    (function() {}.constructor("debugger")());
-                  }
-                  b(++i);
-                })(0);
-              } catch (e) {
-                setTimeout(a, 5000);
-              }
-            })();
-          })();
-        }
-      };
-
       const check = () => {
         const widthThreshold = window.outerWidth - window.innerWidth > threshold;
         const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-        const orientation = widthThreshold ? 'vertical' : 'horizontal';
 
-        if (!(heightThreshold && widthThreshold) && 
-            ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) || widthThreshold || heightThreshold)) {
-          if (!devtools.isOpen || devtools.orientation !== orientation) {
-            emitEvent(true, orientation);
-          }
-          devtools.isOpen = true;
-          devtools.orientation = orientation;
+        if (widthThreshold || heightThreshold) {
+          // Visual Lockdown: Blur the UI if tools are open
+          document.body.style.filter = "blur(20px)";
+          document.body.style.pointerEvents = "none";
+          // We can also trigger a debugger loop
+          (function() {}.constructor("debugger")());
         } else {
-          if (devtools.isOpen) {
-            emitEvent(false, undefined);
-          }
-          devtools.isOpen = false;
-          devtools.orientation = undefined;
+          document.body.style.filter = "none";
+          document.body.style.pointerEvents = "auto";
         }
       };
 
-      setInterval(check, 1000);
+      const interval = setInterval(check, 1000);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('keydown', handleKeydown);
+        window.removeEventListener('contextmenu', handleContextMenu);
+      };
     }
 
-    // 3. Prevent 'view-source' is handled by browser, but we can make it unreadable
-    // through minification (automatic in Next.js).
+    return () => {
+      window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
   }, []);
 
   return null;

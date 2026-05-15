@@ -24,13 +24,13 @@ const MOCK_TEAM_RADAR: RadarData[] = [
 
 export default function TeamPage() {
   return (
-    <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-emerald-500/20 pb-24 relative noise">
+    <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-white/20 pb-24 relative noise">
       <div className="fixed inset-0 dot-grid pointer-events-none z-0" />
 
       <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.04] bg-black/60 backdrop-blur-2xl">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 font-semibold text-[15px] text-white">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-emerald-500">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
             Code DNA
@@ -50,12 +50,12 @@ export default function TeamPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-16">
           <div>
             <div className="inline-flex items-center justify-center p-3 bg-zinc-900 border border-zinc-800 rounded-2xl mb-6 shadow-2xl">
-              <Users2 className="w-8 h-8 text-emerald-400" />
+              <Users2 className="w-8 h-8 text-zinc-300" />
             </div>
             <h1 className="text-4xl font-bold tracking-tight mb-2">Alpha Engineering Team</h1>
             <p className="text-xl text-zinc-400">Aggregated DNA profile for your team.</p>
           </div>
-          <Button className="bg-white text-black hover:bg-emerald-400 transition-all font-semibold shadow-lg">
+          <Button className="bg-white text-black hover:bg-zinc-700 transition-all font-semibold shadow-lg">
             + Invite Member
           </Button>
         </div>
@@ -73,23 +73,23 @@ export default function TeamPage() {
 
             {/* Insights */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <section className="bg-emerald-500/5 border border-emerald-500/20 rounded-3xl p-6 backdrop-blur-sm">
-                <div className="flex items-center gap-2 mb-4 text-emerald-400">
+              <section className="bg-white/5 border border-white/20 rounded-3xl p-6 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-4 text-zinc-300">
                   <Zap className="w-5 h-5" />
                   <h3 className="font-bold">Team Superpower</h3>
                 </div>
                 <p className="text-zinc-300 text-sm leading-relaxed">
-                  Your team excels in <strong className="text-emerald-400">Documentation</strong> and <strong className="text-emerald-400">Readability</strong>. This codebase will be incredibly easy to onboard new developers into.
+                  Your team excels in <strong className="text-zinc-300">Documentation</strong> and <strong className="text-zinc-300">Readability</strong>. This codebase will be incredibly easy to onboard new developers into.
                 </p>
               </section>
               
-              <section className="bg-rose-500/5 border border-rose-500/20 rounded-3xl p-6 backdrop-blur-sm">
-                <div className="flex items-center gap-2 mb-4 text-rose-400">
+              <section className="bg-white/5 border border-white/20 rounded-3xl p-6 backdrop-blur-sm">
+                <div className="flex items-center gap-2 mb-4 text-zinc-300">
                   <ShieldAlert className="w-5 h-5" />
                   <h3 className="font-bold">Critical Blind Spot</h3>
                 </div>
                 <p className="text-zinc-300 text-sm leading-relaxed">
-                  Your team's aggregate <strong className="text-rose-400">Test Mindset</strong> is deeply concerning (45%). Consider hiring a QA Engineer or enforcing stricter CI/CD testing rules.
+                  Your team's aggregate <strong className="text-zinc-300">Test Mindset</strong> is deeply concerning (45%). Consider hiring a QA Engineer or enforcing stricter CI/CD testing rules.
                 </p>
               </section>
             </div>

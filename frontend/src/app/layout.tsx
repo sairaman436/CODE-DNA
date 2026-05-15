@@ -5,11 +5,8 @@ import { cn } from "@/lib/utils";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { ToastProvider } from "@/components/Toast";
 import { CommandPalette } from "@/components/CommandPalette";
-
-import { DynamicBackground } from "@/components/DynamicBackground";
-
+import { BackgroundSwitcher } from "@/components/BackgroundSwitcher";
 import { PageTransition } from "@/components/PageTransition";
-
 import { Navbar } from "@/components/Navbar";
 import { SecurityGuard } from "@/components/SecurityGuard";
 
@@ -31,7 +28,7 @@ export default function RootLayout({
         <SessionProvider>
           <ToastProvider>
             <SecurityGuard />
-            <DynamicBackground />
+            <BackgroundSwitcher />
             <Navbar />
             <PageTransition>
               <div className="relative z-10">

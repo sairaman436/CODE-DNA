@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ArrowUpRight, Activity } from "lucide-react";
+import { Search, ArrowUpRight, Activity, Code2, Layers, Cpu } from "lucide-react";
+import { RadarChart } from "@/components/RadarChart";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
@@ -13,14 +14,67 @@ interface NormalizedDev {
   complexity: number;
   overall: number;
   avatar_url?: string | null;
+  languages: { name: string; color: string; value: number }[];
+  radar: { axis: string; value: number }[];
 }
 
 const FEATURED_DEVS: NormalizedDev[] = [
-  { name: "Sairaman", archetype: "The Architect", readability: 92, complexity: 45, overall: 78 },
-  { name: "alex-chen", archetype: "The Hacker", readability: 65, complexity: 95, overall: 72 },
-  { name: "sarah-dev", archetype: "The Perfectionist", readability: 98, complexity: 30, overall: 81 },
-  { name: "devinross", archetype: "The Debugger", readability: 78, complexity: 60, overall: 68 },
-  { name: "maya-code", archetype: "The Polyglot", readability: 82, complexity: 70, overall: 75 },
+  { 
+    name: "Sairaman", 
+    archetype: "The Architect", 
+    readability: 92, 
+    overall: 88, 
+    languages: [{ name: "TS", color: "#3178c6", value: 60 }, { name: "PY", color: "#3776ab", value: 30 }, { name: "RS", color: "#dea584", value: 10 }],
+    radar: [
+      { axis: "Readability", value: 92 },
+      { axis: "Complexity", value: 45 },
+      { axis: "Refactoring", value: 85 },
+      { axis: "Testing", value: 70 },
+      { axis: "Docs", value: 95 }
+    ]
+  },
+  { 
+    name: "alex-chen", 
+    archetype: "The Hacker", 
+    readability: 65, 
+    overall: 72,
+    languages: [{ name: "GO", color: "#00add8", value: 70 }, { name: "C++", color: "#f34b7d", value: 20 }, { name: "JS", color: "#f1e05a", value: 10 }],
+    radar: [
+      { axis: "Readability", value: 65 },
+      { axis: "Complexity", value: 95 },
+      { axis: "Refactoring", value: 40 },
+      { axis: "Testing", value: 30 },
+      { axis: "Docs", value: 20 }
+    ]
+  },
+  { 
+    name: "sarah-dev", 
+    archetype: "The Perfectionist", 
+    readability: 98, 
+    overall: 91,
+    languages: [{ name: "RS", color: "#dea584", value: 80 }, { name: "TS", color: "#3178c6", value: 15 }, { name: "PY", color: "#3776ab", value: 5 }],
+    radar: [
+      { axis: "Readability", value: 98 },
+      { axis: "Complexity", value: 30 },
+      { axis: "Refactoring", value: 95 },
+      { axis: "Testing", value: 92 },
+      { axis: "Docs", value: 90 }
+    ]
+  },
+  { 
+    name: "maya-code", 
+    archetype: "The Polyglot", 
+    readability: 82, 
+    overall: 85,
+    languages: [{ name: "PY", color: "#3776ab", value: 40 }, { name: "JS", color: "#f1e05a", value: 30 }, { name: "GO", color: "#00add8", value: 30 }],
+    radar: [
+      { axis: "Readability", value: 82 },
+      { axis: "Complexity", value: 70 },
+      { axis: "Refactoring", value: 60 },
+      { axis: "Testing", value: 50 },
+      { axis: "Docs", value: 80 }
+    ]
+  },
 ];
 
 const ARCHETYPES = [
@@ -46,13 +100,21 @@ function normalizeDevs(raw: any[]): NormalizedDev[] {
     name: d.username || d.display_name || d.name || "Unknown",
     archetype: d.developer_type || d.archetype || "Unknown",
     readability: d.readability_score ?? d.readability ?? 0,
-    complexity: d.complexity_score ?? d.complexity ?? 0,
     overall: d.overall_score ?? d.overall ?? 0,
     avatar_url: d.avatar_url || null,
+    languages: d.languages || [{ name: "JS", color: "#f1e05a", value: 100 }],
+    radar: d.radar || [
+      { axis: "Readability", value: d.readability_score ?? 80 },
+      { axis: "Complexity", value: 60 },
+      { axis: "Refactoring", value: 70 },
+      { axis: "Testing", value: 50 },
+      { axis: "Docs", value: 40 }
+    ]
   }));
 }
 
 import { DynamicBackground } from "@/components/DynamicBackground";
+import { Navbar } from "@/components/Navbar";
 
 export default function DiscoverPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,21 +158,23 @@ export default function DiscoverPage() {
   }, []);
 
   return (
-    <div className="min-h-screen text-white font-sans selection:bg-emerald-500/20 relative overflow-x-hidden">
+    <div className="min-h-screen text-zinc-100 font-sans selection:bg-white/20 relative overflow-x-hidden pb-24">
+      <DynamicBackground />
+      <Navbar />
 
 
       <main className="relative z-10 pt-32 pb-24 px-6">
         {/* Header */}
         <div className="max-w-6xl mx-auto mb-16">
           <div className="flex items-center gap-2 mb-4">
-            <div className="h-px w-8 bg-emerald-500/50" />
-            <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-emerald-500/70">Community</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+            <span className="text-[11px] uppercase tracking-[0.2em] font-black text-emerald-400">Diagnostic Database</span>
           </div>
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
             <div>
-              <h1 className="text-3xl font-semibold text-white tracking-tight mb-2">Discover</h1>
-              <p className="text-[15px] text-zinc-500 max-w-lg">
-                Browse developer fingerprints from the community. Filter by archetype, language, or search by username.
+              <h1 className="text-4xl md:text-5xl font-bold text-zinc-100 tracking-tight mb-4">Discover</h1>
+              <p className="text-[16px] text-zinc-500 max-w-lg leading-relaxed">
+                Browse technical fingerprints from the global community. Filter by archetype, language, or search by identity.
               </p>
             </div>
             
@@ -122,7 +186,7 @@ export default function DiscoverPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search developers..."
-                className="w-full bg-zinc-950 border border-white/[0.06] rounded-xl h-10 pl-11 pr-4 text-[13px] text-zinc-300 placeholder:text-zinc-700 focus:outline-none focus:border-emerald-500/30 transition-colors"
+                className="w-full bg-white/[0.04] border border-white/[0.1] rounded-xl h-10 pl-11 pr-4 text-[13px] text-zinc-300 placeholder:text-zinc-700 focus:outline-none focus:border-white/30 backdrop-blur-xl transition-all"
               />
             </div>
           </div>
@@ -130,90 +194,56 @@ export default function DiscoverPage() {
 
         {/* Archetype Distribution */}
         <div className="max-w-6xl mx-auto mb-20">
-          <h3 className="text-[11px] uppercase tracking-[0.15em] text-zinc-600 font-bold mb-6">Archetype Distribution</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-white/[0.04] rounded-2xl overflow-hidden">
+          <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black mb-8">Archetype Distribution</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-white/[0.08] border border-white/[0.08] rounded-[32px] overflow-hidden shadow-2xl">
             {ARCHETYPES.map((arch) => (
               <Link key={arch.type} href={`/archetype/${arch.slug}`}>
-                <div className="bg-zinc-950 p-5 group hover:bg-zinc-900/40 transition-colors cursor-pointer h-full">
-                  <div className="text-[22px] font-semibold text-zinc-400 mb-1 group-hover:text-emerald-400 transition-colors">{arch.count}</div>
-                  <div className="text-[12px] font-semibold text-zinc-300 mb-2">{arch.type}</div>
-                  <div className="text-[10px] text-zinc-600 leading-relaxed">{arch.desc}</div>
+                <div className="bg-white/[0.04] p-6 group hover:bg-white/[0.08] transition-all cursor-pointer h-full backdrop-blur-xl relative">
+                  <div className="text-[24px] font-black text-zinc-100 mb-2 group-hover:text-emerald-500 transition-colors tracking-tighter">{arch.count}</div>
+                  <div className="text-[13px] font-bold text-zinc-300 mb-3 group-hover:text-zinc-100 transition-colors">{arch.type}</div>
+                  <div className="text-[11px] text-zinc-600 leading-relaxed group-hover:text-zinc-500 transition-colors">{arch.desc}</div>
                 </div>
               </Link>
             ))}
           </div>
         </div>
 
-        {/* Developer Table */}
+        {/* Developer Talent Grid */}
         <div className="max-w-6xl mx-auto">
-          <h3 className="text-[11px] uppercase tracking-[0.15em] text-zinc-600 font-bold mb-6">Featured Profiles</h3>
-
-          {/* Table Header */}
-          <div className="grid grid-cols-12 px-6 py-3 text-[10px] uppercase tracking-[0.12em] font-bold text-zinc-700 border-b border-white/[0.04]">
-            <div className="col-span-4">Developer</div>
-            <div className="col-span-3">Archetype</div>
-            <div className="col-span-2 text-center">Readability</div>
-            <div className="col-span-2 text-center">Overall</div>
-            <div className="col-span-1"></div>
+          <div className="flex items-center justify-between mb-10">
+            <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black">Featured Talents</h3>
+            <div className="flex items-center gap-6 text-[10px] text-zinc-700 font-black uppercase tracking-widest">
+              <span className="text-zinc-800">Order By</span>
+              <button className="text-zinc-100 hover:text-emerald-500 transition-colors">DNA Score</button>
+              <button className="text-zinc-600 hover:text-zinc-400 transition-colors">Latest Scans</button>
+            </div>
           </div>
-
-          {/* Table Rows */}
-          <div className="divide-y divide-white/[0.03]">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredDevs.map((dev, i) => (
-              <Link key={dev.name} href={`/u/${dev.name}`}>
-                <motion.div
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}
-                  className="grid grid-cols-12 px-6 py-5 items-center group hover:bg-zinc-950/80 transition-colors cursor-pointer rounded-lg"
-                >
-                  <div className="col-span-4 flex items-center gap-4">
-                    {dev.avatar_url ? (
-                      <img src={dev.avatar_url} alt="" className="w-9 h-9 rounded-lg border border-white/[0.06] object-cover" />
-                    ) : (
-                      <div className="w-9 h-9 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-[11px] font-bold text-zinc-500 group-hover:text-emerald-400 group-hover:border-emerald-500/20 transition-all">
-                        {dev.name.substring(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <span className="text-[13px] font-semibold text-zinc-300 group-hover:text-white transition-colors">{dev.name}</span>
-                      <span className="block text-[11px] text-zinc-600">{dev.archetype}</span>
-                    </div>
-                  </div>
-                  <div className="col-span-3 text-[12px] text-zinc-500 font-medium">{dev.archetype}</div>
-                  <div className="col-span-2 flex items-center justify-center gap-2">
-                    <div className="w-12 h-1 bg-white/[0.04] rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500/50 rounded-full" style={{ width: `${dev.readability}%` }} />
-                    </div>
-                    <span className="text-[12px] font-mono text-zinc-500">{dev.readability}</span>
-                  </div>
-                  <div className="col-span-2 text-center">
-                    <span className="text-[14px] font-semibold text-white">{dev.overall}</span>
-                  </div>
-                  <div className="col-span-1 flex justify-end">
-                    <ArrowUpRight className="w-4 h-4 text-zinc-800 group-hover:text-emerald-500 transition-colors" />
-                  </div>
-                </motion.div>
-              </Link>
+              <DeveloperCard key={dev.name} dev={dev} index={i} />
             ))}
           </div>
 
           {filteredDevs.length === 0 && (
-            <div className="text-center py-20 text-zinc-600 text-sm">
+            <div className="text-center py-20 text-zinc-600 text-sm bg-white/[0.02] rounded-[32px] border border-dashed border-white/10">
               No developers match "{searchQuery}".
             </div>
           )}
         </div>
         {/* Activity Feed */}
-        <div className="max-w-6xl mx-auto mt-20">
-          <h3 className="text-[11px] uppercase tracking-[0.15em] text-zinc-600 font-bold mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Activity className="w-3.5 h-3.5 text-emerald-500/60" /> Live Activity
+        <div className="max-w-6xl mx-auto mt-24">
+          <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black mb-8 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Activity className="w-3.5 h-3.5 text-emerald-500" /> Live Diagnostic Feed
             </div>
-            <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-emerald-500/5 border border-emerald-500/10">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[9px] text-emerald-500/80">SYSTEM LIVE</span>
+            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+              <span className="text-[9px] text-emerald-400 font-black uppercase tracking-widest">SYSTEM ONLINE</span>
             </div>
           </h3>
-          <div className="rounded-2xl border border-white/[0.04] bg-zinc-950/30 divide-y divide-white/[0.03] overflow-hidden">
+          <div className="rounded-[32px] border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl divide-y divide-white/[0.04] overflow-hidden shadow-2xl relative">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent" />
             <AnimatePresence mode="popLayout">
               {liveActivity.slice(0, 5).map((item, i) => (
                 <motion.div
@@ -225,11 +255,11 @@ export default function DiscoverPage() {
                   className="px-6 py-4 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
                     <span className="text-[13px] text-zinc-400">
                       <span className="text-zinc-300 font-medium">{item.user}</span>
                       {' '}{item.action}{' '}
-                      <span className="text-emerald-500/80 font-medium">{item.result}</span>
+                      <span className="text-zinc-100/80 font-medium">{item.result}</span>
                     </span>
                   </div>
                   <span className="text-[11px] text-zinc-700 font-mono">{item.time}</span>
@@ -240,5 +270,89 @@ export default function DiscoverPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function DeveloperCard({ dev, index }: { dev: NormalizedDev; index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
+      className="group relative"
+    >
+      <Link href={`/u/${dev.name}`}>
+        <div className="relative z-10 p-7 rounded-[32px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl hover:border-white/20 hover:bg-white/[0.06] transition-all h-full flex flex-col group/card">
+          {/* Glass Highlight */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity" />
+          
+          {/* Top: Avatar & Name */}
+          <div className="flex items-center gap-4 mb-8">
+            {dev.avatar_url ? (
+              <img src={dev.avatar_url} alt="" className="w-14 h-14 rounded-2xl border border-white/[0.1] object-cover shadow-2xl" />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center text-[12px] font-black text-zinc-600 shadow-2xl">
+                {dev.name.substring(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <h4 className="text-[15px] font-bold text-zinc-100 group-hover:text-white transition-colors">{dev.name}</h4>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
+                <span className="text-[10px] uppercase tracking-widest font-black text-zinc-500">{dev.archetype}</span>
+              </div>
+            </div>
+            <div className="ml-auto flex flex-col items-end">
+              <span className="text-[18px] font-black text-zinc-100">{dev.overall}</span>
+              <span className="text-[8px] uppercase tracking-tighter text-zinc-600 font-bold">DNA SCORE</span>
+            </div>
+          </div>
+
+          {/* Middle: DNA Metric Pulse Grid */}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-5 mb-8">
+            {dev.radar.slice(0, 4).map((metric) => (
+              <div key={metric.axis} className="space-y-1.5">
+                <div className="flex justify-between items-end">
+                  <span className="text-[8px] uppercase tracking-widest font-black text-zinc-600">{(metric.axis).substring(0, 4)}</span>
+                  <span className="text-[10px] font-mono font-bold text-zinc-400">{metric.value}%</span>
+                </div>
+                <div className="h-1 w-full bg-white/[0.03] rounded-full overflow-hidden border border-white/[0.02]">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    whileInView={{ width: `${metric.value}%` }}
+                    transition={{ duration: 1, delay: index * 0.1 }}
+                    className="h-full bg-zinc-100/40 rounded-full"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom: Language DNA Bar */}
+          <div className="mt-auto">
+            <div className="flex justify-between items-end mb-2">
+              <span className="text-[9px] uppercase tracking-widest font-black text-zinc-600">Language DNA</span>
+              <span className="text-[10px] font-mono text-zinc-500">{dev.languages[0]?.name} {dev.languages[0]?.value}%</span>
+            </div>
+            <div className="flex h-2 w-full rounded-full bg-white/[0.05] overflow-hidden border border-white/[0.05]">
+              {dev.languages.map((lang, idx) => (
+                <div 
+                  key={idx}
+                  className="h-full first:rounded-l-full last:rounded-r-full transition-all relative group/bar"
+                  style={{ width: `${lang.value}%`, backgroundColor: lang.color }}
+                >
+                  <div className="absolute inset-0 opacity-40 blur-[4px]" style={{ backgroundColor: lang.color }} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Hover Overlay */}
+          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <ArrowUpRight className="w-4 h-4 text-zinc-400" />
+          </div>
+        </div>
+      </Link>
+    </motion.div>
   );
 }

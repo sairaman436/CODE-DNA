@@ -46,6 +46,10 @@ router.get('/', async (req, res) => {
         developer_type: fp.developer_type,
         readability_score: fp.readability_score || 0,
         complexity_score: fp.complexity_score || 0,
+        documentation_score: fp.documentation_score || 0,
+        test_mindset_score: fp.test_mindset_score || 0,
+        error_handling_score: fp.error_handling_score || 0,
+        language_depth_score: fp.language_depth_score || 0,
         overall_score: overall,
       });
     }

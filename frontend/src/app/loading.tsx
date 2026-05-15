@@ -6,7 +6,7 @@ export default function Loading() {
   return (
     <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center relative overflow-hidden">
       {/* Background Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/10 blur-[120px] rounded-full" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-white/10 blur-[120px] rounded-full" />
       
       <div className="relative z-10 flex flex-col items-center">
         {/* Animated DNA/Sequence Icon */}
@@ -20,9 +20,9 @@ export default function Loading() {
             repeat: Infinity, 
             ease: "easeInOut" 
           }}
-          className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-8"
+          className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center mb-8"
         >
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-500">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-400">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
           </svg>
         </motion.div>
@@ -39,7 +39,7 @@ export default function Loading() {
                 repeat: Infinity, 
                 ease: "easeInOut" 
               }}
-              className="h-full w-full bg-emerald-500"
+              className="h-full w-full bg-zinc-800"
             />
           </div>
         </div>

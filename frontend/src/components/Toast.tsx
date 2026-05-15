@@ -44,9 +44,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               transition={{ duration: 0.2 }}
               className={`pointer-events-auto px-4 py-3 rounded-xl border backdrop-blur-xl text-[13px] font-medium shadow-2xl ${
                 toast.type === "success"
-                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                  ? "bg-white/10 border-white/20 text-zinc-300"
                   : toast.type === "error"
-                  ? "bg-rose-500/10 border-rose-500/20 text-rose-400"
+                  ? "bg-white/10 border-white/20 text-zinc-300"
                   : "bg-zinc-900/80 border-white/[0.06] text-zinc-300"
               }`}
             >

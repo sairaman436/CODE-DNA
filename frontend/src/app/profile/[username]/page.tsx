@@ -76,7 +76,7 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-6 h-6 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-white/30 border-t-emerald-500 rounded-full animate-spin" />
           <p className="text-zinc-600 text-[13px] font-medium uppercase tracking-widest">Sequencing DNA...</p>
         </div>
       </div>
@@ -85,13 +85,13 @@ export default function ProfilePage() {
 
   if (error || !profileData) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-emerald-500/20 relative">
+      <div className="min-h-screen bg-[#0a0a0a] text-zinc-100 font-sans selection:bg-white/20 relative">
         <div className="min-h-screen flex items-center justify-center text-center px-6">
           <div className="max-w-md">
             <h1 className="text-2xl font-semibold text-white mb-4 tracking-tight">Profile Not Found</h1>
             <p className="text-zinc-500 mb-8 text-[15px]">{error || 'This profile has not been analyzed yet.'}</p>
             <Link href="/">
-              <Button className="bg-white text-black hover:bg-emerald-400 font-bold rounded-xl h-11 px-8 text-sm">
+              <Button className="bg-white text-black hover:bg-zinc-700 font-bold rounded-xl h-11 px-8 text-sm">
                 Analyze a Profile
               </Button>
             </Link>
@@ -105,13 +105,13 @@ export default function ProfilePage() {
   const totalCommits = profileData.languages.reduce((sum, l) => sum + l.total_commits, 0);
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] text-zinc-300 font-sans selection:bg-emerald-500/20 pb-20">
+    <div className="min-h-screen bg-[#0d0d0d] text-zinc-300 font-sans selection:bg-white/20 pb-20">
       
       {/* ─── Mockup Navbar ─── */}
       <nav className="h-16 border-b border-white/[0.04] bg-[#0d0d0d] flex items-center px-8 justify-between sticky top-0 z-50">
         <div className="flex items-center gap-12">
           <Link href="/" className="flex items-center gap-2 font-bold text-white text-[15px]">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            <div className="w-2 h-2 rounded-full bg-zinc-800" />
             Code DNA
           </Link>
           <div className="hidden md:flex items-center gap-8 text-[13px] font-medium text-zinc-500">
@@ -124,7 +124,7 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4">
           <Link href="/" className="text-[13px] text-zinc-500 hover:text-white transition-colors font-medium">Home</Link>
           <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-1.5 flex items-center gap-3">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <div className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
             <span className="text-[13px] font-semibold text-zinc-300">@{username}</span>
           </div>
         </div>
@@ -153,7 +153,7 @@ export default function ProfilePage() {
                   <span>{totalCommits.toLocaleString()} commits parsed</span>
                 </div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/[0.06] rounded-lg">
-                  <div className="w-3 h-3 rounded bg-emerald-500/20 border border-emerald-500/40" />
+                  <div className="w-3 h-3 rounded bg-white/20 border border-white/40" />
                   <span className="text-[11px] font-bold text-white uppercase tracking-wider">{profileData.type}</span>
                 </div>
               </div>
@@ -185,7 +185,7 @@ export default function ProfilePage() {
           {/* DNA Axes (Top Left) */}
           <section className="bg-[#18181b] border border-white/[0.04] rounded-[24px] p-8">
             <h3 className="text-[14px] font-bold text-white mb-8 flex items-center gap-2">
-              <div className="w-1 h-3 bg-emerald-500 rounded-full" />
+              <div className="w-1 h-3 bg-zinc-800 rounded-full" />
               DNA axes
             </h3>
             <div className="space-y-6">
@@ -196,7 +196,7 @@ export default function ProfilePage() {
                     <motion.div 
                       initial={{ width: 0 }} 
                       animate={{ width: `${axis.value}%` }} 
-                      className="h-full bg-emerald-500/60 rounded-full"
+                      className="h-full bg-white/60 rounded-full"
                     />
                   </div>
                   <span className="text-[13px] font-bold text-white w-6">{axis.value}</span>
@@ -212,7 +212,7 @@ export default function ProfilePage() {
           <div className="space-y-6">
             <section className="bg-[#18181b] border border-white/[0.04] rounded-[24px] p-8">
               <h3 className="text-[14px] font-bold text-white mb-8 flex items-center gap-2">
-                <div className="w-1 h-3 bg-emerald-500 rounded-full" />
+                <div className="w-1 h-3 bg-zinc-800 rounded-full" />
                 Language DNA
               </h3>
               <div className="space-y-6">
@@ -225,7 +225,7 @@ export default function ProfilePage() {
                         <motion.div 
                           initial={{ width: 0 }} 
                           animate={{ width: `${pct}%` }} 
-                          className="h-full bg-emerald-500/40 rounded-full"
+                          className="h-full bg-white/40 rounded-full"
                         />
                       </div>
                       <span className="text-[13px] font-bold text-zinc-500">{pct}%</span>
@@ -261,7 +261,7 @@ export default function ProfilePage() {
           {/* Commit Patterns (Bottom Left) */}
           <section className="bg-[#18181b] border border-white/[0.04] rounded-[24px] p-8">
             <h3 className="text-[14px] font-bold text-white mb-8 flex items-center gap-2">
-              <div className="w-1 h-3 bg-emerald-500 rounded-full" />
+              <div className="w-1 h-3 bg-zinc-800 rounded-full" />
               Commit patterns
             </h3>
             <div className="grid grid-cols-2 gap-3">
@@ -280,7 +280,7 @@ export default function ProfilePage() {
           {/* Strengths & Growth Areas (Bottom Right) */}
           <section className="bg-[#18181b] border border-white/[0.04] rounded-[24px] p-8">
             <h3 className="text-[14px] font-bold text-white mb-8 flex items-center gap-2">
-              <div className="w-1 h-3 bg-emerald-500 rounded-full" />
+              <div className="w-1 h-3 bg-zinc-800 rounded-full" />
               Strengths & growth areas
             </h3>
             
@@ -319,12 +319,12 @@ export default function ProfilePage() {
         {/* ─── Shareable DNA Card ─── */}
         <section className="bg-[#18181b] border border-white/[0.04] rounded-[24px] p-8">
           <h3 className="text-[14px] font-bold text-white mb-8 flex items-center gap-2">
-            <div className="w-1 h-3 bg-emerald-500 rounded-full" />
+            <div className="w-1 h-3 bg-zinc-800 rounded-full" />
             Shareable DNA card
           </h3>
           <div className="bg-[#111116] border border-white/[0.04] rounded-[32px] p-10 flex flex-col md:flex-row items-center gap-12 group overflow-hidden relative">
-            <div className="absolute inset-0 bg-emerald-500/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-indigo-500 to-purple-600 border border-white/20 flex items-center justify-center shrink-0 z-10 shadow-2xl shadow-indigo-500/20">
+            <div className="absolute inset-0 bg-zinc-800/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-zinc-800 to-purple-600 border border-white/20 flex items-center justify-center shrink-0 z-10 shadow-2xl shadow-indigo-500/20">
                {avatar ? (
                   <img src={avatar} alt="" className="w-full h-full object-cover rounded-[24px]" />
                 ) : (
@@ -338,9 +338,9 @@ export default function ProfilePage() {
                 <span>•</span>
                 <span>codedna.dev</span>
               </div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/20 border border-indigo-500/20 rounded-lg mb-8">
-                <div className="w-3 h-3 rounded bg-indigo-500/40" />
-                <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">{profileData.type}</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 border border-white/20 rounded-lg mb-8">
+                <div className="w-3 h-3 rounded bg-white/40" />
+                <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">{profileData.type}</span>
               </div>
               <div className="flex gap-4">
                 <Button className="h-10 rounded-xl bg-white/[0.03] border border-white/[0.06] text-white hover:bg-white/5 font-semibold text-xs px-6 transition-all">
@@ -370,7 +370,7 @@ export default function ProfilePage() {
 function HeaderAction({ icon, label }: { icon: any; label: string }) {
   return (
     <button className="h-20 w-24 bg-white/[0.02] border border-white/[0.04] rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white/[0.04] hover:border-white/[0.08] transition-all group">
-      <div className="text-zinc-600 group-hover:text-emerald-400 transition-colors scale-75">
+      <div className="text-zinc-600 group-hover:text-zinc-300 transition-colors scale-75">
         {icon}
       </div>
       <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tight text-center px-2">{label}</span>
@@ -398,8 +398,8 @@ function PatternTile({ label, value }: { label: string; value: string }) {
 
 function InsightCard({ type, title, desc }: { type: 'strength' | 'growth'; title: string; desc: string }) {
   return (
-    <div className={`p-4 rounded-xl border ${type === 'strength' ? 'bg-emerald-500/[0.02] border-emerald-500/10' : 'bg-rose-500/[0.02] border-rose-500/10'}`}>
-      <h5 className={`text-[13px] font-bold mb-1 ${type === 'strength' ? 'text-emerald-400' : 'text-rose-400'}`}>{title}</h5>
+    <div className={`p-4 rounded-xl border ${type === 'strength' ? 'bg-zinc-800/[0.02] border-white/10' : 'bg-zinc-800/[0.02] border-white/10'}`}>
+      <h5 className={`text-[13px] font-bold mb-1 ${type === 'strength' ? 'text-zinc-300' : 'text-zinc-300'}`}>{title}</h5>
       <p className="text-[12px] text-zinc-500 leading-relaxed font-medium">{desc}</p>
     </div>
   );
@@ -407,10 +407,10 @@ function InsightCard({ type, title, desc }: { type: 'strength' | 'growth'; title
 
 function BlindSpotCard({ type, title, desc }: { type: 'error' | 'success'; title: string; desc: string }) {
   return (
-    <div className={`p-4 rounded-xl border flex items-start gap-4 ${type === 'error' ? 'bg-rose-500/5 border-rose-500/10' : 'bg-emerald-500/5 border-emerald-500/10'}`}>
-      <div className={`w-1.5 h-1.5 rounded-full mt-2 shrink-0 ${type === 'error' ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+    <div className={`p-4 rounded-xl border flex items-start gap-4 ${type === 'error' ? 'bg-white/5 border-white/10' : 'bg-white/5 border-white/10'}`}>
+      <div className={`w-1.5 h-1.5 rounded-full mt-2 shrink-0 ${type === 'error' ? 'bg-zinc-800' : 'bg-zinc-800'}`} />
       <div>
-        <h5 className={`text-[13px] font-bold mb-1 ${type === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>{title}</h5>
+        <h5 className={`text-[13px] font-bold mb-1 ${type === 'error' ? 'text-zinc-300' : 'text-zinc-300'}`}>{title}</h5>
         <p className="text-[11px] text-zinc-500 leading-relaxed font-medium">{desc}</p>
       </div>
     </div>
