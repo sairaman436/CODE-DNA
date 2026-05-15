@@ -56,6 +56,7 @@ router.get('/:username', async (req, res) => {
         display_name: user.display_name,
         avatar_url: user.avatar_url,
         last_analyzed_at: user.last_analyzed_at,
+        role: user.role,
       },
       type: fp.developer_type,
       summary: fp.personality_summary,

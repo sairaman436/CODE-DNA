@@ -25,11 +25,29 @@ model User {
   codedna_username    String?           @unique
   email_verified      Boolean?          @default(false)
   username_changed_at DateTime?
+  role                String            @default("USER") // "USER", "ADMIN", or "STAFF"
+  staff_type          String?           // "MANAGER", "PR", "SENIOR_DEV", etc.
+  failed_attempts     Int               @default(0)
+  lockout_until       DateTime?
   analysis_jobs       AnalysisJob[]
   vectors             DeveloperVector[]
   fingerprints        Fingerprint[]
+  activity_logs       ActivityLog[]
 
   @@map("users")
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  user_id    String?
+  action     String   // e.g., "LOGIN", "REGISTER", "PROFILE_EDIT", "ANALYSIS_START"
+  details    String?  // JSON string or description
+  ip_address String?
+  user_agent String?
+  created_at DateTime @default(now())
+  user       User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@map("activity_logs")
 }
 
 model OtpCode {

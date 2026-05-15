@@ -55,6 +55,11 @@ export function Navbar() {
             <NavLink href="/" active={pathname === "/"}>Home</NavLink>
             <NavLink href="/discover" active={pathname === "/discover"}>Discover</NavLink>
             <NavLink href="/leaderboard" active={pathname === "/leaderboard"}>Leaderboard</NavLink>
+            {(session as any)?.role === 'ADMIN' && (
+              <NavLink href="/admin" active={pathname === "/admin"}>
+                <span className="text-emerald-500">Admin Panel</span>
+              </NavLink>
+            )}
           </div>
 
           <div className="h-4 w-px bg-white/10 hidden md:block mx-2" />

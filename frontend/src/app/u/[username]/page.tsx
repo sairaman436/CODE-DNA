@@ -28,6 +28,7 @@ interface ProfileData {
 }
 
 import { DynamicBackground } from "@/components/DynamicBackground";
+import { AdminControls } from "@/components/AdminControls";
 
 export default function PublicProfilePage() {
   const params = useParams();
@@ -168,6 +169,11 @@ export default function PublicProfilePage() {
     <div className="min-h-screen text-zinc-100 font-sans selection:bg-white/10 pb-24 relative overflow-x-hidden">
 
       {/* ── Navbar ── */}
+
+      <AdminControls 
+        targetUser={profile.user} 
+        onUpdate={() => window.location.reload()} 
+      />
 
       <main className="w-full px-12 pt-32 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

@@ -43,6 +43,7 @@ const leaderboardRouter = require('./routes/leaderboard');
 const activityRouter = require('./routes/activity');
 const otpRouter = require('./routes/otp');
 const authRouter = require('./routes/auth');
+const adminRouter = require('./routes/admin');
 const usernameRouter = require('./routes/username');
 
 app.use('/api/analyze', analyzeRouter);
@@ -56,6 +57,7 @@ app.use('/api/leaderboard', discoveryLimiter, leaderboardRouter);
 app.use('/api/activity', activityRouter);
 app.use('/api/auth/otp', otpRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
 app.use('/api/username', discoveryLimiter, usernameRouter);
 
 // Health check

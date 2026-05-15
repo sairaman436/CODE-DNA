@@ -41,10 +41,11 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create or update unverified user
+    let user;
     const existingUser = await prisma.user.findUnique({ where: { email } });
     
     if (existingUser) {
-      await prisma.user.update({
+      user = await prisma.user.update({
         where: { email },
         data: {
           display_name: name,
@@ -54,7 +55,7 @@ router.post('/register', async (req, res) => {
         }
       });
     } else {
-      await prisma.user.create({
+      user = await prisma.user.create({
         data: {
           email,
           display_name: name,
@@ -84,6 +85,17 @@ router.post('/register', async (req, res) => {
       console.log('='.repeat(50) + '\n');
     }
 
+    // Log registration
+    if (user.role !== 'ADMIN') {
+      await prisma.activityLog.create({
+        data: {
+          user_id: user.id,
+          action: 'REGISTER',
+          details: `User registered with email: ${email}`
+        }
+      });
+    }
+
     res.json({ success: true, message: 'OTP sent to email' });
   } catch (err) {
     console.error('Registration error:', err);
@@ -108,12 +120,62 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Check Lockout
+    if (user.lockout_until && user.lockout_until > new Date()) {
+      const remaining = Math.ceil((user.lockout_until.getTime() - Date.now()) / 1000);
+      return res.status(429).json({ 
+        error: `Security Lockout active. Try again in ${remaining} seconds.`,
+        lockout: true 
+      });
+    }
+
     const isValid = await bcrypt.compare(password, user.password);
+    
     if (!isValid) {
+      // Increment failed attempts
+      const newAttempts = (user.failed_attempts || 0) + 1;
+      let lockoutUntil = null;
+
+      if (newAttempts >= 3) {
+        // Exponential backoff: 30s, 60s, 120s, etc.
+        const delay = Math.pow(2, newAttempts - 3) * 30; 
+        lockoutUntil = new Date(Date.now() + delay * 1000);
+      }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { 
+          failed_attempts: newAttempts,
+          lockout_until: lockoutUntil
+        }
+      });
+
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate OTP for Login
+    // Success: Reset failed attempts
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { failed_attempts: 0, lockout_until: null }
+    });
+
+    // Bypass OTP for ADMINs
+    if (user.role === 'ADMIN') {
+      // No log for master admin as requested
+      return res.json({ 
+        success: true, 
+        bypassOtp: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.display_name,
+          role: user.role,
+          github_linked: !!user.github_id
+        }
+      });
+    }
+
+    // Generate OTP for regular users
     const code = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -162,6 +224,17 @@ router.post('/verify', async (req, res) => {
       where: { email },
       data: { email_verified: true }
     });
+
+    // Log the successful verification
+    if (user.role !== 'ADMIN') {
+      await prisma.activityLog.create({
+        data: {
+          user_id: user.id,
+          action: 'VERIFIED',
+          details: `User verified email: ${email}`
+        }
+      });
+    }
 
     res.json({
       success: true,

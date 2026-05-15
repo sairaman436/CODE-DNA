@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Trophy, ArrowUpRight, Crown, Medal, Award } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 
 interface LeaderboardEntry {
   username: string;
@@ -87,7 +88,7 @@ export default function LeaderboardPage() {
     <div className="min-h-screen text-zinc-100 font-sans selection:bg-white/20 relative overflow-x-hidden">
 
 
-      <main className="relative z-10 pt-32 pb-24 px-6">
+      <main className="relative z-10 pt-44 pb-24 px-6">
         <div className="max-w-5xl mx-auto mb-16">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
@@ -95,8 +96,8 @@ export default function LeaderboardPage() {
           </div>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-zinc-100 tracking-tight mb-4">Community Leaderboard</h1>
-              <p className="text-[16px] text-zinc-500 max-w-lg leading-relaxed">
+              <h1 className="text-5xl md:text-6xl font-black text-zinc-100 tracking-tight mb-4">Leaderboard</h1>
+              <p className="text-[18px] text-zinc-500 max-w-lg leading-relaxed font-medium">
                 The top technical minds ranked by structural code quality and architectural depth. 
               </p>
             </div>
@@ -107,13 +108,13 @@ export default function LeaderboardPage() {
                   onClick={() => toggleFilter(key)}
                   className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 relative ${
                     activeFilters.includes(key)
-                      ? 'bg-emerald-500 text-zinc-100 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                      ? 'bg-emerald-500 text-black shadow-[0_0_25px_rgba(16,185,129,0.4)]'
                       : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
                   }`}
                 >
                   {key.replace('_', ' ')}
                   {activeFilters.includes(key) && key !== 'overall' && (
-                    <motion.div layoutId="dot" className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-white shadow-sm" />
+                    <motion.div layoutId="dot" className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-white shadow-lg border-2 border-emerald-500" />
                   )}
                 </button>
               ))}
@@ -143,8 +144,8 @@ export default function LeaderboardPage() {
           {/* Table */}
           <div className="relative">
             {!loading && sorted.length > 0 ? (
-              <div className="rounded-[32px] border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl overflow-hidden shadow-2xl shadow-emerald-500/5">
-                <div className="grid grid-cols-12 px-8 py-5 text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-600 border-b border-white/[0.05]">
+              <div className="rounded-[40px] border border-white/[0.08] bg-white/[0.02] backdrop-blur-3xl overflow-hidden shadow-2xl shadow-emerald-500/5">
+                <div className="grid grid-cols-12 px-10 py-6 text-[10px] uppercase tracking-[0.2em] font-black text-zinc-600 border-b border-white/[0.05]">
                   <div className="col-span-1">#</div>
                   <div className="col-span-5">Developer</div>
                   <div className="col-span-2 text-center">Archetype</div>
@@ -161,59 +162,52 @@ export default function LeaderboardPage() {
                       transition={{ delay: i * 0.05 }}
                     >
                       <Link href={`/u/${entry.username}`}>
-                        <div className={`grid grid-cols-12 px-8 py-6 items-center group/row hover:bg-white/[0.02] transition-all cursor-pointer relative ${
+                        <div className={`grid grid-cols-12 px-10 py-8 items-center group/row hover:bg-white/[0.01] transition-all cursor-pointer relative ${
                           entry.username === username ? 'bg-white/[0.01]' : ''
                         }`}>
                           {entry.username === username && (
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-white/40 pointer-events-none" />
+                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500/50 pointer-events-none shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
                           )}
                           
                           <div className="col-span-1 relative z-10">
-                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${
                               entry.username === username 
-                                ? 'bg-zinc-100 text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]' 
+                                ? 'bg-emerald-500 text-black shadow-[0_0_25px_rgba(16,185,129,0.3)]' 
                                 : 'bg-white/[0.03] border border-white/[0.06] group-hover/row:border-white/30'
                             }`}>
                               {rankIcon(i)}
                             </div>
                           </div>
-                          <div className="col-span-5 flex items-center gap-4 relative z-10">
+                          <div className="col-span-5 flex items-center gap-5 relative z-10">
                             <div className="relative">
                               <img
                                 src={entry.avatar_url || `https://github.com/${entry.username}.png`}
                                 alt=""
-                                className="w-11 h-11 rounded-2xl border border-white/[0.1] bg-zinc-900 object-cover group-hover/row:scale-105 transition-transform"
+                                className="w-12 h-12 rounded-[20px] border border-white/[0.1] bg-zinc-900 object-cover group-hover/row:scale-105 transition-transform shadow-lg"
                                 onError={(e) => { (e.target as HTMLImageElement).src = `https://avatar.vercel.sh/${entry.username}` }}
                               />
-                              {i < 3 && (
-                                <motion.div 
-                                  animate={{ scale: [1, 1.2, 1] }}
-                                  transition={{ duration: 2, repeat: Infinity }}
-                                  className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-zinc-800 border-2 border-black" 
-                                />
-                              )}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <div className={`text-[15px] font-bold transition-colors ${
-                                  entry.username === username ? 'text-zinc-300' : 'text-zinc-100 group-hover/row:text-zinc-300'
+                                <div className={`text-[16px] font-black transition-colors ${
+                                  entry.username === username ? 'text-emerald-400' : 'text-zinc-100 group-hover/row:text-emerald-400'
                                 }`}>
                                   {entry.display_name || entry.username}
                                 </div>
                                 {entry.username === username && (
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-black font-black uppercase">You</span>
+                                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-black uppercase tracking-tighter">You</span>
                                 )}
                               </div>
                               <div className="text-[11px] font-mono text-zinc-600 tracking-tight">@{entry.username}</div>
                             </div>
                           </div>
                           <div className="col-span-2 text-center relative z-10">
-                            <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-white/5 border border-white/[0.03] text-zinc-400 group-hover/row:border-white/20 transition-all">
+                            <span className="text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-xl bg-white/5 border border-white/[0.03] text-zinc-400 group-hover/row:border-white/20 transition-all shadow-sm">
                               {entry.developer_type}
                             </span>
                           </div>
-                          <div className="col-span-2 flex flex-col items-center gap-2 relative z-10">
-                             <div className="w-16 h-1 bg-white/[0.05] rounded-full overflow-hidden">
+                          <div className="col-span-2 flex flex-col items-center gap-3 relative z-10">
+                             <div className="w-20 h-1.5 bg-white/[0.05] rounded-full overflow-hidden border border-white/5">
                                <motion.div 
                                  initial={{ width: 0 }}
                                  animate={{ width: `${
@@ -221,16 +215,16 @@ export default function LeaderboardPage() {
                                    (entry as any)[`${activeFilters[0]}_score`] || 0
                                  }%` }}
                                  transition={{ duration: 1, delay: i * 0.1 }}
-                                 className="h-full bg-emerald-500/60" 
+                                 className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" 
                                />
                              </div>
-                             <span className="text-[10px] font-mono text-zinc-600">
+                             <span className="text-[10px] font-black font-mono text-zinc-500">
                                {activeFilters.includes('overall') ? entry.overall_score :
                                 (entry as any)[`${activeFilters[0]}_score`] || 0}%
                              </span>
                           </div>
                           <div className="col-span-2 text-right relative z-10">
-                            <span className={`text-xl font-black transition-colors ${
+                            <span className={`text-2xl font-black transition-colors tracking-tighter ${
                               entry.username === username ? 'text-emerald-400' : 'text-zinc-100 group-hover/row:text-emerald-400'
                             }`}>
                               {entry.overall_score}
@@ -243,32 +237,34 @@ export default function LeaderboardPage() {
                 </div>
               </div>
             ) : loading ? (
-              <div className="rounded-[32px] border border-white/[0.05] bg-zinc-900/10 divide-y divide-white/[0.03]">
+              <div className="rounded-[40px] border border-white/[0.05] bg-zinc-900/10 divide-y divide-white/[0.03]">
                 {[...Array(8)].map((_, i) => (
-                  <div key={i} className="grid grid-cols-12 px-8 py-6 items-center animate-pulse">
-                    <div className="col-span-1"><div className="w-8 h-8 rounded-xl bg-white/5" /></div>
-                    <div className="col-span-5 flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-2xl bg-white/5" />
+                  <div key={i} className="grid grid-cols-12 px-10 py-8 items-center animate-pulse">
+                    <div className="col-span-1"><div className="w-10 h-10 rounded-2xl bg-white/5" /></div>
+                    <div className="col-span-5 flex items-center gap-5">
+                      <div className="w-12 h-12 rounded-[20px] bg-white/5" />
                       <div className="space-y-2">
-                        <div className="w-32 h-4 bg-white/5 rounded" />
-                        <div className="w-20 h-3 bg-white/5 rounded" />
+                        <div className="w-40 h-5 bg-white/5 rounded-lg" />
+                        <div className="w-24 h-3 bg-white/5 rounded-lg" />
                       </div>
                     </div>
-                    <div className="col-span-2 flex justify-center"><div className="w-24 h-6 rounded-full bg-white/5" /></div>
-                    <div className="col-span-2 flex justify-center"><div className="w-16 h-2 rounded-full bg-white/5" /></div>
-                    <div className="col-span-2 flex justify-end"><div className="w-12 h-6 bg-white/5 rounded" /></div>
+                    <div className="col-span-2 flex justify-center"><div className="w-28 h-8 rounded-xl bg-white/5" /></div>
+                    <div className="col-span-2 flex justify-center"><div className="w-20 h-2 rounded-full bg-white/5" /></div>
+                    <div className="col-span-2 flex justify-end"><div className="w-14 h-8 bg-white/5 rounded-lg" /></div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-32 rounded-[32px] border border-white/[0.05] bg-zinc-950/30">
-                <Trophy className="w-12 h-12 text-zinc-800 mx-auto mb-6" />
-                <h3 className="text-xl font-bold mb-2">No DNA Sequences Yet</h3>
-                <p className="text-zinc-600 text-sm mb-8 max-w-xs mx-auto">Be the first to analyze your code and claim the top of the board.</p>
+              <div className="text-center py-40 rounded-[40px] border border-white/[0.08] bg-white/[0.02] backdrop-blur-2xl shadow-2xl">
+                <div className="w-24 h-24 rounded-[32px] bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-8 shadow-inner">
+                  <Trophy className="w-10 h-10 text-emerald-500/50" />
+                </div>
+                <h3 className="text-3xl font-black text-zinc-100 mb-3 tracking-tight uppercase">Sequence Pending</h3>
+                <p className="text-zinc-500 text-[16px] mb-12 max-w-sm mx-auto leading-relaxed">The global DNA registry is empty. Be the first to analyze your technical sequence and claim the throne.</p>
                 <Link href="/login">
-                  <button className="px-8 py-3 rounded-xl bg-white text-black font-bold hover:bg-zinc-700 transition-all active:scale-95">
-                    Get Started
-                  </button>
+                  <Button className="h-14 px-12 rounded-2xl bg-emerald-500 text-black hover:bg-emerald-400 font-black uppercase tracking-widest transition-all shadow-[0_0_30px_rgba(16,185,129,0.2)] active:scale-95">
+                    Initialize Your Sequence
+                  </Button>
                 </Link>
               </div>
             )}

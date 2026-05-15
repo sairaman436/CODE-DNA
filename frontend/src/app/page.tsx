@@ -499,21 +499,25 @@ function UserDashboard({ session }: { session: any }) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16 items-end">
           <div className="lg:col-span-8">
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-              <span className="text-[11px] uppercase tracking-[0.2em] font-black text-emerald-400">System Online</span>
+              <div className={`w-1.5 h-1.5 rounded-full animate-pulse shadow-lg ${(session as any)?.role === 'ADMIN' ? 'bg-amber-400 shadow-amber-400/50' : 'bg-emerald-500 shadow-emerald-500/50'}`} />
+              <span className={`text-[11px] uppercase tracking-[0.2em] font-black ${(session as any)?.role === 'ADMIN' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                {(session as any)?.role === 'ADMIN' ? 'Admin Oversight' : 'System Online'}
+              </span>
               <span className="text-[11px] uppercase tracking-[0.2em] text-zinc-600 font-black">Authenticated Sequence</span>
             </div>
             <h1 className="text-5xl font-bold text-zinc-100 tracking-tight mb-6">
-              Welcome back, <span className="text-zinc-500">{username}</span>
+              Welcome back, <span className={(session as any)?.role === 'ADMIN' ? 'text-amber-400' : 'text-zinc-500'}>{username}</span>
             </h1>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2.5 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-full backdrop-blur-xl">
                 <Clock className="w-3.5 h-3.5 text-zinc-500" />
                 <span className="text-[11px] text-zinc-400 font-bold uppercase tracking-widest">Last Sync: {data?.analyzed_at ? new Date(data.analyzed_at).toLocaleDateString() : 'Pending'}</span>
               </div>
-              <div className="flex items-center gap-2.5 px-4 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-full backdrop-blur-xl shadow-[0_0_15px_rgba(16,185,129,0.05)]">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                <span className="text-[11px] text-emerald-400 font-black uppercase tracking-widest">Identity Secured</span>
+              <div className={`flex items-center gap-2.5 px-4 py-2 rounded-full backdrop-blur-xl shadow-lg ${(session as any)?.role === 'ADMIN' ? 'bg-amber-400/5 border border-amber-400/20 text-amber-400' : 'bg-emerald-500/5 border border-emerald-500/10 text-emerald-400'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full animate-pulse shadow-md ${(session as any)?.role === 'ADMIN' ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+                <span className="text-[11px] font-black uppercase tracking-widest">
+                  {(session as any)?.role === 'ADMIN' ? 'Authority Active' : 'Identity Secured'}
+                </span>
               </div>
             </div>
           </div>

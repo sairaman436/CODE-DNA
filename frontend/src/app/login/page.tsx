@@ -72,7 +72,11 @@ function LoginContent() {
 
       const data = await res.json();
       if (res.ok) {
-        setStep("otp");
+        if (data.bypassOtp) {
+          await finalizeAuth(data.user);
+        } else {
+          setStep("otp");
+        }
       } else {
         setError(data.error || "Authentication failed");
       }

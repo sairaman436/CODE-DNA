@@ -7,7 +7,7 @@ import { ToastProvider } from "@/components/Toast";
 import { CommandPalette } from "@/components/CommandPalette";
 import { BackgroundSwitcher } from "@/components/BackgroundSwitcher";
 import { PageTransition } from "@/components/PageTransition";
-import { Navbar } from "@/components/Navbar";
+import { NavbarWrapper } from "@/components/NavbarWrapper";
 import { SecurityGuard } from "@/components/SecurityGuard";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -29,7 +29,7 @@ export default function RootLayout({
           <ToastProvider>
             <SecurityGuard />
             <BackgroundSwitcher />
-            <Navbar />
+            <NavbarWrapper />
             <PageTransition>
               <div className="relative z-10">
                 {children}
