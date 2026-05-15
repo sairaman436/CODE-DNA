@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { 
   Shield, Users, Activity, Settings, Search, 
   MoreVertical, Edit3, Trash2, ShieldCheck, 
-  Eye, Filter, ArrowRight, Loader2, Lock 
+  Eye, Filter, ArrowRight, Loader2, Lock, ShieldAlert 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
