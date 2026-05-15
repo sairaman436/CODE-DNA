@@ -30,21 +30,41 @@ const handler = NextAuth({
   callbacks: {
     async jwt({ token, account, profile, user }) {
       if (account && profile && account.provider === 'github') {
-        token.accessToken = account.access_token
-        token.githubId = (profile as any).id
-        token.githubLogin = (profile as any).login
-        token.avatarUrl = (profile as any).avatar_url
+        token.accessToken = account.access_token;
+        token.githubId = (profile as any).id;
+        token.githubLogin = (profile as any).login;
+        token.avatarUrl = (profile as any).avatar_url;
         
-        // Fetch or create user record to check for codedna_username
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        
+        // Link GitHub to an existing Email session if it exists
+        if (token.email) {
+          try {
+            await fetch(`${apiUrl}/api/auth/link-github`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: token.email,
+                github_id: token.githubId.toString(),
+                github_username: token.githubLogin,
+                avatar_url: token.avatarUrl
+              })
+            });
+          } catch (e) {
+            console.error("Error linking GitHub:", e);
+          }
+        }
+        
+        // Fetch user metadata
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
           const res = await fetch(`${apiUrl}/api/profile/${token.githubLogin}`);
           const data = await res.json();
           if (data && data.user) {
             token.codedna_username = data.user.codedna_username;
+            token.email = data.user.email || token.email;
           }
         } catch (e) {
-          console.error("Error fetching user codedna_username:", e);
+          console.error("Error fetching profile metadata:", e);
         }
       }
       

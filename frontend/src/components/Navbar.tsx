@@ -75,8 +75,8 @@ export function Navbar() {
               </div>
             ) : (
               <div className="flex items-center gap-8">
-                <Link href="/login" className="text-[11px] uppercase tracking-widest font-black text-zinc-400 hover:text-zinc-100 transition-colors">Login</Link>
-                <Link href="/login" className="h-10 px-8 rounded-full bg-white text-black hover:bg-zinc-200 flex items-center justify-center text-[11px] font-black uppercase tracking-wider transition-all active:scale-95">
+                <Link href="/login?mode=login" className="text-[11px] uppercase tracking-widest font-black text-zinc-400 hover:text-zinc-100 transition-colors">Login</Link>
+                <Link href="/login?mode=signup" className="h-10 px-8 rounded-full bg-white text-black hover:bg-zinc-200 flex items-center justify-center text-[11px] font-black uppercase tracking-wider transition-all active:scale-95">
                   Get Started
                 </Link>
               </div>

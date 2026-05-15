@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { DynamicBackground } from "@/components/DynamicBackground";
 import { SilkBackground } from "@/components/SilkBackground";
+import { Navbar } from "@/components/Navbar";
 import { RadarChart } from "@/components/RadarChart";
 import { SplitTextReveal } from "@/components/animations/SplitTextReveal";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
@@ -32,8 +33,7 @@ export default function LandingPage() {
 function PublicLanding() {
   return (
     <div className="min-h-screen text-zinc-100 font-sans selection:bg-white/10 relative overflow-x-hidden">
-
-
+      <Navbar />
       <main className="relative z-10">
         {/* ─── Hero Section ─── */}
         <section className="pt-32 pb-32 px-6 relative flex flex-col items-center text-center overflow-visible">
@@ -158,17 +158,19 @@ function PublicLanding() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
-                className="relative group"
-              >
-                <div className="absolute -inset-1 bg-white/20 rounded-full blur opacity-30 group-hover:opacity-60 transition duration-500" />
-                <button className="relative px-8 py-4 bg-white text-black rounded-full font-bold text-sm flex items-center gap-2 hover:bg-zinc-200 transition-all">
-                  Analyze Your GitHub 
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </motion.div>
+              <Link href="/login?mode=signup">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="relative group"
+                >
+                  <div className="absolute -inset-1 bg-white/20 rounded-full blur opacity-30 group-hover:opacity-60 transition duration-500" />
+                  <button className="relative px-8 py-4 bg-white text-black rounded-full font-bold text-sm flex items-center gap-2 hover:bg-zinc-200 transition-all">
+                    Analyze Your GitHub 
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </motion.div>
+              </Link>
               
               <Link href="/u/sample_dev">
                 <motion.button 
@@ -487,30 +489,31 @@ function UserDashboard({ session }: { session: any }) {
   const topScores = data?.radar?.sort((a: any, b: any) => b.value - a.value).slice(0, 3) || [];
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100 font-sans relative noise">
-      <div className="fixed inset-0 dot-grid pointer-events-none z-0" />
+    <div className="min-h-screen bg-[#050505] text-zinc-100 font-sans selection:bg-white/20 relative overflow-x-hidden pb-24">
+      <SilkBackground color="#050505" />
+      <DynamicBackground />
+      <Navbar />
 
-
-      <main className="relative z-10 pt-24 pb-20 px-6 max-w-6xl mx-auto">
+      <main className="relative z-10 pt-32 pb-24 px-6 max-w-6xl mx-auto">
         {/* Welcome & Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-16 items-end">
           <div className="lg:col-span-8">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-white" />
-              <span className="text-[11px] uppercase tracking-[0.2em] font-bold text-zinc-400">Engine V1.2.4</span>
-              <span className="text-[11px] uppercase tracking-[0.2em] text-zinc-600 font-bold">Authenticated Dashboard</span>
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+              <span className="text-[11px] uppercase tracking-[0.2em] font-black text-emerald-400">System Online</span>
+              <span className="text-[11px] uppercase tracking-[0.2em] text-zinc-600 font-black">Authenticated Sequence</span>
             </div>
-            <h1 className="text-4xl font-semibold text-zinc-100 tracking-tight mb-4">
+            <h1 className="text-5xl font-bold text-zinc-100 tracking-tight mb-6">
               Welcome back, <span className="text-zinc-500">{username}</span>
             </h1>
             <div className="flex flex-wrap gap-4">
-              <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/[0.06] rounded-full">
-                <Clock className="w-3.5 h-3.5 text-zinc-600" />
-                <span className="text-[11px] text-zinc-500">Last Synced: {data?.analyzed_at ? new Date(data.analyzed_at).toLocaleDateString() : 'Never'}</span>
+              <div className="flex items-center gap-2.5 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-full backdrop-blur-xl">
+                <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                <span className="text-[11px] text-zinc-400 font-bold uppercase tracking-widest">Last Sync: {data?.analyzed_at ? new Date(data.analyzed_at).toLocaleDateString() : 'Pending'}</span>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-amber-200/5 border border-amber-200/10 rounded-full">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-200 animate-pulse" />
-                <span className="text-[11px] text-amber-200/80 font-medium">Identity Secured</span>
+              <div className="flex items-center gap-2.5 px-4 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-full backdrop-blur-xl shadow-[0_0_15px_rgba(16,185,129,0.05)]">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                <span className="text-[11px] text-emerald-400 font-black uppercase tracking-widest">Identity Secured</span>
               </div>
             </div>
           </div>
@@ -531,29 +534,32 @@ function UserDashboard({ session }: { session: any }) {
           {/* Top Row: AI Insights & Quick Stats */}
           <div className="lg:col-span-8 space-y-8">
             {/* AI Insights Card */}
-            <div className="bg-white/[0.04] rounded-2xl border border-white/[0.1] p-8 relative overflow-hidden group backdrop-blur-xl">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 blur-[80px] -mr-32 -mt-32" />
+            <div className="bg-white/[0.03] rounded-[32px] border border-white/[0.08] p-8 relative overflow-hidden group backdrop-blur-xl shadow-2xl">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 blur-[120px] -mr-48 -mt-48 group-hover:bg-emerald-500/10 transition-colors duration-1000" />
               <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-zinc-100" />
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shadow-inner">
+                    <Sparkles className="w-5 h-5 text-emerald-400" />
                   </div>
-                  <h3 className="text-[14px] font-semibold text-zinc-100">DNA Intelligence</h3>
+                  <div>
+                    <h3 className="text-[14px] font-black text-zinc-100 uppercase tracking-widest">DNA Intelligence</h3>
+                    <p className="text-[9px] text-zinc-600 font-bold tracking-[0.2em] uppercase mt-1">AI-Powered Structural Insights</p>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                      <h4 className="text-[11px] uppercase tracking-wider text-zinc-500 font-bold mb-2">Archetype Recommendation</h4>
-                      <p className="text-[13px] text-zinc-400 leading-relaxed">
-                        Your high <span className="text-zinc-100">Refactor Tendency</span> suggests a strong aptitude for <span className="text-zinc-100">Senior Architect</span> roles. Focus on system design to level up.
+                    <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors">
+                      <h4 className="text-[10px] uppercase tracking-[0.2em] text-emerald-500/60 font-black mb-3">Archetype Recommendation</h4>
+                      <p className="text-[13px] text-zinc-400 leading-relaxed font-medium">
+                        Your high <span className="text-zinc-100">Refactor Tendency</span> suggests a strong aptitude for <span className="text-emerald-400">Senior Architect</span> roles. Focus on system design.
                       </p>
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                      <h4 className="text-[11px] uppercase tracking-wider text-zinc-500 font-bold mb-2">Growth Opportunity</h4>
-                      <p className="text-[13px] text-zinc-400 leading-relaxed">
-                        Consider increasing your <span className="text-zinc-100">Documentation</span> frequency. Current patterns show {100 - (data?.radar?.find((r: any) => r.axis === 'Documentation')?.value || 0)}% untapped clarity potential.
+                    <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors">
+                      <h4 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black mb-3">Growth Opportunity</h4>
+                      <p className="text-[13px] text-zinc-400 leading-relaxed font-medium">
+                        Consider increasing your <span className="text-zinc-100">Documentation</span> frequency. Current patterns show {100 - (data?.radar?.find((r: any) => r.axis === 'Documentation')?.value || 0)}% untapped clarity.
                       </p>
                     </div>
                   </div>
@@ -562,62 +568,65 @@ function UserDashboard({ session }: { session: any }) {
             </div>
 
             {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/[0.08] rounded-2xl overflow-hidden border border-white/[0.08]">
-              <div className="bg-white/[0.04] p-6 backdrop-blur-md hover:bg-white/[0.06] transition-colors">
-                <div className="flex items-center gap-2 mb-2 text-zinc-500">
-                  <Globe className="w-3.5 h-3.5" />
-                  <span className="text-[10px] uppercase font-black tracking-widest">Global Rank</span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/[0.08] rounded-[32px] overflow-hidden border border-white/[0.08] shadow-2xl">
+              <div className="bg-white/[0.03] p-8 backdrop-blur-xl hover:bg-white/[0.06] transition-all group/stat">
+                <div className="flex items-center gap-3 mb-4 text-zinc-600 group-hover/stat:text-emerald-500 transition-colors">
+                  <Globe className="w-4 h-4" />
+                  <span className="text-[10px] uppercase font-black tracking-[0.2em]">Global Rank</span>
                 </div>
-                <div className="text-xl font-semibold text-zinc-100">
+                <div className="text-2xl font-black text-zinc-100 tracking-tighter">
                   {data?.radar ? `Top ${Math.max(5, 100 - Math.floor(data.radar.reduce((acc: any, r: any) => acc + r.value, 0) / 8))}%` : '---'}
                 </div>
               </div>
-              <div className="bg-white/[0.04] p-6 backdrop-blur-md hover:bg-white/[0.06] transition-colors">
-                <div className="flex items-center gap-2 mb-2 text-zinc-600">
-                  <Activity className="w-3.5 h-3.5" />
-                  <span className="text-[10px] uppercase font-bold tracking-widest">Velocity</span>
+              <div className="bg-white/[0.03] p-8 backdrop-blur-xl hover:bg-white/[0.06] transition-all group/stat">
+                <div className="flex items-center gap-3 mb-4 text-zinc-600 group-hover/stat:text-sky-500 transition-colors">
+                  <Activity className="w-4 h-4" />
+                  <span className="text-[10px] uppercase font-black tracking-[0.2em]">Velocity</span>
                 </div>
-                <div className="text-xl font-semibold text-zinc-100">
-                  {data?.radar?.find((r: any) => r.axis === 'Complexity')?.value > 70 ? 'High' : 'Optimal'}
+                <div className="text-2xl font-black text-zinc-100 tracking-tighter">
+                  {data?.radar?.find((r: any) => r.axis === 'Complexity')?.value > 70 ? 'HIGH-SPEED' : 'OPTIMAL'}
                 </div>
               </div>
-              <div className="bg-white/[0.04] p-6 backdrop-blur-md hover:bg-white/[0.06] transition-colors">
-                <div className="flex items-center gap-2 mb-2 text-zinc-500">
-                  <Target className="w-3.5 h-3.5" />
-                  <span className="text-[10px] uppercase font-black tracking-widest">Accuracy</span>
+              <div className="bg-white/[0.03] p-8 backdrop-blur-xl hover:bg-white/[0.06] transition-all group/stat">
+                <div className="flex items-center gap-3 mb-4 text-zinc-600 group-hover/stat:text-violet-500 transition-colors">
+                  <Target className="w-4 h-4" />
+                  <span className="text-[10px] uppercase font-black tracking-[0.2em]">Accuracy</span>
                 </div>
-                <div className="text-xl font-semibold text-zinc-100">
+                <div className="text-2xl font-black text-zinc-100 tracking-tighter tabular-nums">
                   {data?.radar ? `${(data.radar.reduce((acc: any, r: any) => acc + r.value, 0) / 8 + 10).toFixed(1)}%` : '---'}
                 </div>
               </div>
-              <div className="bg-white/[0.04] p-6 backdrop-blur-md hover:bg-white/[0.06] transition-colors">
-                <div className="flex items-center gap-2 mb-2 text-zinc-500">
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  <span className="text-[10px] uppercase font-black tracking-widest">Sources</span>
+              <div className="bg-white/[0.03] p-8 backdrop-blur-xl hover:bg-white/[0.06] transition-all group/stat">
+                <div className="flex items-center gap-3 mb-4 text-zinc-600 group-hover/stat:text-amber-500 transition-colors">
+                  <LayoutGrid className="w-4 h-4" />
+                  <span className="text-[10px] uppercase font-black tracking-[0.2em]">Sources</span>
                 </div>
-                <div className="text-xl font-semibold text-zinc-100">{data?.repos_analyzed || 0} Repos</div>
+                <div className="text-2xl font-black text-zinc-100 tracking-tighter">
+                  {data?.repos_analyzed || 0} <span className="text-[14px] text-zinc-600">REPOS</span>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Top Right: DNA Fingerprint Visualization */}
-          <div className="lg:col-span-4 bg-white/[0.03] rounded-2xl border border-white/[0.1] p-8 flex flex-col items-center justify-center group overflow-hidden backdrop-blur-xl">
-            <h3 className="text-[11px] uppercase tracking-[0.2em] text-zinc-600 font-bold mb-8 self-start">Visual DNA</h3>
+          <div className="lg:col-span-4 bg-white/[0.03] rounded-[32px] border border-white/[0.08] p-10 flex flex-col items-center justify-center group overflow-hidden backdrop-blur-xl shadow-2xl relative">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
+            <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black mb-10 self-start">Sequence Diagnostics</h3>
             {data?.radar ? (
-              <div className="w-full aspect-square max-w-[280px] relative">
-                <div className="absolute inset-0 bg-emerald-500/5 blur-[80px] rounded-full group-hover:bg-emerald-500/10 transition-all duration-700" />
-                <div className="relative z-10">
-                  <RadarChart data={data.radar} size={280} color="#10b981" />
+              <div className="w-full aspect-square max-w-[300px] relative">
+                <div className="absolute inset-0 bg-emerald-500/5 blur-[100px] rounded-full group-hover:bg-emerald-500/10 transition-all duration-1000" />
+                <div className="relative z-10 scale-110">
+                  <RadarChart data={data.radar} size={300} color="#10b981" />
                 </div>
               </div>
             ) : (
-              <div className="text-center py-20 text-zinc-600">
-                <Scale className="w-8 h-8 mx-auto mb-4 opacity-10" />
-                <p className="text-[10px] uppercase tracking-[0.2em] font-black">Awaiting Data</p>
+              <div className="text-center py-20 text-zinc-700">
+                <Scale className="w-10 h-10 mx-auto mb-4 opacity-20 animate-pulse" />
+                <p className="text-[9px] uppercase tracking-[0.3em] font-black">Syncing Sequence...</p>
               </div>
             )}
-            <Link href={`/profile/${username}`} className="mt-8 text-[11px] text-zinc-500 hover:text-zinc-100 flex items-center gap-2 transition-all">
-              EXPAND PROFILE <ArrowRight className="w-3 h-3" />
+            <Link href={`/profile/${username}`} className="mt-12 text-[10px] font-black tracking-[0.2em] text-zinc-500 hover:text-emerald-400 flex items-center gap-3 transition-all group/link">
+              EXPAND FULL PORTAL <ArrowUpRight className="w-4 h-4 group-hover/link:translate-x-1 group-hover/link:-translate-y-1 transition-transform" />
             </Link>
           </div>
         </div>
@@ -625,70 +634,73 @@ function UserDashboard({ session }: { session: any }) {
         {/* ─── Secondary Layout ─── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* DNA Activity Heatmap (Contribution Pulse) */}
-          <div className="lg:col-span-8 bg-white/[0.03] p-8 rounded-2xl border border-white/[0.08] backdrop-blur-xl">
-            <div className="flex items-center justify-between mb-8">
+          <div className="lg:col-span-8 bg-white/[0.03] p-10 rounded-[32px] border border-white/[0.08] backdrop-blur-xl shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent" />
+            <div className="flex items-center justify-between mb-10">
               <div>
-                <h3 className="text-[11px] uppercase tracking-[0.2em] text-zinc-500 font-black mb-1">DNA Activity Heatmap</h3>
-                <p className="text-[10px] text-zinc-600">Your code fingerprint evolution across all analyzed repositories (Last 90 days).</p>
+                <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-black mb-2">Structural Evolution Heatmap</h3>
+                <p className="text-[11px] text-zinc-600 font-medium">Your structural code fingerprint evolution across all repository sequences (Last 90 days).</p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">Less</span>
-                <div className="flex gap-1">
+              <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.02] border border-white/[0.04] rounded-xl">
+                <span className="text-[9px] text-zinc-700 uppercase font-black tracking-widest">Stability</span>
+                <div className="flex gap-1.5">
                   {[0.1, 0.3, 0.6, 0.9].map(op => (
-                    <div key={op} className="w-2.5 h-2.5 rounded-[2px] bg-emerald-500" style={{ opacity: op }} />
+                    <div key={op} className="w-3 h-3 rounded-[3px] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.2)]" style={{ opacity: op }} />
                   ))}
                 </div>
-                <span className="text-[9px] text-zinc-600 uppercase font-black tracking-widest">More</span>
+                <span className="text-[9px] text-zinc-700 uppercase font-black tracking-widest">Growth</span>
               </div>
             </div>
             
             {/* Heatmap Grid */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               {Array.from({ length: 7 }).map((_, row) => (
-                <div key={row} className="flex gap-1.5">
+                <div key={row} className="flex gap-2">
                   {Array.from({ length: 13 }).map((_, col) => {
-                    // Standard GitHub layout: rows=days, cols=weeks
                     const dayIndex = col * 7 + row;
                     const activityCount = data?.activity_pulse?.[dayIndex] || 0;
-                    const intensity = Math.min(activityCount / 5, 1); // Normalize: 5 commits = full intensity
+                    const intensity = Math.min(activityCount / 5, 1);
                     
                     return (
                       <div 
                         key={col} 
-                        className="flex-1 aspect-square rounded-[2px] transition-colors hover:ring-1 hover:ring-white/20"
+                        className="flex-1 aspect-square rounded-[3px] transition-all hover:scale-125 hover:z-20 cursor-crosshair relative group/day shadow-inner"
                         style={{ 
-                          backgroundColor: activityCount > 0 ? '#ffffff' : '#18181b',
-                          opacity: activityCount > 0 ? (0.2 + intensity * 0.8) : 0.2
+                          backgroundColor: activityCount > 0 ? '#10b981' : '#18181b',
+                          opacity: activityCount > 0 ? (0.3 + intensity * 0.7) : 0.1
                         }}
-                        title={`${activityCount} commits on Day ${dayIndex}`}
-                      />
+                      >
+                        <div className="absolute inset-0 bg-emerald-500 blur-[4px] opacity-0 group-hover/day:opacity-40 transition-opacity" />
+                      </div>
                     );
                   })}
                 </div>
               ))}
             </div>
 
-            <div className="flex justify-between mt-6 text-[9px] uppercase tracking-[0.15em] text-zinc-700 font-bold">
-              <span>Past Quarter</span>
-              <div className="flex gap-8">
-                <span>Refactor Phase</span>
-                <span>Feature Sprint</span>
-                <span>Today</span>
+            <div className="flex justify-between mt-8 text-[9px] uppercase tracking-[0.25em] text-zinc-700 font-black">
+              <span className="text-zinc-800 italic">HISTORICAL DATA</span>
+              <div className="flex gap-12">
+                <span className="hover:text-zinc-500 transition-colors">Structural Genesis</span>
+                <span className="hover:text-zinc-500 transition-colors">Current Sequence</span>
               </div>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <div className="lg:col-span-4 bg-zinc-950 p-8 rounded-2xl border border-white/[0.04]">
-            <h3 className="text-[11px] uppercase tracking-[0.2em] text-zinc-600 font-bold mb-8">Navigation</h3>
-            <div className="space-y-6">
+          <div className="lg:col-span-4 bg-white/[0.03] p-10 rounded-[32px] border border-white/[0.08] backdrop-blur-xl shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-white/[0.01] pointer-events-none" />
+            <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black mb-10">Portal Navigation</h3>
+            <div className="space-y-8 relative z-10">
               {quickLinks.map((link) => (
-                <Link key={link.title} href={link.href} className="flex items-center justify-between group py-2 border-b border-white/[0.02] last:border-0">
+                <Link key={link.title} href={link.href} className="flex items-center justify-between group py-3 border-b border-white/[0.04] last:border-0 hover:border-white/20 transition-all">
                   <div>
-                    <h4 className="text-[14px] font-semibold text-zinc-300 group-hover:text-zinc-100 transition-colors">{link.title}</h4>
-                    <p className="text-[11px] text-zinc-700">{link.desc.split('.')[0]}.</p>
+                    <h4 className="text-[15px] font-bold text-zinc-300 group-hover:text-zinc-100 transition-colors uppercase tracking-tight">{link.title}</h4>
+                    <p className="text-[11px] text-zinc-600 font-medium mt-1 uppercase tracking-tighter">{link.desc.split('.')[0]}</p>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-zinc-800 group-hover:text-zinc-100 group-hover:translate-x-1 transition-all" />
+                  <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-emerald-500/10 group-hover:border-emerald-500/20 transition-all">
+                    <ArrowRight className="w-4 h-4 text-zinc-700 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all" />
+                  </div>
                 </Link>
               ))}
             </div>

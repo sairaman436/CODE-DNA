@@ -42,6 +42,7 @@ const settingsRouter = require('./routes/settings');
 const leaderboardRouter = require('./routes/leaderboard');
 const activityRouter = require('./routes/activity');
 const otpRouter = require('./routes/otp');
+const authRouter = require('./routes/auth');
 const usernameRouter = require('./routes/username');
 
 app.use('/api/analyze', analyzeRouter);
@@ -54,6 +55,7 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/leaderboard', discoveryLimiter, leaderboardRouter);
 app.use('/api/activity', activityRouter);
 app.use('/api/auth/otp', otpRouter);
+app.use('/api/auth', authRouter);
 app.use('/api/username', discoveryLimiter, usernameRouter);
 
 // Health check

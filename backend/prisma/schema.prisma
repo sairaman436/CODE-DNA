@@ -9,8 +9,13 @@ datasource db {
 
 model User {
   id                  String            @id @default(uuid())
-  github_id           String            @unique
-  username            String
+  github_id           String?           @unique
+  github_username     String?           @unique
+  username            String?           @unique
+  password            String?
+  email               String?           @unique
+  phone_number        String?           @unique
+  country_code        String?
   display_name        String?
   avatar_url          String?
   github_token        String?
@@ -18,7 +23,6 @@ model User {
   created_at          DateTime?         @default(now())
   last_analyzed_at    DateTime?
   codedna_username    String?           @unique
-  email               String?           @unique
   email_verified      Boolean?          @default(false)
   username_changed_at DateTime?
   analysis_jobs       AnalysisJob[]

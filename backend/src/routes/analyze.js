@@ -13,11 +13,18 @@ router.post('/', async (req, res) => {
     }
 
     // 1. Create or Update User in DB
-    const user = await prisma.user.upsert({
-      where: { github_id: github_id.toString() },
-      update: { username, display_name, avatar_url },
-      create: { github_id: github_id.toString(), username, display_name, avatar_url }
-    });
+    let user = await prisma.user.findUnique({ where: { github_id: github_id.toString() } });
+    
+    if (user) {
+      user = await prisma.user.update({
+        where: { github_id: github_id.toString() },
+        data: { username, display_name, avatar_url }
+      });
+    } else {
+      user = await prisma.user.create({
+        data: { github_id: github_id.toString(), username, display_name, avatar_url }
+      });
+    }
 
     // 2. Create Analysis Job in DB
     const job = await prisma.analysisJob.create({
