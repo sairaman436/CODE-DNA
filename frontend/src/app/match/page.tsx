@@ -39,7 +39,7 @@ export default function MatchPage() {
         setMatches(data.matches || []);
       }
     } catch (err) {
-      console.error('Match error:', err);
+      // Silent error
     } finally {
       setLoading(false);
       setSearched(true);

@@ -3,6 +3,35 @@ const prisma = require('../lib/prisma');
 
 const router = express.Router();
 
+// GET /api/profile/status/:userId — lightweight status check
+router.get('/status/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { status: true, id: true }
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ status: user.status });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/profile/github/:githubId — lookup user by GitHub ID (for identity sync)
+router.get('/github/:githubId', async (req, res) => {
+  try {
+    const { githubId } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { github_id: githubId.toString() }
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/profile/:username — full profile data (public, LinkedIn-style)
 router.get('/:username', async (req, res) => {
   try {
@@ -47,6 +76,7 @@ router.get('/:username', async (req, res) => {
 
     const profileData = {
       user: {
+        id: user.id,
         username: user.username,
         codedna_username: user.codedna_username,
         display_name: user.display_name,
@@ -78,6 +108,12 @@ router.get('/:username', async (req, res) => {
       commit_patterns: fp && fp.commit_patterns.length > 0 ? fp.commit_patterns[0] : null,
       repos_analyzed: fp ? (fp.repos_analyzed || Math.max(fp.language_stats.length, 1)) : 0,
       total_files_analyzed: fp ? (fp.total_files_analyzed || 0) : 0,
+      total_commits: fp ? fp.language_stats.reduce((sum, ls) => sum + (ls.total_commits || 0), 0) : 0,
+      avg_commits_per_week: fp && fp.commit_patterns.length > 0
+        ? Math.round((fp.language_stats.reduce((sum, ls) => sum + (ls.total_commits || 0), 0)) / Math.max(1, Math.ceil((Date.now() - new Date(fp.created_at || Date.now()).getTime()) / (7 * 24 * 60 * 60 * 1000))))
+        : 0,
+      top_patterns: fp && fp.strengths ? JSON.parse(fp.strengths).slice(0, 4) : [],
+      coding_since: user.created_at ? new Date(user.created_at).getFullYear().toString() : 'Unknown',
       activity_pulse: fp && fp.activity_pulse ? JSON.parse(fp.activity_pulse) : [],
       analyzed_at: fp ? fp.created_at : null,
     };

@@ -85,8 +85,8 @@ export function RadarChart({ data, size = 500, color = "#10b981", hideLabels = f
     const rawY = getY(i, labelRadius);
 
     let x = rawX;
-    let y = rawY;
-    let anchor: string = "middle";
+    const y = rawY;
+    let anchor: "inherit" | "end" | "start" | "middle" = "middle";
 
     if (cosA > 0.15) {
       // Right side — use "end" so text extends LEFTWARD (inward)
@@ -110,7 +110,7 @@ export function RadarChart({ data, size = 500, color = "#10b981", hideLabels = f
         <text
           x={x}
           y={y + dy}
-          textAnchor={anchor}
+          textAnchor={anchor as "inherit" | "end" | "start" | "middle"}
           dominantBaseline="central"
           fill="#d4d4d8"
           fontSize={isMini ? "8" : "13"}
@@ -124,7 +124,7 @@ export function RadarChart({ data, size = 500, color = "#10b981", hideLabels = f
           <text
             x={x}
             y={y + dy + 18}
-            textAnchor={anchor}
+            textAnchor={anchor as "inherit" | "end" | "start" | "middle"}
             fill={color}
             fontSize="16"
             fontWeight="900"

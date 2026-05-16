@@ -7,10 +7,9 @@ export default withAuth(
     const isAdmin = token?.role === "ADMIN";
     const isAdminPage = req.nextUrl.pathname.startsWith("/admin");
 
-    console.log(`MIDDLEWARE [${req.nextUrl.pathname}]:`, { role: token?.role, isAdmin });
+
 
     if (isAdminPage && !isAdmin) {
-      console.warn("MIDDLEWARE: ACCESS DENIED. Redirecting to /");
       return NextResponse.redirect(new URL("/", req.url));
     }
   },

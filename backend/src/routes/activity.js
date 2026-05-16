@@ -20,7 +20,8 @@ router.get('/', async (req, res) => {
     });
 
     const activity = recentFingerprints.map(fp => {
-      const timeDiff = Math.floor((new Date().getTime() - new Date(fp.created_at).getTime()) / 60000);
+      const createdAt = fp.created_at ? new Date(fp.created_at).getTime() : Date.now();
+      const timeDiff = Math.floor((Date.now() - createdAt) / 60000);
       let timeStr = 'Just now';
       if (timeDiff > 0 && timeDiff < 60) timeStr = `${timeDiff}m ago`;
       else if (timeDiff >= 60) timeStr = `${Math.floor(timeDiff / 60)}h ago`;

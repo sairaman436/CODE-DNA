@@ -41,6 +41,7 @@ router.get('/', async (req, res) => {
       leaderboard.push({
         username: fp.user.codedna_username || fp.user.username,
         github_username: fp.user.username,
+        codedna_username: fp.user.codedna_username,
         display_name: fp.user.display_name,
         avatar_url: fp.user.avatar_url,
         developer_type: fp.developer_type,

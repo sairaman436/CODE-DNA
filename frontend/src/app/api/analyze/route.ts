@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession() as any;
+    const session = await getServerSession(authOptions) as any;
     const body = await req.json().catch(() => ({}));
 
     // Allow analysis with or without session (public profile analysis)
     const username = body.username || session?.githubLogin || session?.user?.name;
     const githubId = session?.githubId?.toString() || username || 'anonymous';
+    const userId = session?.user?.id || body.user_id || '';
 
     if (!username) {
       return NextResponse.json({ error: 'No username provided' }, { status: 400 });
@@ -18,7 +20,10 @@ export async function POST(req: Request) {
     
     const response = await fetch(`${backendUrl}/api/analyze`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-user-id': userId
+      },
       body: JSON.stringify({
         username,
         github_id: githubId,
@@ -37,7 +42,7 @@ export async function POST(req: Request) {
     return NextResponse.json(data, { status: 202 });
 
   } catch (error) {
-    console.error('Error in /api/analyze route:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+

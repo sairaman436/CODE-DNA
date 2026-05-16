@@ -23,7 +23,7 @@ export function Navbar() {
   const isAuthPage = pathname === "/login" || pathname === "/onboarding";
   if (isAuthPage) return null;
 
-  const username = (session as any)?.codedna_username || (session as any)?.githubLogin || session?.user?.name;
+  const username = session?.codedna_username || session?.githubLogin || session?.user?.name;
   const avatar = session?.user?.image || `https://avatar.vercel.sh/${username}`;
 
   return (
@@ -55,7 +55,7 @@ export function Navbar() {
             <NavLink href="/" active={pathname === "/"}>Home</NavLink>
             <NavLink href="/discover" active={pathname === "/discover"}>Discover</NavLink>
             <NavLink href="/leaderboard" active={pathname === "/leaderboard"}>Leaderboard</NavLink>
-            {(session as any)?.role === 'ADMIN' && (
+            {session?.role === 'ADMIN' && (
               <NavLink href="/admin" active={pathname === "/admin"}>
                 <span className="text-emerald-500">Admin Panel</span>
               </NavLink>

@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Share2, ArrowUpRight, ExternalLink, MapPin, Globe, Copy, Check, Dna, Fingerprint, Activity, Code, Layers, MessageSquare, Terminal, AlertCircle } from "lucide-react";
+import { Share2, ExternalLink, Check, Dna, Fingerprint, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -18,14 +18,14 @@ interface RadarData {
 }
 
 interface ProfileData {
-  user: { username: string; codedna_username: string | null; display_name: string | null; avatar_url: string | null; last_analyzed_at: string | null };
+  user: { id: string; username: string; codedna_username: string | null; display_name: string | null; avatar_url: string | null; last_analyzed_at: string | null; role?: string; staff_type?: string };
   type: string;
   summary: string;
   strengths: string[];
   growth_areas: string[];
   radar: RadarData[];
   languages: { language: string; total_lines: number; total_commits: number; trend: string }[];
-  commit_patterns: any;
+  commit_patterns: Record<string, unknown>;
   repos_analyzed: number;
   total_files_analyzed: number;
   total_commits: number;
@@ -48,8 +48,8 @@ export default function PublicProfilePage() {
   const { data: session } = useSession();
 
   const isOwnProfile = 
-    (session as any)?.codedna_username === username || 
-    (session as any)?.githubLogin === username || 
+    session?.codedna_username === username || 
+    session?.githubLogin === username || 
     session?.user?.name === username;
 
   useEffect(() => {
@@ -58,6 +58,7 @@ export default function PublicProfilePage() {
       if (username === "sample_dev") {
         setProfile({
           user: {
+            id: "sample_id",
             username: "sample_dev",
             codedna_username: "Architect-X",
             display_name: "The Sample Architect",
@@ -166,6 +167,30 @@ export default function PublicProfilePage() {
         </div>
       );
     }
+
+    // Profile not found or no analysis — show a friendly fallback
+    return (
+      <div className="min-h-screen bg-[#050505] text-zinc-100 font-sans selection:bg-white/10 relative overflow-hidden">
+        <DynamicBackground />
+        <div className="min-h-screen flex items-center justify-center text-center px-6 relative z-10">
+          <div className="max-w-md">
+            <div className="w-20 h-20 mx-auto mb-8 rounded-[32px] bg-zinc-900 border border-white/10 flex items-center justify-center shadow-2xl">
+              <Fingerprint className="w-8 h-8 text-zinc-600" />
+            </div>
+            <h1 className="text-4xl font-bold text-zinc-100 mb-4 tracking-tight">Identity Not Found</h1>
+            <p className="text-zinc-500 mb-10 text-[16px] leading-relaxed">
+              This developer&apos;s technical DNA sequence has not been initialized or the profile does not exist.
+            </p>
+            <Link href="/discover">
+              <Button className="h-14 px-10 rounded-2xl bg-white text-black hover:bg-zinc-200 font-bold transition-all shadow-xl active:scale-95">
+                <Dna className="w-4 h-4 mr-2" />
+                Explore Developers
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const isAnalyzed = !!profile?.analyzed_at;
@@ -176,11 +201,14 @@ export default function PublicProfilePage() {
   const totalLines = profile.languages.reduce((s, l) => s + l.total_lines, 0);
   const overallScore = Math.round(profile.radar.reduce((s, r) => s + r.value, 0) / profile.radar.length);
 
+  // badgeRank calculated but currently unused in UI
+  /*
   const badgeRank = overallScore >= 95 ? "Code Grandmaster" 
     : overallScore >= 80 ? "Elite Hacker" 
     : overallScore >= 60 ? "System Architect" 
     : overallScore >= 40 ? "Script Hacker" 
     : "Code Newbie";
+  */
 
   return (
     <div className="min-h-screen text-zinc-100 font-sans selection:bg-white/10 pb-24 relative overflow-x-hidden">
@@ -214,8 +242,8 @@ export default function PublicProfilePage() {
 
                 <div className="mb-6">
                   <RoleBadge 
-                    role={(profile.user as any).role || 'USER'} 
-                    type={(profile.user as any).staff_type} 
+                    role={profile.user.role || 'USER'} 
+                    type={profile.user.staff_type} 
                   />
                 </div>
                 
@@ -349,7 +377,7 @@ export default function PublicProfilePage() {
                   </div>
                   <h2 className="text-2xl font-bold text-zinc-100 mb-4 tracking-tight">Identity Not Decoded</h2>
                   <p className="text-zinc-500 max-w-sm mb-10 text-[15px] leading-relaxed">
-                    This developer's technical DNA sequence has not been initialized. No fingerprints are available for traversal.
+                    This developer&apos;s technical DNA sequence has not been initialized. No fingerprints are available for traversal.
                   </p>
                   {isOwnProfile && (
                     <Link href="/discover">
@@ -487,15 +515,6 @@ export default function PublicProfilePage() {
 
         </div>
       </main>
-    </div>
-  );
-}
-
-function QuickStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-xl font-bold text-zinc-100 mb-1">{value}</div>
-      <div className="text-[11px] text-zinc-600 font-medium">{label}</div>
     </div>
   );
 }

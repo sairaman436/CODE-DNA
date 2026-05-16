@@ -22,8 +22,8 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [users, setUsers] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"users" | "logs" | "audit">("users");
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"users" | "logs" | "audit" | "revoked">("users");
   const [logFilter, setLogFilter] = useState("ALL");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [masterKey, setMasterKey] = useState("");
@@ -39,12 +39,11 @@ export default function AdminDashboard() {
   const logCategories = ["ALL", "LOGIN", "REGISTER", "PROFILE_EDIT", "REANALYZE", "ADMIN_LOGIN", "USER_UPDATE", "USER_DELETE"];
 
   const handleUnlock = () => {
-    // Master Key check (should ideally be a backend call, but we'll use the admin password as the key for now)
-    if (masterKey === "sairamanladi2007@gmail.com") {
+    // Rely on session role — no client-side key needed
+    if ((session as any)?.role === 'ADMIN') {
       setIsUnlocked(true);
-      fetchAdminData();
     } else {
-      setUnlockError("Invalid Master Key. Access Denied.");
+      setUnlockError("Access denied. You are not authorized as Master Admin.");
     }
   };
 
@@ -78,12 +77,56 @@ export default function AdminDashboard() {
         setUsers(users.filter(u => u.id !== id));
       }
     } catch (err) {
-      console.error(err);
+      // Silent error
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleUnban = async (id: string, name: string) => {
+    if (!confirm(`Restore full community access for ${name}? All their data and DNA will remain intact.`)) return;
+    setLoading(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${apiUrl}/api/admin/users/${id}/restore`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": (session?.user as any)?.id || "" 
+        },
+      });
+
+      if (res.ok) {
+        await fetchAdminData();
+      }
+    } catch (err) {
+      // Silent error
     } finally {
       setLoading(false);
     }
   };
 
+  const handleWipe = async (id: string, name: string) => {
+    if (!confirm(`PERMANENTLY DELETE ${name}? This will wipe all their DNA data and they will have to start from scratch if they return.`)) return;
+    setLoading(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${apiUrl}/api/admin/users/${id}/wipe`, {
+        method: "DELETE",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-id": (session?.user as any)?.id || "" 
+        },
+      });
+
+      if (res.ok) {
+        await fetchAdminData();
+      }
+    } catch (err) {
+      // Silent error
+    } finally {
+      setLoading(false);
+    }
+  };
   const handleUpdate = async () => {
     if (!editingUser) return;
     setLoading(true);
@@ -103,7 +146,7 @@ export default function AdminDashboard() {
         setEditingUser(null);
       }
     } catch (err) {
-      console.error(err);
+      // Silent error
     } finally {
       setLoading(false);
     }
@@ -111,14 +154,21 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
-    if (status === "authenticated") {
-      fetchAdminData();
-      
-      // Auto-refresh every 30 seconds for real-time observation
-      const interval = setInterval(fetchAdminData, 30000);
-      return () => clearInterval(interval);
+    if (status === "authenticated" && (session as any)?.role !== 'ADMIN') {
+      router.push("/");
+      return;
     }
-  }, [status, router, (session?.user as any)?.id]);
+  }, [status, router, (session as any)?.role]);
+
+  // Only fetch admin data after unlock
+  useEffect(() => {
+    if (!isUnlocked || (session as any)?.role !== 'ADMIN') return;
+    
+    fetchAdminData();
+    // Auto-refresh every 30 seconds for real-time observation
+    const interval = setInterval(fetchAdminData, 30000);
+    return () => clearInterval(interval);
+  }, [isUnlocked, (session?.user as any)?.id]);
 
   async function fetchAdminData() {
     setLoading(true);
@@ -142,7 +192,7 @@ export default function AdminDashboard() {
         if (uRes.status === 403) router.push("/");
       }
     } catch (err) {
-      console.error(err);
+      // Silent error
     } finally {
       setLoading(false);
     }
@@ -214,7 +264,8 @@ export default function AdminDashboard() {
 
         <div className="flex items-center gap-6">
           <div className="hidden md:flex bg-white/[0.03] border border-white/[0.08] rounded-2xl p-1 px-4 items-center gap-4">
-            <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={<Users className="w-4 h-4" />} label="Users" />
+            <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={<Users className="w-4 h-4" />} label="Registry" />
+            <TabButton active={activeTab === "revoked"} onClick={() => setActiveTab("revoked")} icon={<X className="w-4 h-4" />} label="Revoked" />
             <TabButton active={activeTab === "logs"} onClick={() => setActiveTab("logs")} icon={<Activity className="w-4 h-4" />} label="Activity" />
             <TabButton active={activeTab === "audit"} onClick={() => setActiveTab("audit")} icon={<ShieldAlert className="w-4 h-4" />} label="Audit" />
           </div>
@@ -232,106 +283,127 @@ export default function AdminDashboard() {
       <main className="relative z-20 p-10">
         <div className="max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
-            {activeTab === "users" ? (
+            {(activeTab === "users" || activeTab === "revoked") ? (
               <motion.div
-                key="users"
+                key={activeTab}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
                   <StatCard icon={<ShieldCheck className="w-5 h-5 text-emerald-500" />} label="Total DNA Records" value={users.length} color="emerald" />
-                  <StatCard icon={<Activity className="w-5 h-5 text-blue-500" />} label="Active Sessions" value={users.filter(u => u.email_verified).length} color="blue" />
-                  <StatCard icon={<Search className="w-5 h-5 text-purple-500" />} label="New Genesis (24h)" value="0" color="purple" />
-                  <StatCard icon={<Lock className="w-5 h-5 text-rose-500" />} label="Security Alerts" value="0" color="rose" />
+                  <StatCard icon={<Activity className="w-5 h-5 text-blue-500" />} label="Active Sessions" value={users.filter(u => u.email_verified && u.status !== 'BANNED').length} color="blue" />
+                  <StatCard icon={<Search className="w-5 h-5 text-purple-500" />} label="New Genesis (24h)" value={users.filter(u => new Date(u.created_at) > new Date(Date.now() - 86400000)).length} color="purple" />
+                  <StatCard icon={<Lock className="w-5 h-5 text-rose-500" />} label="Security Alerts" value={logs.filter(l => l.action.includes('FAIL') || l.action.includes('REVOKE')).length} color="rose" />
                 </div>
 
                 <div className="bg-white/[0.02] border border-white/[0.06] backdrop-blur-3xl rounded-[32px] overflow-hidden shadow-2xl">
-                  <div className="p-8 border-b border-white/[0.05] flex items-center justify-between bg-white/[0.01]">
+                  <div className="p-8 border-b border-white/[0.06] flex items-center justify-between">
                     <h3 className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
                       <Users className="w-6 h-6 text-emerald-500" /> Identity Registry
                     </h3>
                     <div className="flex items-center gap-4">
                       <div className="relative">
-                        <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
-                        <input 
-                          type="text" 
-                          placeholder="Search Registry..." 
-                          className="bg-white/5 border border-white/10 rounded-2xl pl-12 pr-6 py-2.5 text-sm outline-none focus:border-emerald-500/50 transition-all w-72"
-                        />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                        <Input placeholder="Search Registry..." className="pl-10 h-11 bg-white/5 border-white/10 rounded-xl w-64 text-[13px]" />
                       </div>
-                      <Button variant="outline" className="rounded-2xl border-white/10 text-zinc-400 gap-2 font-bold text-[11px] uppercase tracking-widest">
+                      <Button variant="outline" className="h-11 rounded-xl border-white/10 gap-2 text-[11px] font-black uppercase tracking-widest hover:bg-white/5">
                         <Filter className="w-4 h-4" /> Filter
                       </Button>
                     </div>
                   </div>
-
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                    <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-600 border-b border-white/[0.03]">
-                          <th className="p-6 px-10">Identity</th>
-                          <th className="p-6 text-center">Status</th>
-                          <th className="p-6 text-center">Technical Link</th>
-                          <th className="p-6">Created At</th>
-                          <th className="p-6 text-right px-10">Actions</th>
+                        <tr className="border-b border-white/[0.04]">
+                          <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Identity</th>
+                          <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Status</th>
+                          <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Technical Link</th>
+                          <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Created At</th>
+                          <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/[0.03]">
-                        {users.map((u) => (
+                      <tbody className="divide-y divide-white/[0.02]">
+                        {users
+                          .filter(u => activeTab === 'revoked' ? u.status === 'BANNED' : u.status !== 'BANNED')
+                          .map((u) => (
                           <tr key={u.id} className="group hover:bg-white/[0.01] transition-all">
-                            <td className="p-6 px-10">
-                              <Link href={u.codedna_username ? `/u/${u.codedna_username}` : "#"} className="flex items-center gap-4 group/id">
-                                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[12px] font-black text-emerald-500 uppercase group-hover/id:border-emerald-500/50 transition-all">
-                                  {u.display_name?.charAt(0) || u.email.charAt(0)}
+                            <td className="px-8 py-6">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-black text-zinc-500 border border-white/10 group-hover:border-emerald-500/30 transition-all overflow-hidden">
+                                  {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" /> : (u.display_name?.[0] || u.email?.[0] || 'U').toUpperCase()}
                                 </div>
                                 <div>
-                                  <div className="flex items-center gap-2 mb-0.5">
-                                    <p className="text-sm font-black text-zinc-100 group-hover/id:text-emerald-400 transition-colors">{u.display_name || 'Anonymous'}</p>
-                                    <RoleBadge role={u.role} type={u.staff_type} />
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-black text-zinc-100 tracking-tight">{u.display_name || 'Anonymous Sequence'}</span>
+                                    {u.role !== 'USER' && <RoleBadge role={u.role} type={u.staff_type} />}
                                   </div>
-                                  <p className="text-[11px] text-zinc-500 font-medium">{u.email}</p>
+                                  <p className="text-[11px] text-zinc-600 font-medium">{u.email}</p>
                                 </div>
-                              </Link>
-                            </td>
-                            <td className="p-6">
-                              <div className="flex justify-center">
-                                <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
-                                  u.email_verified 
-                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
-                                    : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-500'
-                                }`}>
-                                  • {u.email_verified ? 'Verified' : 'Pending'}
-                                </span>
                               </div>
                             </td>
-                            <td className="p-6 text-center">
-                              <span className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">
+                            <td className="px-8 py-6">
+                              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border ${
+                                u.status === 'BANNED' ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' :
+                                u.email_verified ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 
+                                'bg-zinc-500/10 border-zinc-500/20 text-zinc-500'
+                              } text-[9px] font-black uppercase tracking-widest`}>
+                                <div className={`w-1 h-1 rounded-full ${u.status === 'BANNED' ? 'bg-rose-500 animate-pulse' : u.email_verified ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
+                                {u.status === 'BANNED' ? 'Revoked' : u.email_verified ? 'Verified' : 'Pending'}
+                              </div>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-widest">
                                 {u.github_id ? `GH:${u.github_id}` : 'Unlinked'}
                               </span>
                             </td>
-                            <td className="p-6 text-zinc-500 text-[11px] font-medium">
-                              {new Date(u.created_at).toLocaleDateString()}
+                            <td className="px-8 py-6">
+                              <p className="text-[11px] text-zinc-500 font-bold">{new Date(u.created_at).toLocaleDateString()}</p>
                             </td>
-                            <td className="p-6 text-right px-10">
+                            <td className="px-8 py-6 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <AdminAction 
                                   icon={<Edit3 className="w-4 h-4" />} 
                                   label="Edit" 
-                                  onClick={() => handleEdit(u)}
+                                  onClick={() => {
+                                    setEditingUser(u);
+                                    setEditFormData({
+                                      display_name: u.display_name || "",
+                                      role: u.role || "USER",
+                                      staff_type: u.staff_type || ""
+                                    });
+                                  }}
+                                  disabled={u.status === 'BANNED'}
                                 />
                                 <AdminAction 
                                   icon={<Eye className="w-4 h-4" />} 
                                   label="Deep Observe" 
                                   onClick={() => handleDeepObserve(u)}
                                 />
-                                <AdminAction 
-                                  icon={<Trash2 className="w-4 h-4" />} 
-                                  label="Revoke" 
-                                  color="rose" 
-                                  onClick={() => handleDelete(u.id, u.display_name || u.email)}
-                                  disabled={u.role === 'ADMIN'}
-                                />
+                                {u.status === 'BANNED' ? (
+                                  <>
+                                    <AdminAction 
+                                      icon={<RefreshCcw className="w-4 h-4" />} 
+                                      label="Restore Identity" 
+                                      color="emerald" 
+                                      onClick={() => handleUnban(u.id, u.display_name || u.email)}
+                                    />
+                                    <AdminAction 
+                                      icon={<Trash2 className="w-4 h-4" />} 
+                                      label="Wipe Record" 
+                                      color="rose" 
+                                      onClick={() => handleWipe(u.id, u.display_name || u.email)}
+                                    />
+                                  </>
+                                ) : (
+                                  <AdminAction 
+                                    icon={<Trash2 className="w-4 h-4" />} 
+                                    label="Revoke" 
+                                    color="rose" 
+                                    onClick={() => handleDelete(u.id, u.display_name || u.email)}
+                                    disabled={u.role === 'ADMIN'}
+                                  />
+                                )}
                               </div>
                             </td>
                           </tr>

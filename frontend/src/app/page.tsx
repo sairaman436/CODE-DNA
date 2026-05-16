@@ -419,7 +419,7 @@ function UserDashboard({ session }: { session: any }) {
           setData(d);
         }
       } catch (err) {
-        console.error("Dashboard fetch error:", err);
+        // Silent error handling
       } finally {
         setLoading(false);
       }
@@ -449,7 +449,7 @@ function UserDashboard({ session }: { session: any }) {
           setAnalyzingJobId(null);
         }
       } catch (err) {
-        console.error('Polling error:', err);
+        // Silent polling error
       }
     }, 2000);
 
@@ -461,7 +461,10 @@ function UserDashboard({ session }: { session: any }) {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const res = await fetch(`${apiUrl}/api/analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': session?.user?.id || ''
+        },
         body: JSON.stringify({
           username: session?.githubLogin,
           github_id: session?.githubId,
@@ -475,7 +478,7 @@ function UserDashboard({ session }: { session: any }) {
         setAnalyzingJobId(result.jobId);
       }
     } catch (err) {
-      console.error('Re-analyze error:', err);
+      // Silent analyze error
     }
   };
 

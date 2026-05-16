@@ -1,7 +1,15 @@
-import { Shield, ShieldCheck, ShieldAlert, Users, Award, Star, Zap } from "lucide-react";
+import { Shield, ShieldCheck, Users, Award, Star, Zap } from "lucide-react";
+
+interface BadgeConfig {
+  label: string;
+  icon: React.ReactNode;
+  color: string;
+  bg: string;
+  border: string;
+}
 
 export function RoleBadge({ role, type }: { role: string, type?: string }) {
-  const configs: any = {
+  const configs: Record<string, BadgeConfig> = {
     'ADMIN': { 
       label: 'Master Admin', 
       icon: <ShieldCheck className="w-3 h-3" />, 
@@ -53,7 +61,7 @@ export function RoleBadge({ role, type }: { role: string, type?: string }) {
     }
   };
 
-  const config = configs[type] || configs[role] || configs['USER'];
+  const config = (type && configs[type]) || (role && configs[role]) || configs['USER'];
 
   return (
     <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${config.bg} ${config.border} ${config.color} shadow-sm`}>

@@ -3,7 +3,6 @@
 import { Users2, ShieldAlert, Zap } from "lucide-react";
 import { RadarChart, RadarData } from "@/components/RadarChart";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 
 const MOCK_TEAM_MEMBERS = [
   { name: "Saira", role: "Frontend Lead", type: "The Architect", avatar: "https://github.com/saira.png" },
@@ -24,27 +23,9 @@ const MOCK_TEAM_RADAR: RadarData[] = [
 
 export default function TeamPage() {
   return (
-    <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-white/20 pb-24 relative noise">
-      <div className="fixed inset-0 dot-grid pointer-events-none z-0" />
+    <div className="min-h-screen bg-[#050505] text-zinc-100 font-sans selection:bg-white/20 pb-24 relative">
 
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.04] bg-black/60 backdrop-blur-2xl">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 font-semibold text-[15px] text-white">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-            Code DNA
-          </Link>
-          <div className="flex items-center gap-6 text-[13px]">
-            <Link href="/" className="text-zinc-500 hover:text-white transition-colors">Home</Link>
-            <Link href="/discover" className="text-zinc-500 hover:text-white transition-colors">Discover</Link>
-            <Link href="/compare" className="text-zinc-500 hover:text-white transition-colors">Compare</Link>
-            <Link href="/leaderboard" className="text-zinc-500 hover:text-white transition-colors">Leaderboard</Link>
-          </div>
-        </div>
-      </nav>
-
-      <main className="relative z-10 max-w-6xl mx-auto px-6 pt-28">
+      <main className="relative z-10 max-w-6xl mx-auto px-6 pt-32">
         
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-16">
@@ -67,7 +48,7 @@ export default function TeamPage() {
             <section className="bg-zinc-900/40 border border-zinc-800/50 rounded-3xl p-8 backdrop-blur-sm">
               <h2 className="text-xl font-bold mb-8 text-zinc-100">Team Aggregate DNA</h2>
               <div className="w-full flex items-center justify-center p-4">
-                <RadarChart data={MOCK_TEAM_RADAR} width={450} height={400} />
+                <RadarChart data={MOCK_TEAM_RADAR} size={450} />
               </div>
             </section>
 
@@ -89,7 +70,7 @@ export default function TeamPage() {
                   <h3 className="font-bold">Critical Blind Spot</h3>
                 </div>
                 <p className="text-zinc-300 text-sm leading-relaxed">
-                  Your team's aggregate <strong className="text-zinc-300">Test Mindset</strong> is deeply concerning (45%). Consider hiring a QA Engineer or enforcing stricter CI/CD testing rules.
+                  Your team&apos;s aggregate <strong className="text-zinc-300">Test Mindset</strong> is deeply concerning (45%). Consider hiring a QA Engineer or enforcing stricter CI/CD testing rules.
                 </p>
               </section>
             </div>
@@ -119,7 +100,7 @@ export default function TeamPage() {
 
               <div className="mt-8 pt-8 border-t border-zinc-800/50">
                 <p className="text-sm text-zinc-400 mb-4">
-                  Add another developer to see how they would shift your team's DNA.
+                  Add another developer to see how they would shift your team&apos;s DNA.
                 </p>
                 <Button variant="outline" className="w-full border-white/[0.06] bg-zinc-950/50 text-zinc-300 hover:text-white hover:bg-white/5 transition-all">
                   Simulate New Hire

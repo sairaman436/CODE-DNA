@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 
 interface LeaderboardEntry {
   username: string;
+  github_username?: string;
+  codedna_username?: string;
   display_name: string | null;
   avatar_url: string | null;
   developer_type: string;
@@ -25,7 +27,10 @@ import { DynamicBackground } from "@/components/DynamicBackground";
 
 export default function LeaderboardPage() {
   const { data: session } = useSession();
-  const username = (session as any)?.githubLogin || session?.user?.name;
+  const username = session?.codedna_username || session?.githubLogin || session?.user?.name;
+  const githubLogin = session?.githubLogin;
+  const isMe = (entry: LeaderboardEntry) => 
+    entry.username === username || entry.github_username === githubLogin || entry.codedna_username === username;
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilters, setActiveFilters] = useState<string[]>(['overall']);
@@ -40,7 +45,7 @@ export default function LeaderboardPage() {
           setEntries(data.leaderboard || []);
         }
       } catch (err) {
-        console.error("Leaderboard fetch error:", err);
+        // Silent error
       } finally {
         setLoading(false);
       }
@@ -163,15 +168,15 @@ export default function LeaderboardPage() {
                     >
                       <Link href={`/u/${entry.username}`}>
                         <div className={`grid grid-cols-12 px-10 py-8 items-center group/row hover:bg-white/[0.01] transition-all cursor-pointer relative ${
-                          entry.username === username ? 'bg-white/[0.01]' : ''
+                          isMe(entry) ? 'bg-white/[0.01]' : ''
                         }`}>
-                          {entry.username === username && (
+                          {isMe(entry) && (
                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500/50 pointer-events-none shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
                           )}
                           
                           <div className="col-span-1 relative z-10">
                             <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${
-                              entry.username === username 
+                              isMe(entry) 
                                 ? 'bg-emerald-500 text-black shadow-[0_0_25px_rgba(16,185,129,0.3)]' 
                                 : 'bg-white/[0.03] border border-white/[0.06] group-hover/row:border-white/30'
                             }`}>
@@ -181,7 +186,7 @@ export default function LeaderboardPage() {
                           <div className="col-span-5 flex items-center gap-5 relative z-10">
                             <div className="relative">
                               <img
-                                src={entry.avatar_url || `https://github.com/${entry.username}.png`}
+                                src={entry.avatar_url || `https://github.com/${entry.github_username || entry.username}.png`}
                                 alt=""
                                 className="w-12 h-12 rounded-[20px] border border-white/[0.1] bg-zinc-900 object-cover group-hover/row:scale-105 transition-transform shadow-lg"
                                 onError={(e) => { (e.target as HTMLImageElement).src = `https://avatar.vercel.sh/${entry.username}` }}
@@ -190,11 +195,11 @@ export default function LeaderboardPage() {
                             <div>
                               <div className="flex items-center gap-2">
                                 <div className={`text-[16px] font-black transition-colors ${
-                                  entry.username === username ? 'text-emerald-400' : 'text-zinc-100 group-hover/row:text-emerald-400'
+                                  isMe(entry) ? 'text-emerald-400' : 'text-zinc-100 group-hover/row:text-emerald-400'
                                 }`}>
                                   {entry.display_name || entry.username}
                                 </div>
-                                {entry.username === username && (
+                                {isMe(entry) && (
                                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-black uppercase tracking-tighter">You</span>
                                 )}
                               </div>
@@ -225,7 +230,7 @@ export default function LeaderboardPage() {
                           </div>
                           <div className="col-span-2 text-right relative z-10">
                             <span className={`text-2xl font-black transition-colors tracking-tighter ${
-                              entry.username === username ? 'text-emerald-400' : 'text-zinc-100 group-hover/row:text-emerald-400'
+                              isMe(entry) ? 'text-emerald-400' : 'text-zinc-100 group-hover/row:text-emerald-400'
                             }`}>
                               {entry.overall_score}
                             </span>

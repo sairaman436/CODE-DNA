@@ -120,7 +120,6 @@ function normalizeDevs(raw: any[]): NormalizedDev[] {
 
 import { DynamicBackground } from "@/components/DynamicBackground";
 import { SilkBackground } from "@/components/SilkBackground";
-import { Navbar } from "@/components/Navbar";
 
 export default function DiscoverPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -155,7 +154,7 @@ export default function DiscoverPage() {
           setLiveActivity(actItems);
         }
       } catch (err) {
-        console.error('Error fetching discover data:', err);
+        // Silent error
       } finally {
         setLoading(false);
       }
@@ -167,7 +166,6 @@ export default function DiscoverPage() {
     <div className="min-h-screen bg-[#050505] text-zinc-100 font-sans selection:bg-white/20 relative overflow-x-hidden pb-24">
       <SilkBackground color="#050505" />
       <DynamicBackground />
-      <Navbar />
 
 
       <main className="relative z-10 pt-32 pb-24 px-6">

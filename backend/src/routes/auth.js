@@ -3,17 +3,9 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
 const prisma = require('../lib/prisma');
+const transporter = require('../lib/mailer');
 
 const router = express.Router();
-
-// Transporter configuration (Gmail Mock)
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER || 'noreply@codedna.dev',
-    pass: process.env.GMAIL_APP_PASSWORD || '',
-  },
-});
 
 /**
  * POST /api/auth/register
@@ -70,7 +62,13 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Store OTP
+    // Invalidate any previous unused OTPs for this email
+    await prisma.otpCode.updateMany({
+      where: { email, used: false },
+      data: { used: true }
+    });
+
+    // Store new OTP
     await prisma.otpCode.create({
       data: { email, code, expires_at: expiresAt }
     });
@@ -122,6 +120,14 @@ router.post('/login', async (req, res) => {
     const user = await prisma.user.findFirst({ where: { email } });
     if (!user || !user.password) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check Banned Status
+    if (user.status === 'BANNED') {
+      return res.status(403).json({ 
+        error: 'Access Denied: Your technical identity has been revoked from this community.',
+        banned: true 
+      });
     }
 
     // Check Lockout
@@ -182,6 +188,12 @@ router.post('/login', async (req, res) => {
     // Generate OTP for regular users
     const code = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    // Invalidate any previous unused OTPs for this email
+    await prisma.otpCode.updateMany({
+      where: { email, used: false },
+      data: { used: true }
+    });
 
     await prisma.otpCode.create({
       data: { email, code, expires_at: expiresAt }
@@ -263,34 +275,133 @@ router.post('/link-github', async (req, res) => {
   try {
     const { email, github_id, github_username, avatar_url } = req.body;
 
+    if (!github_id) {
+      return res.status(400).json({ error: 'GitHub ID is required' });
+    }
+
+    const githubIdStr = github_id.toString();
+
+    // Step 1: Find ALL possible accounts that could be this person
+    const userByGithubId = await prisma.user.findUnique({ 
+      where: { github_id: githubIdStr },
+      include: { fingerprints: true, analysis_jobs: true, activity_logs: true, vectors: true }
+    });
+
+    // Find by the email passed from GitHub
+    const userByGithubEmail = email 
+      ? await prisma.user.findUnique({ where: { email } })
+      : null;
+
+    // Find by github_username (for accounts created during analysis)
+    const userByUsername = github_username 
+      ? await prisma.user.findFirst({ 
+          where: { 
+            OR: [
+              { github_username },
+              { username: github_username },
+              { codedna_username: github_username }
+            ]
+          }
+        })
+      : null;
+
+    // Step 2: Determine who is the PRIMARY account (the one with email+password registration)
+    // Priority: email-registered account > github_id account > username account
+    let primaryUser = null;
+    let ghostUser = null;
+
+    // The primary user is the one who registered via email/password
+    const allCandidates = [userByGithubEmail, userByGithubId, userByUsername].filter(Boolean);
+    
+    // Find the one with a password (= registered via email)
+    primaryUser = allCandidates.find(u => u && u.password && u.email_verified) || null;
+    
+    // If no registered user found, pick the one with the most data
+    if (!primaryUser && allCandidates.length > 0) {
+      primaryUser = allCandidates[0];
+    }
+
+    if (!primaryUser) {
+      // No existing account at all — this is fine, the user just hasn't registered yet
+      return res.status(404).json({ error: 'No existing account found. User should register first.' });
+    }
+
+    // Step 3: Find any ghost/duplicate accounts to merge INTO the primary
+    for (const candidate of allCandidates) {
+      if (candidate && candidate.id !== primaryUser.id) {
+        ghostUser = candidate;
+        break;
+      }
+    }
+
+    // Step 4: Merge ghost into primary if needed
+    if (ghostUser) {
+      // Transfer all data from ghost to primary
+      await prisma.fingerprint.updateMany({
+        where: { user_id: ghostUser.id },
+        data: { user_id: primaryUser.id }
+      });
+      await prisma.analysisJob.updateMany({
+        where: { user_id: ghostUser.id },
+        data: { user_id: primaryUser.id }
+      });
+      await prisma.activityLog.updateMany({
+        where: { user_id: ghostUser.id },
+        data: { user_id: primaryUser.id }
+      });
+      await prisma.developerVector.updateMany({
+        where: { user_id: ghostUser.id },
+        data: { user_id: primaryUser.id }
+      });
+
+      // Delete the ghost
+      await prisma.user.delete({ where: { id: ghostUser.id } });
+    }
+
+    // Step 5: Link GitHub to the primary account
+    const updatedUser = await prisma.user.update({
+      where: { id: primaryUser.id },
+      data: {
+        github_id: githubIdStr,
+        github_username: github_username || primaryUser.github_username,
+        avatar_url: avatar_url || primaryUser.avatar_url,
+        // Only update codedna_username if the primary doesn't already have one
+        codedna_username: primaryUser.codedna_username || github_username,
+      }
+    });
+
+    res.json({ success: true, user: updatedUser });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to link GitHub' });
+  }
+});
+// Force link a GitHub account to an already verified email
+router.post('/force-link-github', async (req, res) => {
+  try {
+    const { email, github_id, github_username, avatar_url } = req.body;
+    
     if (!email || !github_id) {
       return res.status(400).json({ error: 'Email and GitHub ID are required' });
     }
 
-    // Check if another user already has this github_id
-    const duplicateUser = await prisma.user.findUnique({ 
-      where: { github_id: github_id.toString() } 
-    });
-
-    if (duplicateUser && duplicateUser.email !== email) {
-      // For simplicity, we delete the "ghost" user created by the analyzer or other flows
-      await prisma.user.delete({ where: { id: duplicateUser.id } });
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    const user = await prisma.user.update({
-      where: { email },
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
       data: {
         github_id: github_id.toString(),
-        github_username,
-        avatar_url,
-        codedna_username: github_username, // Sync with GitHub username by default
+        github_username: github_username || user.github_username,
+        avatar_url: avatar_url || user.avatar_url,
+        codedna_username: user.codedna_username || github_username,
       }
     });
 
-    res.json({ success: true, user });
+    res.json({ success: true, user: updatedUser });
   } catch (err) {
-    console.error('Linking error:', err);
-    res.status(500).json({ error: 'Failed to link GitHub' });
+    res.status(500).json({ error: 'Failed to forcefully link GitHub' });
   }
 });
 

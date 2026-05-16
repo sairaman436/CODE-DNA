@@ -1,13 +1,22 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { Shield, Edit3, Trash2, ShieldAlert, Check, X, Loader2 } from "lucide-react";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Shield, Edit3, Trash2, Check, X, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
-export function AdminControls({ targetUser, onUpdate }: { targetUser: any, onUpdate?: () => void }) {
+interface User {
+  id: string;
+  display_name?: string | null;
+  username: string;
+  role?: string;
+  staff_type?: string | null;
+  email?: string | null;
+}
+
+export function AdminControls({ targetUser, onUpdate }: { targetUser: User, onUpdate?: () => void }) {
   const { data: session } = useSession();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -18,27 +27,51 @@ export function AdminControls({ targetUser, onUpdate }: { targetUser: any, onUpd
     email: targetUser.email || ""
   });
 
-  if ((session as any)?.role !== 'ADMIN') return null;
+  // Sync state when targetUser changes (important for Next.js client-side navigation)
+  useEffect(() => {
+    setEditData({
+      display_name: targetUser.display_name || "",
+      role: targetUser.role || "USER",
+      staff_type: targetUser.staff_type || "",
+      email: targetUser.email || ""
+    });
+  }, [targetUser]);
+
+  if (session?.role !== 'ADMIN') return null;
 
   const handleUpdate = async () => {
+    if (!targetUser.id) {
+      alert("Error: Target user ID is missing. Try refreshing the page.");
+      return;
+    }
+
     setLoading(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      
+      // Don't send empty email to avoid overwriting existing data
+      const updatePayload: Partial<User> = { ...editData };
+      if (!updatePayload.email) delete updatePayload.email;
+      if (updatePayload.role !== 'STAFF') updatePayload.staff_type = undefined;
+
       const res = await fetch(`${apiUrl}/api/admin/users/${targetUser.id}`, {
         method: "PATCH",
         headers: { 
           "Content-Type": "application/json",
-          "x-user-id": (session?.user as any)?.id || "" 
+          "x-user-id": session?.user?.id || "" 
         },
-        body: JSON.stringify(editData),
+        body: JSON.stringify(updatePayload),
       });
 
       if (res.ok) {
         setIsEditing(false);
         if (onUpdate) onUpdate();
+      } else {
+        const error = await res.json();
+        alert(`Update failed: ${error.error || "Unknown error"}`);
       }
     } catch (err) {
-      console.error(err);
+      alert("Network error occurred while updating user.");
     } finally {
       setLoading(false);
     }

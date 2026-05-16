@@ -11,12 +11,16 @@ const isAdmin = async (req, res, next) => {
   // For now, we assume the user ID is passed in headers or session
   const userId = req.headers['x-user-id']; 
   
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  if (!userId) {
+    console.log('[ADMIN_AUTH] Denied: Missing x-user-id header');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (user && user.role === 'ADMIN') {
     next();
   } else {
+    console.log(`[ADMIN_AUTH] Denied: User ${userId} is not an ADMIN. Found role: ${user?.role || 'NONE'}`);
     res.status(403).json({ error: 'Access denied. Admin role required.' });
   }
 };
@@ -68,7 +72,17 @@ router.get('/logs', isAdmin, async (req, res) => {
 router.patch('/users/:id', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    
+    // Whitelist allowed fields to prevent injection of password, email_verified, etc.
+    const { display_name, role, staff_type } = req.body;
+    const updateData = {};
+    if (display_name !== undefined) updateData.display_name = display_name;
+    if (role && ['USER', 'ADMIN', 'STAFF'].includes(role)) updateData.role = role;
+    if (staff_type !== undefined) updateData.staff_type = staff_type || null;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
 
     const user = await prisma.user.update({
       where: { id },
@@ -86,6 +100,7 @@ router.patch('/users/:id', isAdmin, async (req, res) => {
 
     res.json({ success: true, user });
   } catch (err) {
+    console.error('[ADMIN_PATCH] Error:', err);
     res.status(500).json({ error: 'Failed to update user' });
   }
 });
@@ -97,11 +112,129 @@ router.patch('/users/:id', isAdmin, async (req, res) => {
 router.delete('/users/:id', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    await prisma.user.delete({ where: { id } });
+    const transporter = require('../lib/mailer');
+    const targetUser = await prisma.user.findUnique({ where: { id } });
     
-    res.json({ success: true, message: 'User deleted' });
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent banning yourself
+    if (id === req.headers['x-user-id']) {
+      return res.status(400).json({ error: 'Cannot revoke your own identity.' });
+    }
+
+    // Log the ban action
+    await prisma.activityLog.create({
+      data: {
+        user_id: req.headers['x-user-id'],
+        action: 'ADMIN_BAN_USER',
+        details: `Revoked identity for user ${id} (${targetUser.display_name || targetUser.email})`
+      }
+    });
+
+    // Update user status to BANNED
+    await prisma.user.update({
+      where: { id },
+      data: { status: 'BANNED' }
+    });
+
+    // Send Notification Email
+    try {
+      await transporter.sendMail({
+        from: `"Code DNA Moderation" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
+        to: targetUser.email,
+        subject: "Identity Revocation Notice — Code DNA",
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; background: #050505; color: #fff; border-radius: 24px; border: 1px solid #333;">
+            <h1 style="color: #ef4444; font-size: 24px; text-transform: uppercase; letter-spacing: 2px;">Access Revoked</h1>
+            <p style="color: #ccc; font-size: 16px; line-height: 1.6;">
+              We are writing to inform you that your technical identity has been removed from the <b>Code DNA Community</b>.
+            </p>
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">
+              As a result, no further services are available to this account. We appreciate your past contributions.
+            </p>
+            <div style="margin-top: 40px; border-top: 1px solid #222; padding-top: 20px; font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 1px;">
+              System Moderation Protocol — Level 05
+            </div>
+          </div>
+        `
+      });
+    } catch (mailErr) {
+      console.error('Failed to send ban email:', mailErr);
+    }
+    
+    res.json({ success: true, message: 'User identity revoked and notified.' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to delete user' });
+    console.error('[ADMIN_DELETE] Error:', err);
+    res.status(500).json({ error: 'Failed to revoke user identity' });
+  }
+});
+
+/**
+ * PATCH /api/admin/users/:id/restore
+ * Moderation: unban user (RESTORE access with all data intact)
+ */
+router.patch('/users/:id/restore', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Restore to ACTIVE status - Data remains intact
+    await prisma.user.update({
+      where: { id },
+      data: { status: 'ACTIVE' }
+    });
+
+    // Log the restore action
+    await prisma.activityLog.create({
+      data: {
+        user_id: req.headers['x-user-id'],
+        action: 'ADMIN_RESTORE_USER',
+        details: `Restored access for user ${id} (${targetUser.display_name || targetUser.email})`
+      }
+    });
+
+    res.json({ success: true, message: 'User identity restored successfully.' });
+  } catch (err) {
+    console.error('[ADMIN_RESTORE] Error:', err);
+    res.status(500).json({ error: 'Failed to restore user identity' });
+  }
+});
+
+/**
+ * DELETE /api/admin/users/:id/wipe
+ * Moderation: permanently delete user and all data
+ */
+router.delete('/users/:id/wipe', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Hard Delete: Remove entire user record (Cascade will handle fingerprints, etc.)
+    await prisma.user.delete({ where: { id } });
+
+    // Log the wipe action
+    await prisma.activityLog.create({
+      data: {
+        user_id: req.headers['x-user-id'],
+        action: 'ADMIN_WIPE_USER',
+        details: `Permanently wiped identity for user ${id}`
+      }
+    });
+
+    res.json({ success: true, message: 'User identity wiped from database.' });
+  } catch (err) {
+    console.error('[ADMIN_WIPE] Error:', err);
+    res.status(500).json({ error: 'Failed to wipe user identity' });
   }
 });
 

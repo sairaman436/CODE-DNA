@@ -9,6 +9,7 @@ import { BackgroundSwitcher } from "@/components/BackgroundSwitcher";
 import { PageTransition } from "@/components/PageTransition";
 import { NavbarWrapper } from "@/components/NavbarWrapper";
 import { SecurityGuard } from "@/components/SecurityGuard";
+import { BannedGuard } from "@/components/BannedGuard";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body className="antialiased bg-[#050505]">
         <SessionProvider>
           <ToastProvider>
+            <BannedGuard />
             <SecurityGuard />
             <BackgroundSwitcher />
             <NavbarWrapper />

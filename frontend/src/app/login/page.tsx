@@ -12,7 +12,7 @@ import Link from "next/link";
 import { DynamicBackground } from "@/components/DynamicBackground";
 import { SilkBackground } from "@/components/SilkBackground";
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup" | "link_mismatch";
 type AuthStep = "credentials" | "otp" | "link_github";
 
 export default function LoginPage() {
@@ -35,7 +35,7 @@ function LoginContent() {
   // Form State
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
+    email: searchParams.get("email") || "",
     password: "",
     phone: "",
     countryCode: "+91",
@@ -45,6 +45,8 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [verifiedUser, setVerifiedUser] = useState<any>(null);
+
+  // Remove the old URL error effect since we use mode now
 
   useEffect(() => {
     if (session?.user && step !== "link_github") {
@@ -107,6 +109,28 @@ function LoginContent() {
       const data = await res.json();
       if (data.success) {
         setVerifiedUser(data.user);
+        
+        if (mode === "link_mismatch") {
+          const forceLinkRes = await fetch(`${apiUrl}/api/auth/force-link-github`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: data.user.email,
+              github_id: searchParams.get("gh_id"),
+              github_username: searchParams.get("gh_username"),
+              avatar_url: searchParams.get("gh_avatar")
+            })
+          });
+          if (forceLinkRes.ok) {
+            // Re-trigger GitHub OAuth login which will now succeed
+            await signIn("github", { callbackUrl: "/" });
+            return;
+          } else {
+            setError("Failed to link GitHub account.");
+            return;
+          }
+        }
+
         if (!data.user.github_linked) {
           setStep("link_github");
         } else {
@@ -178,11 +202,16 @@ function LoginContent() {
               
               <div className="text-center mb-10">
                 <h1 className="text-4xl font-black tracking-tight text-zinc-100 mb-2 uppercase">
-                  {mode === "login" ? "Security Portal" : "Genesis Init"}
+                  {mode === "login" ? "Security Portal" : mode === "link_mismatch" ? "Link Identity" : "Genesis Init"}
                 </h1>
                 <p className="text-[12px] text-zinc-500 font-bold uppercase tracking-[0.2em]">
-                  {mode === "login" ? "Authorized Access Only" : "Create your technical identity"}
+                  {mode === "login" ? "Authorized Access Only" : mode === "link_mismatch" ? "Verify Registered Email" : "Create your technical identity"}
                 </p>
+                {mode === "link_mismatch" && (
+                  <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-[13px] font-bold">
+                    GitHub email unmatched. Login below to link it to your account.
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -255,17 +284,19 @@ function LoginContent() {
                 disabled={loading}
                 className="w-full h-14 mt-10 bg-zinc-100 text-black hover:bg-white rounded-2xl font-black uppercase tracking-[0.3em] text-[13px] shadow-2xl transition-all active:scale-95"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : mode === "login" ? "Verify Identity" : "Initialize Account"}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : mode === "login" ? "Verify Identity" : mode === "link_mismatch" ? "Link & Continue" : "Initialize Account"}
               </Button>
 
-              <div className="mt-8 text-center">
-                <button
-                  onClick={() => setMode(mode === "login" ? "signup" : "login")}
-                  className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-emerald-400 transition-colors"
-                >
-                  {mode === "login" ? "Establish New Identity" : "Return to Security Portal"}
-                </button>
-              </div>
+              {mode !== "link_mismatch" && (
+                <div className="mt-8 text-center">
+                  <button
+                    onClick={() => setMode(mode === "login" ? "signup" : "login")}
+                    className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-emerald-400 transition-colors"
+                  >
+                    {mode === "login" ? "Establish New Identity" : "Return to Security Portal"}
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -291,6 +322,24 @@ function LoginContent() {
                     maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpInput(i, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace' && !otp[i] && i > 0) {
+                        document.getElementById(`otp-${i - 1}`)?.focus();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+                      if (paste.length > 0) {
+                        const newOtp = [...otp];
+                        for (let j = 0; j < paste.length && i + j < 6; j++) {
+                          newOtp[i + j] = paste[j];
+                        }
+                        setOtp(newOtp);
+                        const nextIndex = Math.min(i + paste.length, 5);
+                        document.getElementById(`otp-${nextIndex}`)?.focus();
+                      }
+                    }}
                     className="w-12 h-16 bg-white/[0.02] border border-white/[0.08] rounded-xl text-center text-2xl font-black text-emerald-500 focus:outline-none focus:border-emerald-500/50 transition-all shadow-inner"
                   />
                 ))}

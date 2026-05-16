@@ -29,6 +29,7 @@ model User {
   staff_type          String?           // "MANAGER", "PR", "SENIOR_DEV", etc.
   failed_attempts     Int               @default(0)
   lockout_until       DateTime?
+  status              String            @default("ACTIVE") // "ACTIVE", "BANNED"
   analysis_jobs       AnalysisJob[]
   vectors             DeveloperVector[]
   fingerprints        Fingerprint[]

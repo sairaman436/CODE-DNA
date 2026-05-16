@@ -42,7 +42,6 @@ export const SilkBackground: React.FC<SilkBackgroundProps> = ({ color = "#1c1c22
       draw() {
         this.phase += this.speed;
         const xOffset = Math.sin(this.phase) * this.amplitude;
-        const yOffset = Math.cos(this.phase * 0.7) * this.amplitude;
 
         ctx!.beginPath();
         ctx!.strokeStyle = this.color;

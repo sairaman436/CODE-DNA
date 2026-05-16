@@ -12,11 +12,22 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: username and github_id' });
     }
 
-    // 1. Create or Update User in DB
-    let user = await prisma.user.findUnique({ where: { github_id: github_id.toString() } });
+    // 1. Find existing user — Priority: session > github_id > username
+    let user = null;
     
+    // Check if the request comes from a logged-in user (session ID from frontend)
+    const sessionUserId = req.headers['x-user-id'];
+    if (sessionUserId) {
+      user = await prisma.user.findUnique({ where: { id: sessionUserId } });
+    }
+
+    // Fallback: lookup by github_id
     if (!user) {
-      // Fallback: Comprehensive check across all possible identifiers
+      user = await prisma.user.findUnique({ where: { github_id: github_id.toString() } });
+    }
+    
+    // Fallback: lookup by username variants
+    if (!user) {
       user = await prisma.user.findFirst({ 
         where: { 
           OR: [
@@ -28,6 +39,7 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // 2. Update existing or create new user
     if (user) {
       user = await prisma.user.update({
         where: { id: user.id },

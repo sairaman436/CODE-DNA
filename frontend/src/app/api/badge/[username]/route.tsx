@@ -19,7 +19,7 @@ export async function GET(
         profileData = await res.json();
       }
     } catch (e) {
-      console.warn("Could not fetch profile for badge, using fallback data", e);
+      // Silent fallback
     }
 
     // Default fallback values

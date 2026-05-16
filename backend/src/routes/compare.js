@@ -62,12 +62,23 @@ router.get('/:user1/:user2', async (req, res) => {
 });
 
 async function getLatestFingerprint(username) {
-  const user = await prisma.user.findFirst({
-    where: { username },
+  // Try codedna_username first (public-facing), then fall back to github username
+  let user = await prisma.user.findFirst({
+    where: { codedna_username: username },
     include: {
       fingerprints: { orderBy: { created_at: 'desc' }, take: 1 }
     }
   });
+
+  if (!user) {
+    user = await prisma.user.findFirst({
+      where: { username },
+      include: {
+        fingerprints: { orderBy: { created_at: 'desc' }, take: 1 }
+      }
+    });
+  }
+
   if (!user || user.fingerprints.length === 0) return null;
   return { user, fingerprint: user.fingerprints[0] };
 }
