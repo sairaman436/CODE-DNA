@@ -21,9 +21,16 @@ router.post('/', async (req, res) => {
       user = await prisma.user.findUnique({ where: { id: sessionUserId } });
     }
 
+    const finalGithubId = github_id || (user ? user.github_id : null);
+    const finalGithubUsername = username || (user ? user.github_username : null);
+
+    if (!finalGithubUsername || !finalGithubId) {
+      return res.status(400).json({ error: 'Missing required fields: username and github_id. Please link your GitHub account first.' });
+    }
+
     // Fallback: lookup by github_id
     if (!user) {
-      user = await prisma.user.findUnique({ where: { github_id: github_id.toString() } });
+      user = await prisma.user.findUnique({ where: { github_id: finalGithubId.toString() } });
     }
     
     // Fallback: lookup by username variants
@@ -31,9 +38,9 @@ router.post('/', async (req, res) => {
       user = await prisma.user.findFirst({ 
         where: { 
           OR: [
-            { github_username: username },
-            { username: username },
-            { codedna_username: username }
+            { github_username: finalGithubUsername },
+            { username: finalGithubUsername },
+            { codedna_username: finalGithubUsername }
           ]
         } 
       });
@@ -44,23 +51,23 @@ router.post('/', async (req, res) => {
       user = await prisma.user.update({
         where: { id: user.id },
         data: { 
-          github_id: github_id.toString(), 
-          github_username: username,
-          username: user.username || username, 
+          github_id: finalGithubId.toString(), 
+          github_username: finalGithubUsername,
+          username: user.username || finalGithubUsername, 
           display_name: user.display_name || display_name, 
           avatar_url: user.avatar_url || avatar_url,
-          codedna_username: user.codedna_username || username
+          codedna_username: user.codedna_username || finalGithubUsername
         }
       });
     } else {
       user = await prisma.user.create({
         data: { 
-          github_id: github_id.toString(), 
-          github_username: username,
-          username: username, 
+          github_id: finalGithubId.toString(), 
+          github_username: finalGithubUsername,
+          username: finalGithubUsername, 
           display_name, 
           avatar_url,
-          codedna_username: username
+          codedna_username: finalGithubUsername
         }
       });
     }
@@ -80,7 +87,7 @@ router.post('/', async (req, res) => {
     try {
       const { access_token } = req.body;
       const tokenToUse = access_token || process.env.GITHUB_TOKEN;
-      filteredRepos = await fetchAndFilterRepos(username, tokenToUse);
+      filteredRepos = await fetchAndFilterRepos(finalGithubUsername, tokenToUse);
       await prisma.analysisJob.update({
         where: { id: job.id },
         data: { current_step: `Found ${filteredRepos.length} eligible repositories`, progress: 10 }

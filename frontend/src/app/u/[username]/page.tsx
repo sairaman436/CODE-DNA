@@ -10,7 +10,8 @@ import { useSession } from "next-auth/react";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { DynamicBackground } from "@/components/DynamicBackground";
 import { AdminControls } from "@/components/AdminControls";
-import { RoleBadge } from "@/components/RoleBadge";
+import { ProfileBadgeCluster } from "@/components/ProfileBadgeCluster";
+import Footer from "@/components/Footer";
 
 interface RadarData {
   axis: string;
@@ -18,7 +19,20 @@ interface RadarData {
 }
 
 interface ProfileData {
-  user: { id: string; username: string; codedna_username: string | null; display_name: string | null; avatar_url: string | null; last_analyzed_at: string | null; role?: string; staff_type?: string };
+  user: { 
+    id: string; 
+    username: string; 
+    codedna_username: string | null; 
+    display_name: string | null; 
+    avatar_url: string | null; 
+    last_analyzed_at: string | null; 
+    role?: string; 
+    staff_type?: string;
+    bio?: string | null;
+    cover_url?: string | null;
+    accent_theme?: string | null;
+    pinned_badges?: string | null;
+  };
   type: string;
   summary: string;
   strengths: string[];
@@ -34,6 +48,17 @@ interface ProfileData {
   coding_since: string;
   analyzed_at: string;
 }
+
+const BADGE_DETAILS: Record<string, { label: string; icon: string }> = {
+  grandmaster: { label: "Grandmaster", icon: "🏆" },
+  cleancoder: { label: "Clean Coder", icon: "🧹" },
+  architect: { label: "Architect", icon: "🏗️" },
+  bughunter: { label: "Bug Hunter", icon: "🐛" },
+  nightowl: { label: "Night Owl", icon: "🦉" },
+  speeddemon: { label: "Speed Demon", icon: "🏎️" },
+  warden: { label: "Security Warden", icon: "🛡️" },
+  scribe: { label: "Doc Scribe", icon: "📝" }
+};
 
 
 export default function PublicProfilePage() {
@@ -106,6 +131,12 @@ export default function PublicProfilePage() {
         } else {
           const err = await res.json();
           setError(err.error || "Profile not found");
+          
+          // Import/use signOut from next-auth/react is already done as a hook/import
+          if (res.status === 404 && isOwnProfile && username !== "sample_dev") {
+            const { signOut } = require("next-auth/react");
+            signOut({ callbackUrl: "/login" });
+          }
         }
       } catch {
         setError("Could not connect to the server.");
@@ -201,14 +232,64 @@ export default function PublicProfilePage() {
   const totalLines = profile.languages.reduce((s, l) => s + l.total_lines, 0);
   const overallScore = Math.round(profile.radar.reduce((s, r) => s + r.value, 0) / profile.radar.length);
 
-  // badgeRank calculated but currently unused in UI
-  /*
-  const badgeRank = overallScore >= 95 ? "Code Grandmaster" 
-    : overallScore >= 80 ? "Elite Hacker" 
-    : overallScore >= 60 ? "System Architect" 
-    : overallScore >= 40 ? "Script Hacker" 
-    : "Code Newbie";
-  */
+  const badgesList = profile.user.pinned_badges ? profile.user.pinned_badges.split(',').filter(Boolean) : [];
+
+  const themeId = profile.user.accent_theme || "emerald";
+  const accent = (({
+    emerald: {
+      text: "text-emerald-400",
+      border: "border-emerald-500/30",
+      bg: "bg-emerald-500",
+      glow: "shadow-[0_0_30px_rgba(16,185,129,0.15)]",
+      gradient: "from-emerald-500/20 to-emerald-500/5",
+      pulse: "bg-emerald-500",
+      bar: "bg-emerald-500"
+    },
+    sky: {
+      text: "text-sky-400",
+      border: "border-sky-500/30",
+      bg: "bg-sky-500",
+      glow: "shadow-[0_0_30px_rgba(14,165,233,0.15)]",
+      gradient: "from-sky-500/20 to-sky-500/5",
+      pulse: "bg-sky-500",
+      bar: "bg-sky-500"
+    },
+    cyberpunk: {
+      text: "text-purple-400",
+      border: "border-purple-500/30",
+      bg: "bg-purple-500",
+      glow: "shadow-[0_0_30px_rgba(168,85,247,0.2)]",
+      gradient: "from-purple-500/20 to-pink-500/10",
+      pulse: "bg-purple-500",
+      bar: "bg-gradient-to-r from-purple-500 to-pink-500"
+    },
+    nebula: {
+      text: "text-indigo-400",
+      border: "border-indigo-500/30",
+      bg: "bg-indigo-500",
+      glow: "shadow-[0_0_30px_rgba(99,102,241,0.2)]",
+      gradient: "from-indigo-500/20 to-purple-500/10",
+      pulse: "bg-indigo-500",
+      bar: "bg-gradient-to-r from-indigo-500 to-purple-500"
+    },
+    sunset: {
+      text: "text-amber-400",
+      border: "border-amber-500/30",
+      bg: "bg-amber-500",
+      glow: "shadow-[0_0_30px_rgba(245,158,11,0.15)]",
+      gradient: "from-amber-500/20 to-red-500/10",
+      pulse: "bg-amber-500",
+      bar: "bg-gradient-to-r from-amber-500 to-red-500"
+    }
+  } as Record<string, any>)[themeId]) || {
+    text: "text-emerald-400",
+    border: "border-emerald-500/30",
+    bg: "bg-emerald-500",
+    glow: "shadow-[0_0_30px_rgba(16,185,129,0.15)]",
+    gradient: "from-emerald-500/20 to-emerald-500/5",
+    pulse: "bg-emerald-500",
+    bar: "bg-emerald-500"
+  };
 
   return (
     <div className="min-h-screen text-zinc-100 font-sans selection:bg-white/10 pb-24 relative overflow-x-hidden">
@@ -228,27 +309,48 @@ export default function PublicProfilePage() {
             <motion.section
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[40px] p-8 relative overflow-hidden shadow-2xl"
+              className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-[40px] p-0 relative overflow-hidden shadow-2xl"
             >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-[60px] -mr-16 -mt-16" />
-              
-              <div className="flex flex-col items-center text-center">
-                <div className="w-24 h-24 rounded-[32px] bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/[0.1] overflow-hidden mb-6 shadow-2xl">
+              <div className="p-8 flex flex-col items-center text-center">
+                <div className="relative w-24 h-24 rounded-[32px] bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/[0.1] overflow-hidden mb-6 shadow-2xl mt-6">
                   <img src={avatar} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = `https://avatar.vercel.sh/${handle}` }} />
                 </div>
                 
                 <h1 className="text-3xl font-bold text-zinc-100 mb-1 tracking-tight">{displayName}</h1>
                 <p className="text-[14px] text-zinc-600 font-mono mb-4">@{handle}</p>
 
-                <div className="mb-6">
-                  <RoleBadge 
-                    role={profile.user.role || 'USER'} 
-                    type={profile.user.staff_type} 
+                {/* showcase badges */}
+                {badgesList.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 justify-center mb-4">
+                    {badgesList.map(bId => {
+                      const badgeInfo = BADGE_DETAILS[bId];
+                      if (!badgeInfo) return null;
+                      return (
+                        <span key={bId} className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-white/[0.04] border ${accent.border} ${accent.text} ${accent.glow}`}>
+                          <span>{badgeInfo.icon}</span>
+                          <span>{badgeInfo.label}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="mb-6 w-full px-2">
+                  <ProfileBadgeCluster 
+                    profile={profile} 
+                    isAnalyzed={isAnalyzed} 
+                    overallScore={overallScore} 
                   />
                 </div>
+
+                {profile.user.bio && (
+                  <p className="text-[12px] text-zinc-400 mb-6 leading-relaxed font-medium italic bg-white/[0.01] border border-white/[0.03] rounded-2xl p-4 w-full">
+                    &ldquo;{profile.user.bio}&rdquo;
+                  </p>
+                )}
                 
                 <div className="flex gap-2 w-full">
-                  <Button onClick={handleCopyLink} variant="outline" className="flex-1 h-12 rounded-2xl border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:text-zinc-100 hover:bg-white/5 text-[11px] font-black uppercase tracking-widest transition-all">
+                  <Button onClick={handleCopyLink} variant="outline" className={`flex-1 h-12 rounded-2xl border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:text-zinc-100 hover:bg-white/5 text-[11px] font-black uppercase tracking-widest transition-all ${copied ? accent.text : ''}`}>
                     {copied ? <Check className="w-3.5 h-3.5 mr-2 text-emerald-500" /> : <Share2 className="w-3.5 h-3.5 mr-2" />}
                     {copied ? "Copied" : "Share"}
                   </Button>
@@ -263,7 +365,7 @@ export default function PublicProfilePage() {
                   <Button 
                     onClick={handleCopyBadge} 
                     variant="outline" 
-                    className="w-full mt-2 h-12 rounded-2xl border-white/[0.08] bg-zinc-100 text-black hover:bg-white text-[11px] font-black uppercase tracking-widest transition-all shadow-xl shadow-emerald-500/5"
+                    className={`w-full mt-2 h-12 rounded-2xl border-white/[0.08] bg-zinc-100 text-black hover:bg-white text-[11px] font-black uppercase tracking-widest transition-all shadow-xl`}
                   >
                     {copiedBadge ? <Check className="w-3.5 h-3.5 mr-2 text-emerald-600" /> : <svg className="w-3.5 h-3.5 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.03-2.682-.103-.253-.447-1.27.098-2.646 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.376.202 2.394.1 2.646.64.699 1.026 1.591 1.026 2.682 0 3.841-2.337 4.687-4.565 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z"/></svg>}
                     {copiedBadge ? "Badge Copied!" : "Embed DNA Badge"}
@@ -271,15 +373,15 @@ export default function PublicProfilePage() {
                 )}
               </div>
 
-              <div className="mt-10 space-y-4">
-                <div className="p-6 rounded-[28px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
+              <div className="mt-10 space-y-4 px-8 pb-8">
+                <div className={`p-6 rounded-[28px] bg-white/[0.04] border backdrop-blur-md ${accent.border}`}>
                   <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-600 mb-2">Class Assignment</h3>
-                  <p className="text-[16px] font-bold text-zinc-100 tracking-tight">{profile.type}</p>
+                  <p className={`text-[16px] font-bold tracking-tight ${accent.text}`}>{profile.type}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-6 rounded-[28px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
                     <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-700 mb-1">Score</h3>
-                    <p className="text-3xl font-black text-zinc-100 tracking-tighter">{isAnalyzed ? overallScore : "---"}</p>
+                    <p className={`text-3xl font-black tracking-tighter ${accent.text}`}>{isAnalyzed ? overallScore : "---"}</p>
                   </div>
                   <div className="p-6 rounded-[28px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
                     <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-700 mb-1">Repos</h3>
@@ -310,7 +412,7 @@ export default function PublicProfilePage() {
                           initial={{ width: 0 }}
                           animate={{ width: `${pct}%` }}
                           transition={{ duration: 1, ease: "easeOut" }}
-                          className="h-full bg-zinc-400 rounded-full"
+                          className={`h-full rounded-full ${accent.bar}`}
                         />
                       </div>
                     </div>
@@ -515,6 +617,8 @@ export default function PublicProfilePage() {
 
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

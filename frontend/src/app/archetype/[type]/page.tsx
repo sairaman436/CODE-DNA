@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import Footer from "@/components/Footer";
 import { ArrowLeft } from "lucide-react";
 
 const ARCHETYPES: Record<string, {
@@ -153,22 +154,7 @@ export default function ArchetypePage() {
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-white/20 relative noise">
       <div className="fixed inset-0 dot-grid pointer-events-none z-0" />
 
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.04] bg-black/60 backdrop-blur-2xl">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 font-semibold text-[15px] text-white">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-            Code DNA
-          </Link>
-          <div className="flex items-center gap-6 text-[13px]">
-            <Link href="/" className="text-zinc-500 hover:text-white transition-colors">Home</Link>
-            <Link href="/discover" className="text-zinc-500 hover:text-white transition-colors">Discover</Link>
-            <Link href="/leaderboard" className="text-zinc-500 hover:text-white transition-colors">Leaderboard</Link>
-            <Link href="/login" className="text-white hover:text-zinc-300 transition-colors">Sign In</Link>
-          </div>
-        </div>
-      </nav>
+
 
       <main className="relative z-10 pt-32 pb-24 px-6 max-w-4xl mx-auto">
         <Link href="/discover" className="inline-flex items-center gap-2 text-[12px] text-zinc-600 hover:text-white transition-colors mb-12">
@@ -258,6 +244,7 @@ export default function ArchetypePage() {
           </Link>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

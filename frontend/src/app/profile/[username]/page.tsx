@@ -13,9 +13,22 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { RadarChart, RadarData } from "@/components/RadarChart";
 import { useToast } from "@/components/Toast";
+import { ProfileBadgeCluster } from "@/components/ProfileBadgeCluster";
+import Footer from "@/components/Footer";
 
 interface ProfileData {
-  user: { username: string; display_name: string | null; avatar_url: string | null; last_analyzed_at: string | null };
+  user: { 
+    username: string; 
+    display_name: string | null; 
+    avatar_url: string | null; 
+    last_analyzed_at: string | null;
+    bio?: string | null;
+    cover_url?: string | null;
+    accent_theme?: string | null;
+    pinned_badges?: string | null;
+    role?: string;
+    staff_type?: string;
+  };
   type: string;
   summary: string;
   strengths: string[];
@@ -36,6 +49,17 @@ interface ProfileData {
   total_files_analyzed: number;
   analyzed_at: string;
 }
+
+const BADGE_DETAILS: Record<string, { label: string; icon: string }> = {
+  grandmaster: { label: "Grandmaster", icon: "🏆" },
+  cleancoder: { label: "Clean Coder", icon: "🧹" },
+  architect: { label: "Architect", icon: "🏗️" },
+  bughunter: { label: "Bug Hunter", icon: "🐛" },
+  nightowl: { label: "Night Owl", icon: "🦉" },
+  speeddemon: { label: "Speed Demon", icon: "🏎️" },
+  warden: { label: "Security Warden", icon: "🛡️" },
+  scribe: { label: "Doc Scribe", icon: "📝" }
+};
 
 export default function ProfilePage() {
   const params = useParams();
@@ -72,6 +96,65 @@ export default function ProfilePage() {
   const avatar = profileData?.user?.avatar_url || (isOwner && session?.user?.image ? session.user.image : `https://github.com/${username}.png`);
   const displayName = profileData?.user?.display_name || username;
 
+  const badgesList = profileData?.user?.pinned_badges ? profileData.user.pinned_badges.split(',').filter(Boolean) : [];
+
+  const themeId = profileData?.user?.accent_theme || "emerald";
+  const accent = (({
+    emerald: {
+      text: "text-emerald-400",
+      border: "border-emerald-500/30",
+      bg: "bg-emerald-500",
+      glow: "shadow-[0_0_30px_rgba(16,185,129,0.15)]",
+      gradient: "from-emerald-500/20 to-emerald-500/5",
+      pulse: "bg-emerald-500",
+      bar: "bg-emerald-500"
+    },
+    sky: {
+      text: "text-sky-400",
+      border: "border-sky-500/30",
+      bg: "bg-sky-500",
+      glow: "shadow-[0_0_30px_rgba(14,165,233,0.15)]",
+      gradient: "from-sky-500/20 to-sky-500/5",
+      pulse: "bg-sky-500",
+      bar: "bg-sky-500"
+    },
+    cyberpunk: {
+      text: "text-purple-400",
+      border: "border-purple-500/30",
+      bg: "bg-purple-500",
+      glow: "shadow-[0_0_30px_rgba(168,85,247,0.2)]",
+      gradient: "from-purple-500/20 to-pink-500/10",
+      pulse: "bg-purple-500",
+      bar: "bg-gradient-to-r from-purple-500 to-pink-500"
+    },
+    nebula: {
+      text: "text-indigo-400",
+      border: "border-indigo-500/30",
+      bg: "bg-indigo-500",
+      glow: "shadow-[0_0_30px_rgba(99,102,241,0.2)]",
+      gradient: "from-indigo-500/20 to-purple-500/10",
+      pulse: "bg-indigo-500",
+      bar: "bg-gradient-to-r from-indigo-500 to-purple-500"
+    },
+    sunset: {
+      text: "text-amber-400",
+      border: "border-amber-500/30",
+      bg: "bg-amber-500",
+      glow: "shadow-[0_0_30px_rgba(245,158,11,0.15)]",
+      gradient: "from-amber-500/20 to-red-500/10",
+      pulse: "bg-amber-500",
+      bar: "bg-gradient-to-r from-amber-500 to-red-500"
+    }
+  } as Record<string, any>)[themeId]) || {
+    text: "text-emerald-400",
+    border: "border-emerald-500/30",
+    bg: "bg-emerald-500",
+    glow: "shadow-[0_0_30px_rgba(16,185,129,0.15)]",
+    gradient: "from-emerald-500/20 to-emerald-500/5",
+    pulse: "bg-emerald-500",
+    bar: "bg-emerald-500"
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -107,36 +190,13 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-zinc-300 font-sans selection:bg-white/20 pb-20">
       
-      {/* ─── Mockup Navbar ─── */}
-      <nav className="h-16 border-b border-white/[0.04] bg-[#0d0d0d] flex items-center px-8 justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-12">
-          <Link href="/" className="flex items-center gap-2 font-bold text-white text-[15px]">
-            <div className="w-2 h-2 rounded-full bg-zinc-800" />
-            Code DNA
-          </Link>
-          <div className="hidden md:flex items-center gap-8 text-[13px] font-medium text-zinc-500">
-            <Link href="/discover" className="hover:text-white transition-colors">Explore</Link>
-            <Link href="/compare" className="hover:text-white transition-colors">Compare</Link>
-            <Link href="/leaderboard" className="hover:text-white transition-colors">Leaderboard</Link>
-            <Link href="/match" className="hover:text-white transition-colors">Find teammate</Link>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-[13px] text-zinc-500 hover:text-white transition-colors font-medium">Home</Link>
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-1.5 flex items-center gap-3">
-            <div className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
-            <span className="text-[13px] font-semibold text-zinc-300">@{username}</span>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-[1200px] mx-auto px-6 pt-10 space-y-6">
+      <main className="max-w-[1200px] mx-auto px-6 pt-32 space-y-6">
         
         {/* ─── Header Card ─── */}
         <section className="bg-[#18181b] border border-white/[0.04] rounded-[24px] p-8">
           <div className="flex flex-col md:flex-row justify-between items-start gap-8">
             <div className="flex items-center gap-8">
-              <div className="w-24 h-24 rounded-[28px] bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/[0.06] flex items-center justify-center overflow-hidden">
+              <div className="w-24 h-24 rounded-[28px] bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/[0.06] flex items-center justify-center overflow-hidden shrink-0 shadow-2xl relative z-10">
                 {avatar ? (
                   <img src={avatar} alt="" className="w-full h-full object-cover" />
                 ) : (
@@ -144,17 +204,41 @@ export default function ProfilePage() {
                 )}
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-white mb-1">{displayName}</h1>
-                <div className="flex items-center gap-2 text-[14px] text-zinc-500 mb-4 font-medium">
+                <div className="flex flex-wrap items-center gap-3 mb-1">
+                  <h1 className="text-2xl font-bold text-white">{displayName}</h1>
+                  {badgesList.length > 0 && (
+                    <div className="flex gap-1.5">
+                      {badgesList.map(bId => {
+                        const badgeInfo = BADGE_DETAILS[bId];
+                        if (!badgeInfo) return null;
+                        return (
+                          <span key={bId} className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-white/[0.04] border ${accent.border} ${accent.text} ${accent.glow}`}>
+                            <span>{badgeInfo.icon}</span>
+                            <span>{badgeInfo.label}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-[14px] text-zinc-500 mb-3 font-medium">
                   <span>@{username}</span>
                   <span>•</span>
                   <span>{profileData.repos_analyzed} repos analyzed</span>
                   <span>•</span>
                   <span>{totalCommits.toLocaleString()} commits parsed</span>
                 </div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/[0.06] rounded-lg">
-                  <div className="w-3 h-3 rounded bg-white/20 border border-white/40" />
-                  <span className="text-[11px] font-bold text-white uppercase tracking-wider">{profileData.type}</span>
+                {profileData.user.bio && (
+                  <p className="text-[13px] text-zinc-400 mb-3 max-w-xl italic leading-relaxed">
+                    &ldquo;{profileData.user.bio}&rdquo;
+                  </p>
+                )}
+                <div className="w-full max-w-[400px]">
+                  <ProfileBadgeCluster 
+                    profile={profileData} 
+                    isAnalyzed={!!profileData.analyzed_at} 
+                    overallScore={profileData.radar?.length > 0 ? Math.round(profileData.radar.reduce((acc, r) => acc + r.value, 0) / profileData.radar.length) : 0} 
+                  />
                 </div>
               </div>
             </div>
@@ -196,7 +280,7 @@ export default function ProfilePage() {
                     <motion.div 
                       initial={{ width: 0 }} 
                       animate={{ width: `${axis.value}%` }} 
-                      className="h-full bg-white/60 rounded-full"
+                      className={`h-full rounded-full ${accent.bar}`}
                     />
                   </div>
                   <span className="text-[13px] font-bold text-white w-6">{axis.value}</span>
@@ -225,7 +309,7 @@ export default function ProfilePage() {
                         <motion.div 
                           initial={{ width: 0 }} 
                           animate={{ width: `${pct}%` }} 
-                          className="h-full bg-white/40 rounded-full"
+                          className={`h-full rounded-full ${accent.bar}`}
                         />
                       </div>
                       <span className="text-[13px] font-bold text-zinc-500">{pct}%</span>
@@ -363,6 +447,8 @@ export default function ProfilePage() {
           </div>
         </section>
       </main>
+
+      <Footer />
     </div>
   );
 }

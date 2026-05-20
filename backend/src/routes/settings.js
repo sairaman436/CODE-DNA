@@ -52,6 +52,46 @@ router.put('/privacy', verifyOwnership, async (req, res) => {
   }
 });
 
+// PUT /api/settings/avatar — Update user avatar image URL
+router.put('/avatar', verifyOwnership, async (req, res) => {
+  try {
+    const { avatar_url } = req.body;
+
+    await prisma.user.update({
+      where: { id: req.authenticatedUser.id },
+      data: { avatar_url: avatar_url || null }
+    });
+
+    return res.json({ message: 'Avatar updated successfully', avatar_url });
+  } catch (error) {
+    console.error('Avatar update error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PUT /api/settings/profile — Update user bio, banner, accent theme, and pinned badges
+router.put('/profile', verifyOwnership, async (req, res) => {
+  try {
+    const { bio, cover_url, accent_theme, pinned_badges, avatar_url } = req.body;
+
+    await prisma.user.update({
+      where: { id: req.authenticatedUser.id },
+      data: {
+        bio: bio !== undefined ? bio : undefined,
+        cover_url: cover_url !== undefined ? cover_url : undefined,
+        accent_theme: accent_theme !== undefined ? accent_theme : undefined,
+        pinned_badges: pinned_badges !== undefined ? pinned_badges : undefined,
+        avatar_url: avatar_url !== undefined ? avatar_url : undefined,
+      }
+    });
+
+    return res.json({ message: 'Profile settings updated successfully' });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // POST /api/settings/reanalyze — Trigger fresh analysis
 router.post('/reanalyze', verifyOwnership, async (req, res) => {
   try {

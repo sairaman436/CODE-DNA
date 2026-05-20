@@ -34,11 +34,28 @@ except Exception as e:
 # Language detection
 # ──────────────────────────────────────────
 LANG_EXTENSIONS = {
+    # Core Languages
     '.py': 'Python', '.js': 'JavaScript', '.ts': 'TypeScript', '.tsx': 'TypeScript',
     '.jsx': 'JavaScript', '.go': 'Go', '.java': 'Java', '.rb': 'Ruby',
     '.rs': 'Rust', '.cpp': 'C++', '.c': 'C', '.cs': 'C#', '.php': 'PHP',
     '.swift': 'Swift', '.kt': 'Kotlin', '.scala': 'Scala', '.dart': 'Dart',
     '.lua': 'Lua', '.r': 'R', '.R': 'R',
+    
+    # Web & Style Languages
+    '.html': 'HTML', '.htm': 'HTML', '.css': 'CSS', '.scss': 'SCSS', '.sass': 'Sass', 
+    '.less': 'Less', '.vue': 'Vue', '.svelte': 'Svelte',
+    
+    # Scripts & Shells
+    '.sh': 'Shell', '.bash': 'Shell', '.zsh': 'Shell', '.bat': 'Batch', '.ps1': 'PowerShell',
+    
+    # Systems & Functional
+    '.h': 'C/C++ Header', '.hpp': 'C/C++ Header', '.m': 'Objective-C', '.mm': 'Objective-C++',
+    '.pl': 'Perl', '.pm': 'Perl', '.hs': 'Haskell', '.ml': 'OCaml', '.ex': 'Elixir', '.exs': 'Elixir',
+    '.erl': 'Erlang', '.clj': 'Clojure', '.cljs': 'Clojure', '.lisp': 'Lisp', '.lsp': 'Lisp',
+    
+    # Data & Configuration
+    '.sql': 'SQL', '.yaml': 'YAML', '.yml': 'YAML', '.json': 'JSON', '.toml': 'TOML', 
+    '.xml': 'XML', '.md': 'Markdown', '.markdown': 'Markdown'
 }
 
 # File patterns to skip (Rule 10: generated/boilerplate)

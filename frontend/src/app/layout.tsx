@@ -24,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("font-sans", inter.variable)}>
+    <html lang="en" className={cn("font-sans dark", inter.variable)}>
       <body className="antialiased bg-[#050505]">
         <SessionProvider>
           <ToastProvider>

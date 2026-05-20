@@ -56,8 +56,8 @@ async function fetchAndFilterRepos(username, token) {
     // Exclude archived repos (Rule 9)
     if (repo.archived) return false;
 
-    // Exclude repos with < 3 commits worth of content (Blueprint §11 Step 2)
-    if (repo.size < 10) return false;
+    // Allow repositories of any size with at least some content (even 1 commit)
+    if (repo.size <= 0) return false;
 
     const name = repo.name.toLowerCase();
     const desc = (repo.description || '').toLowerCase();

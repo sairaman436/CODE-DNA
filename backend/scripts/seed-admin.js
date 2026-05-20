@@ -3,8 +3,8 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = 'admin@codedna.dev';
-  const adminPassword = 'sairamanladi2007@gmail.com'; 
+  const adminEmail = 'sairamanladi2007@gmail.com';
+  const adminPassword = 'sairamanladi2007@gmail.com';
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
   const admin = await prisma.user.upsert({
@@ -13,7 +13,8 @@ async function main() {
       role: 'ADMIN',
       password: hashedPassword,
       email_verified: true,
-      display_name: 'Master Admin'
+      display_name: 'Master Admin',
+      codedna_username: 'masteradmin'
     },
     create: {
       email: adminEmail,
@@ -22,7 +23,8 @@ async function main() {
       email_verified: true,
       display_name: 'Master Admin',
       phone_number: '0000000000',
-      country_code: '+00'
+      country_code: '+00',
+      codedna_username: 'masteradmin'
     }
   });
 

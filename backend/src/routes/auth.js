@@ -25,6 +25,38 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'User already exists' });
     }
 
+    let gitUsername = null;
+    let gitId = null;
+    let gitAvatar = null;
+
+    // Verify email is registered on GitHub
+    try {
+      const searchUrl = `https://api.github.com/search/users?q=${encodeURIComponent(email)}+in:email`;
+      const headers = { 'User-Agent': 'Code-DNA-App' };
+      if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+        const credentials = Buffer.from(`${process.env.GITHUB_CLIENT_ID}:${process.env.GITHUB_CLIENT_SECRET}`).toString('base64');
+        headers['Authorization'] = `Basic ${credentials}`;
+      }
+      const gitCheck = await fetch(searchUrl, { headers });
+      if (gitCheck.ok) {
+        const gitData = await gitCheck.json();
+        if (gitData.total_count === 0) {
+          return res.status(400).json({ error: 'This email is not associated with any GitHub account. You must register with your primary GitHub email.' });
+        }
+        // Extract matching GitHub user details to auto-link
+        const matchedUser = gitData.items[0];
+        gitUsername = matchedUser.login;
+        gitId = matchedUser.id.toString();
+        gitAvatar = matchedUser.avatar_url;
+      } else {
+        const errText = await gitCheck.text();
+        console.error('GitHub email check failed:', errText);
+      }
+    } catch (gitErr) {
+      console.error('GitHub email verification error:', gitErr);
+      // Fallback: don't block registration if GitHub API is completely down/unreachable
+    }
+
     // Generate OTP
     const code = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -47,6 +79,9 @@ router.post('/register', async (req, res) => {
           phone_number: phone,
           country_code: countryCode,
           codedna_username: existingUser.codedna_username || codedna_username,
+          github_username: existingUser.github_username || gitUsername,
+          github_id: existingUser.github_id || gitId,
+          avatar_url: existingUser.avatar_url || gitAvatar,
         }
       });
     } else {
@@ -58,6 +93,9 @@ router.post('/register', async (req, res) => {
           phone_number: phone,
           country_code: countryCode,
           codedna_username,
+          github_username: gitUsername,
+          github_id: gitId,
+          avatar_url: gitAvatar,
         }
       });
     }
@@ -179,7 +217,9 @@ router.post('/login', async (req, res) => {
           id: user.id,
           email: user.email,
           name: user.display_name,
+          codedna_username: user.codedna_username,
           role: user.role,
+          status: user.status,
           github_linked: !!user.github_id
         }
       });
@@ -258,7 +298,12 @@ router.post('/verify', async (req, res) => {
         id: user.id,
         email: user.email,
         name: user.display_name,
+        codedna_username: user.codedna_username,
+        role: user.role,
+        status: user.status,
         github_linked: !!user.github_id,
+        github_id: user.github_id,
+        github_username: user.github_username,
         phone: user.phone_number
       }
     });

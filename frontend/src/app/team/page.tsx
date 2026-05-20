@@ -3,6 +3,7 @@
 import { Users2, ShieldAlert, Zap } from "lucide-react";
 import { RadarChart, RadarData } from "@/components/RadarChart";
 import { Button } from "@/components/ui/button";
+import Footer from "@/components/Footer";
 
 const MOCK_TEAM_MEMBERS = [
   { name: "Saira", role: "Frontend Lead", type: "The Architect", avatar: "https://github.com/saira.png" },
@@ -112,6 +113,7 @@ export default function TeamPage() {
 
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

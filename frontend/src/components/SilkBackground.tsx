@@ -90,7 +90,7 @@ export const SilkBackground: React.FC<SilkBackgroundProps> = ({ color = "#1c1c22
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 z-0 pointer-events-none"
+      className="fixed inset-0 w-full h-full z-0 pointer-events-none"
       style={{ background: color }}
     />
   );

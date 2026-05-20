@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { 
   ArrowUpRight, Activity, Trophy, Clock, Zap, Sparkles, 
-  Globe, Target, LayoutGrid, ArrowRight, Scale 
+  Globe, Target, LayoutGrid, ArrowRight, Scale,
+  MessageSquare, Code2, GitPullRequest
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
@@ -307,7 +308,7 @@ function PublicLanding() {
                   Code DNA
                 </Link>
                 <p className="text-zinc-500 text-[15px] leading-relaxed mb-8 max-w-sm">
-                  Mapping the structural identity of the world's developers through advanced AST analysis and cognitive fingerprinting.
+                  Mapping the structural identity of the world&apos;s developers through advanced AST analysis and cognitive fingerprinting.
                 </p>
                 <div className="flex gap-5">
                   {['Twitter', 'GitHub', 'LinkedIn'].map(social => (
@@ -401,13 +402,26 @@ function FeatureCard({ icon, title, description, delay }: any) {
    ======================================================================== */
 function UserDashboard({ session }: { session: any }) {
   const router = useRouter();
-  const username = session?.githubLogin || session?.user?.name;
+  const username = session?.codedna_username || session?.githubLogin || session?.user?.name;
   const avatar = session?.user?.image || `https://avatar.vercel.sh/${username}`;
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [analyzingJobId, setAnalyzingJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<any>(null);
+
+  const displayName = data?.user?.display_name || session?.user?.name || username;
+
+  const patterns = data?.commit_patterns || {
+    most_active_hour: 14,
+    commit_style: "Descriptive",
+    avg_message_length: 42,
+    fix_to_feature_ratio: 0.28,
+    avg_commit_size: 32,
+    emoji_usage_pct: 12.5,
+    naming_style: "camelCase",
+    avg_fn_length: 22,
+  };
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -417,6 +431,9 @@ function UserDashboard({ session }: { session: any }) {
         if (res.ok) {
           const d = await res.json();
           setData(d);
+        } else if (res.status === 404 && username !== "sample_dev") {
+          // If the database user is not found, force sign out to invalidate the session cookie
+          signOut({ callbackUrl: "/login" });
         }
       } catch (err) {
         // Silent error handling
@@ -458,6 +475,14 @@ function UserDashboard({ session }: { session: any }) {
 
   const handleReanalyze = async () => {
     try {
+      const targetGithubUsername = session?.githubLogin || data?.user?.github_username;
+      const targetGithubId = session?.githubId || data?.user?.github_id;
+
+      if (!targetGithubUsername || !targetGithubId) {
+        alert("Your account is not linked to GitHub yet. Please link your GitHub account in settings or log in with GitHub to analyze your repositories!");
+        return;
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const res = await fetch(`${apiUrl}/api/analyze`, {
         method: 'POST',
@@ -466,10 +491,10 @@ function UserDashboard({ session }: { session: any }) {
           'x-user-id': session?.user?.id || ''
         },
         body: JSON.stringify({
-          username: session?.githubLogin,
-          github_id: session?.githubId,
-          display_name: session?.user?.name,
-          avatar_url: session?.user?.image,
+          username: targetGithubUsername,
+          github_id: targetGithubId,
+          display_name: session?.user?.name || data?.user?.display_name,
+          avatar_url: session?.user?.image || data?.user?.avatar_url,
           access_token: (session as any)?.accessToken
         })
       });
@@ -509,7 +534,7 @@ function UserDashboard({ session }: { session: any }) {
               <span className="text-[11px] uppercase tracking-[0.2em] text-zinc-600 font-black">Authenticated Sequence</span>
             </div>
             <h1 className="text-5xl font-bold text-zinc-100 tracking-tight mb-6">
-              Welcome back, <span className={(session as any)?.role === 'ADMIN' ? 'text-amber-400' : 'text-zinc-500'}>{username}</span>
+              Welcome back, <span className={(session as any)?.role === 'ADMIN' ? 'text-amber-400' : 'text-zinc-500'}>{displayName}</span>
             </h1>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2.5 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-full backdrop-blur-xl">
@@ -616,23 +641,37 @@ function UserDashboard({ session }: { session: any }) {
           </div>
 
           {/* Top Right: DNA Fingerprint Visualization */}
-          <div className="lg:col-span-4 bg-white/[0.03] rounded-[32px] border border-white/[0.08] p-10 flex flex-col items-center justify-center group overflow-hidden backdrop-blur-xl shadow-2xl relative">
+          <div className="lg:col-span-4 bg-white/[0.03] rounded-[32px] border border-white/[0.08] p-10 flex flex-col justify-between items-stretch group overflow-hidden backdrop-blur-xl shadow-2xl relative min-h-[460px]">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
-            <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black mb-10 self-start">Sequence Diagnostics</h3>
-            {data?.radar ? (
-              <div className="w-full aspect-square max-w-[300px] relative">
-                <div className="absolute inset-0 bg-emerald-500/5 blur-[100px] rounded-full group-hover:bg-emerald-500/10 transition-all duration-1000" />
-                <div className="relative z-10 scale-110">
-                  <RadarChart data={data.radar} size={300} color="#10b981" />
+            <div>
+              <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-600 font-black mb-8">Sequence Diagnostics</h3>
+              {data?.radar ? (
+                <div className="w-full space-y-4">
+                  {data.radar.map((r: any, i: number) => (
+                    <div key={r.axis} className="space-y-1.5">
+                      <div className="flex justify-between items-center px-0.5">
+                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{r.axis}</span>
+                        <span className="text-[10px] font-bold text-emerald-400">{r.value}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/[0.03] rounded-full overflow-hidden border border-white/[0.04]">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${r.value}%` }}
+                          transition={{ duration: 1, ease: "easeOut", delay: i * 0.05 }}
+                          className="h-full bg-gradient-to-r from-emerald-500/80 to-emerald-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.3)]"
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ) : (
-              <div className="text-center py-20 text-zinc-700">
-                <Scale className="w-10 h-10 mx-auto mb-4 opacity-20 animate-pulse" />
-                <p className="text-[9px] uppercase tracking-[0.3em] font-black">Syncing Sequence...</p>
-              </div>
-            )}
-            <Link href={`/profile/${username}`} className="mt-12 text-[10px] font-black tracking-[0.2em] text-zinc-500 hover:text-emerald-400 flex items-center gap-3 transition-all group/link">
+              ) : (
+                <div className="text-center py-20 text-zinc-700">
+                  <Scale className="w-10 h-10 mx-auto mb-4 opacity-20 animate-pulse" />
+                  <p className="text-[9px] uppercase tracking-[0.3em] font-black">Syncing Sequence...</p>
+                </div>
+              )}
+            </div>
+            <Link href={`/profile/${username}`} className="mt-8 text-[10px] font-black tracking-[0.2em] text-zinc-500 hover:text-emerald-400 flex items-center justify-center gap-3 transition-all group/link self-center">
               EXPAND FULL PORTAL <ArrowUpRight className="w-4 h-4 group-hover/link:translate-x-1 group-hover/link:-translate-y-1 transition-transform" />
             </Link>
           </div>
@@ -640,56 +679,103 @@ function UserDashboard({ session }: { session: any }) {
 
         {/* ─── Secondary Layout ─── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* DNA Activity Heatmap (Contribution Pulse) */}
-          <div className="lg:col-span-8 bg-white/[0.03] p-10 rounded-[32px] border border-white/[0.08] backdrop-blur-xl shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent" />
-            <div className="flex items-center justify-between mb-10">
-              <div>
-                <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-black mb-2">Structural Evolution Heatmap</h3>
-                <p className="text-[11px] text-zinc-600 font-medium">Your structural code fingerprint evolution across all repository sequences (Last 90 days).</p>
-              </div>
-              <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.02] border border-white/[0.04] rounded-xl">
-                <span className="text-[9px] text-zinc-700 uppercase font-black tracking-widest">Stability</span>
-                <div className="flex gap-1.5">
-                  {[0.1, 0.3, 0.6, 0.9].map(op => (
-                    <div key={op} className="w-3 h-3 rounded-[3px] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.2)]" style={{ opacity: op }} />
-                  ))}
-                </div>
-                <span className="text-[9px] text-zinc-700 uppercase font-black tracking-widest">Growth</span>
-              </div>
-            </div>
+          {/* Code Signature & Git Patterns Bento Card */}
+          <div className="lg:col-span-8 bg-white/[0.03] p-10 rounded-[32px] border border-white/[0.08] backdrop-blur-xl shadow-2xl relative overflow-hidden flex flex-col justify-between">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
             
-            {/* Heatmap Grid */}
-            <div className="flex flex-col gap-2">
-              {Array.from({ length: 7 }).map((_, row) => (
-                <div key={row} className="flex gap-2">
-                  {Array.from({ length: 13 }).map((_, col) => {
-                    const dayIndex = col * 7 + row;
-                    const activityCount = data?.activity_pulse?.[dayIndex] || 0;
-                    const intensity = Math.min(activityCount / 5, 1);
-                    
-                    return (
-                      <div 
-                        key={col} 
-                        className="flex-1 aspect-square rounded-[3px] transition-all hover:scale-125 hover:z-20 cursor-crosshair relative group/day shadow-inner"
-                        style={{ 
-                          backgroundColor: activityCount > 0 ? '#10b981' : '#18181b',
-                          opacity: activityCount > 0 ? (0.3 + intensity * 0.7) : 0.1
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-emerald-500 blur-[4px] opacity-0 group-hover/day:opacity-40 transition-opacity" />
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+            <div className="mb-8">
+              <h3 className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-black mb-2">Code Signature & Git Patterns</h3>
+              <p className="text-[11px] text-zinc-600 font-medium">Deep structural analysis of commit metrics, styling standards, and development cycle diagnostics.</p>
             </div>
 
-            <div className="flex justify-between mt-8 text-[9px] uppercase tracking-[0.25em] text-zinc-700 font-black">
-              <span className="text-zinc-800 italic">HISTORICAL DATA</span>
-              <div className="flex gap-12">
-                <span className="hover:text-zinc-500 transition-colors">Structural Genesis</span>
-                <span className="hover:text-zinc-500 transition-colors">Current Sequence</span>
+            {/* Bento Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+              {/* Card 1: Chronological Focus */}
+              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all relative group overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
+                <div className="flex items-center gap-3 mb-4 text-emerald-400">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-[9px] uppercase font-black tracking-widest">Chronological Focus</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[20px] font-black tracking-tight text-zinc-100">
+                      {patterns.most_active_hour ? `${patterns.most_active_hour}:00` : '14:00'}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">
+                      {patterns.most_active_hour < 12 ? 'Early Bird' : patterns.most_active_hour >= 18 ? 'Night Owl' : 'Peak Afternoon'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 font-medium leading-relaxed">
+                    Your commit activity peaks during this period, indicating high-focus and optimal cognitive state.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 2: Message Signature */}
+              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all relative group overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
+                <div className="flex items-center gap-3 mb-4 text-emerald-400">
+                  <MessageSquare className="w-4 h-4" />
+                  <span className="text-[9px] uppercase font-black tracking-widest">Message Signature</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[20px] font-black tracking-tight text-zinc-100">
+                      {patterns.commit_style || 'Descriptive'}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">
+                      {patterns.avg_message_length ? `${Math.round(patterns.avg_message_length)} chars` : '42 chars'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 font-medium leading-relaxed">
+                    You write {patterns.commit_style === 'Imperative' ? 'concise, action-driven' : 'highly explanatory, rich'} commit summaries with an emoji density of {patterns.emoji_usage_pct ? `${patterns.emoji_usage_pct.toFixed(1)}%` : '12.5%'}.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 3: Codebase Topology */}
+              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all relative group overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
+                <div className="flex items-center gap-3 mb-4 text-emerald-400">
+                  <Code2 className="w-4 h-4" />
+                  <span className="text-[9px] uppercase font-black tracking-widest">Codebase Topology</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[20px] font-black tracking-tight text-zinc-100">
+                      {patterns.avg_fn_length ? `${Math.round(patterns.avg_fn_length)} lines` : '22 lines'}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">
+                      {patterns.naming_style || 'camelCase'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 font-medium leading-relaxed">
+                    Average function length reflects solid modularity, formatted strictly matching standard {patterns.naming_style || 'camelCase'} guidelines.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 4: Change Velocity */}
+              <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-all relative group overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
+                <div className="flex items-center gap-3 mb-4 text-emerald-400">
+                  <GitPullRequest className="w-4 h-4" />
+                  <span className="text-[9px] uppercase font-black tracking-widest">Change Velocity</span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[20px] font-black tracking-tight text-zinc-100">
+                      {patterns.avg_commit_size ? `${patterns.avg_commit_size} lines` : '32 lines'}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold">
+                      {patterns.fix_to_feature_ratio ? `${(patterns.fix_to_feature_ratio * 100).toFixed(0)}% ref` : '28% ref'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 font-medium leading-relaxed">
+                    Your commit footprints are lightweight with {patterns.fix_to_feature_ratio > 0.4 ? 'heavy bug-fixing cycles' : 'focused feature creation increments'}.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

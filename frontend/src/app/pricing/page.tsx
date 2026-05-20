@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { motion } from "framer-motion";
+import Footer from "@/components/Footer";
 
 const PLANS = [
   {
@@ -68,22 +69,7 @@ export default function PricingPage() {
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-white/20 relative noise">
       <div className="fixed inset-0 dot-grid pointer-events-none z-0" />
 
-      <nav className="fixed top-0 inset-x-0 z-50 border-b border-white/[0.04] bg-black/60 backdrop-blur-2xl">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 font-semibold text-[15px] text-white">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-400">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-            Code DNA
-          </Link>
-          <div className="flex items-center gap-6 text-[13px]">
-            <Link href="/" className="text-zinc-500 hover:text-white transition-colors">Home</Link>
-            <Link href="/discover" className="text-zinc-500 hover:text-white transition-colors">Discover</Link>
-            <Link href="/leaderboard" className="text-zinc-500 hover:text-white transition-colors">Leaderboard</Link>
-            <Link href="/login" className="text-white hover:text-zinc-300 transition-colors">Sign In</Link>
-          </div>
-        </div>
-      </nav>
+
 
       <main className="relative z-10 pt-32 pb-24 px-6">
         <div className="max-w-5xl mx-auto">
@@ -147,22 +133,7 @@ export default function PricingPage() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-white/[0.04] py-12 relative z-10">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-[12px] text-zinc-600">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-white/50" />
-            Code DNA © {new Date().getFullYear()}
-          </div>
-          <div className="flex gap-8">
-            <Link href="/how-it-works" className="hover:text-zinc-300 transition-colors">Docs</Link>
-            <Link href="/pricing" className="hover:text-zinc-300 transition-colors">Pricing</Link>
-            <Link href="/discover" className="hover:text-zinc-300 transition-colors">Discover</Link>
-            <Link href="/compare" className="hover:text-zinc-300 transition-colors">Compare</Link>
-            <Link href="/leaderboard" className="hover:text-zinc-300 transition-colors">Leaderboard</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

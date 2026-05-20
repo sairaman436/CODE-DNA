@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Search, ArrowUpRight, Activity, Code2, Layers, Cpu } from "lucide-react";
 import { RadarChart } from "@/components/RadarChart";
+import Footer from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
@@ -241,7 +242,7 @@ export default function DiscoverPage() {
 
           {filteredDevs.length === 0 && (
             <div className="text-center py-20 text-zinc-600 text-sm bg-white/[0.02] rounded-[32px] border border-dashed border-white/10">
-              No developers match "{searchQuery}".
+              No developers match &quot;{searchQuery}&quot;.
             </div>
           )}
         </div>
@@ -283,6 +284,7 @@ export default function DiscoverPage() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { SilkBackground } from "@/components/SilkBackground";
 import { DynamicBackground } from "@/components/DynamicBackground";
 import { RoleBadge } from "@/components/RoleBadge";
+import Footer from "@/components/Footer";
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -701,6 +702,7 @@ export default function AdminDashboard() {
           </AnimatePresence>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

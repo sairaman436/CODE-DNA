@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Trophy, ArrowUpRight, Crown, Medal, Award } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import Footer from "@/components/Footer";
 
 interface LeaderboardEntry {
   username: string;
@@ -276,6 +277,7 @@ export default function LeaderboardPage() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

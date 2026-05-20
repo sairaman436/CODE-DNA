@@ -30,6 +30,10 @@ model User {
   failed_attempts     Int               @default(0)
   lockout_until       DateTime?
   status              String            @default("ACTIVE") // "ACTIVE", "BANNED"
+  bio                 String?
+  cover_url           String?
+  accent_theme        String?           @default("emerald")
+  pinned_badges       String?           @default("")
   analysis_jobs       AnalysisJob[]
   vectors             DeveloperVector[]
   fingerprints        Fingerprint[]
