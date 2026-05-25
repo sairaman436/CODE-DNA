@@ -118,6 +118,9 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: username and github_id. Please link your GitHub account first.' });
     }
 
+    const { access_token } = req.body;
+    const tokenToUse = access_token || (user ? user.github_token : null) || process.env.GITHUB_TOKEN;
+
     // 2. Update existing or create new user
     if (user) {
       user = await prisma.user.update({
@@ -182,13 +185,12 @@ router.post('/', async (req, res) => {
       }
 
       // 2. Gateway Check: Star and Follow
-      const { access_token } = req.body;
-      const gatewayResult = await checkGatewayRequirements(finalGithubUsername, access_token);
+      const gatewayResult = await checkGatewayRequirements(finalGithubUsername, tokenToUse);
       
       if (gatewayResult.error) {
         return res.status(400).json({ error: 'GATEWAY_ERROR', message: gatewayResult.error });
       }
-
+ 
       if (!gatewayResult.starred || !gatewayResult.followed) {
         return res.status(403).json({
           error: 'GATEWAY_REQUIRED',
@@ -198,7 +200,7 @@ router.post('/', async (req, res) => {
         });
       }
     }
-
+ 
     // 2. Create Analysis Job in DB
     const job = await prisma.analysisJob.create({
       data: {
@@ -208,12 +210,10 @@ router.post('/', async (req, res) => {
         current_step: 'Queued for analysis',
       }
     });
-
+ 
     // 3. Fetch and filter GitHub repositories (Rule 3 & 9: exclude learning/hackathon repos)
     let filteredRepos = [];
     try {
-      const { access_token } = req.body;
-      const tokenToUse = access_token || process.env.GITHUB_TOKEN;
       filteredRepos = await fetchAndFilterRepos(finalGithubUsername, tokenToUse);
       await prisma.analysisJob.update({
         where: { id: job.id },
@@ -230,14 +230,14 @@ router.post('/', async (req, res) => {
       });
       return res.status(502).json({ error: 'Failed to fetch GitHub repositories', jobId: job.id });
     }
-
+ 
     // 4. Fire-and-forget HTTP request to the Python Engine pool
     dispatchToEnginePool({
         jobId: job.id,
         userId: user.id,
         username: user.username,
         repositories: filteredRepos,
-        access_token: req.body.access_token || process.env.GITHUB_TOKEN
+        access_token: tokenToUse
     }).catch(err => {
       console.error('Python engine unreachable:', err.message);
       prisma.analysisJob.update({

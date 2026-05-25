@@ -44,7 +44,8 @@ export const authOptions: NextAuthOptions = {
               email: githubEmail,
               github_id: githubId,
               github_username: githubUsername,
-              avatar_url: avatarUrl
+              avatar_url: avatarUrl,
+              github_token: account.access_token
             })
           });
 
@@ -126,6 +127,7 @@ export const authOptions: NextAuthOptions = {
         
         token.githubId = (user as any).github_id || token.githubId;
         token.githubLogin = (user as any).github_username || token.githubLogin;
+        token.accessToken = (user as any).github_token || token.accessToken;
 
         if (token.email === "sairamanladi2007@gmail.com") {
           token.role = "ADMIN";

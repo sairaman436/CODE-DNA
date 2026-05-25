@@ -304,7 +304,8 @@ router.post('/verify', async (req, res) => {
         github_linked: !!user.github_id,
         github_id: user.github_id,
         github_username: user.github_username,
-        phone: user.phone_number
+        phone: user.phone_number,
+        github_token: user.github_token
       }
     });
   } catch (err) {
@@ -318,7 +319,7 @@ router.post('/verify', async (req, res) => {
  */
 router.post('/link-github', async (req, res) => {
   try {
-    const { email, github_id, github_username, avatar_url } = req.body;
+    const { email, github_id, github_username, avatar_url, github_token } = req.body;
 
     if (!github_id) {
       return res.status(400).json({ error: 'GitHub ID is required' });
@@ -410,6 +411,7 @@ router.post('/link-github', async (req, res) => {
         github_id: githubIdStr,
         github_username: github_username || primaryUser.github_username,
         avatar_url: avatar_url || primaryUser.avatar_url,
+        github_token: github_token || primaryUser.github_token,
         // Only update codedna_username if the primary doesn't already have one
         codedna_username: primaryUser.codedna_username || github_username,
       }
@@ -423,7 +425,7 @@ router.post('/link-github', async (req, res) => {
 // Force link a GitHub account to an already verified email
 router.post('/force-link-github', async (req, res) => {
   try {
-    const { email, github_id, github_username, avatar_url } = req.body;
+    const { email, github_id, github_username, avatar_url, github_token } = req.body;
     
     if (!email || !github_id) {
       return res.status(400).json({ error: 'Email and GitHub ID are required' });
@@ -440,6 +442,7 @@ router.post('/force-link-github', async (req, res) => {
         github_id: github_id.toString(),
         github_username: github_username || user.github_username,
         avatar_url: avatar_url || user.avatar_url,
+        github_token: github_token || user.github_token,
         codedna_username: user.codedna_username || github_username,
       }
     });
