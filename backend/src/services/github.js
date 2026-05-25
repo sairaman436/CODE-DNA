@@ -1,16 +1,9 @@
 // GitHub API Service
-// Rule 3 & 9: Exclude learning, practice, and hackathon repos
-
-const EXCLUSION_KEYWORDS = [
-  'practice', 'learning', 'tutorial', 'beginner', 'test',
-  'demo', 'playground', 'dsa', 'leetcode', 'study',
-  'course', 'exercise', 'example', 'sample', 'starter',
-];
-
-const HACKATHON_KEYWORDS = ['hackathon', 'hack', '24h', '48h', 'devpost'];
 const GITHUB_FETCH_TIMEOUT_MS = Number(process.env.GITHUB_FETCH_TIMEOUT_MS || 10000);
 const GITHUB_MAX_REPO_PAGES = Number(process.env.GITHUB_MAX_REPO_PAGES || 0);
 const CODEDNA_MAX_REPO_SIZE_KB = Number(process.env.CODEDNA_MAX_REPO_SIZE_KB || 0);
+const CODEDNA_INCLUDE_FORKS = process.env.CODEDNA_INCLUDE_FORKS !== '0';
+const CODEDNA_INCLUDE_ARCHIVED = process.env.CODEDNA_INCLUDE_ARCHIVED !== '0';
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = GITHUB_FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -83,25 +76,14 @@ async function fetchAndFilterRepos(username, token) {
 }
 
 function isEligibleRepo(repo) {
-  // Exclude forks (Rule 10: authorship ambiguity)
-  if (repo.fork) return false;
+  if (!CODEDNA_INCLUDE_FORKS && repo.fork) return false;
 
-  // Exclude archived repos (Rule 9)
-  if (repo.archived) return false;
+  if (!CODEDNA_INCLUDE_ARCHIVED && repo.archived) return false;
 
   // Analyze every non-empty repo by default. CODEDNA_MAX_REPO_SIZE_KB is an
   // optional emergency brake for constrained deployments.
   if (repo.size <= 0) return false;
   if (CODEDNA_MAX_REPO_SIZE_KB > 0 && repo.size > CODEDNA_MAX_REPO_SIZE_KB) return false;
-
-  const name = repo.name.toLowerCase();
-  const desc = (repo.description || '').toLowerCase();
-
-  const isLearning = EXCLUSION_KEYWORDS.some(kw => name.includes(kw) || desc.includes(kw));
-  if (isLearning) return false;
-
-  const isHackathon = HACKATHON_KEYWORDS.some(kw => name.includes(kw) || desc.includes(kw));
-  if (isHackathon) return false;
 
   return true;
 }

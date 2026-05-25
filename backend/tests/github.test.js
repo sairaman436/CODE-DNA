@@ -3,7 +3,7 @@ const test = require('node:test');
 
 const { fetchAndFilterRepos, fetchWithTimeout } = require('../src/services/github');
 
-test('fetchAndFilterRepos filters forks archives empty learning and hackathon repos', async (t) => {
+test('fetchAndFilterRepos includes every non-empty repo by default', async (t) => {
   const originalFetch = global.fetch;
   t.after(() => {
     global.fetch = originalFetch;
@@ -29,8 +29,36 @@ test('fetchAndFilterRepos filters forks archives empty learning and hackathon re
 
   assert.deepEqual(repos, [
     {
+      name: 'practice-api',
+      clone_url: 'https://github.com/alice/practice-api.git',
+      language: 'TypeScript',
+      default_branch: 'main',
+      size: 10,
+    },
+    {
+      name: 'launch-hackathon',
+      clone_url: 'https://github.com/alice/launch-hackathon.git',
+      language: 'TypeScript',
+      default_branch: 'main',
+      size: 10,
+    },
+    {
       name: 'real-product',
       clone_url: 'https://github.com/alice/real-product.git',
+      language: 'TypeScript',
+      default_branch: 'main',
+      size: 10,
+    },
+    {
+      name: 'forked',
+      clone_url: 'https://github.com/alice/forked.git',
+      language: 'TypeScript',
+      default_branch: 'main',
+      size: 10,
+    },
+    {
+      name: 'archived',
+      clone_url: 'https://github.com/alice/archived.git',
       language: 'TypeScript',
       default_branch: 'main',
       size: 10,

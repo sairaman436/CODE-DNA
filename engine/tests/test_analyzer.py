@@ -29,6 +29,7 @@ from analyzer import (  # noqa: E402
     fetch_repo_source,
     is_test_file,
     perform_full_analysis,
+    SourceFetchBlocked,
     should_skip_file,
 )
 
@@ -220,6 +221,17 @@ function doThing(value) {
 
         self.assertTrue(ok)
         clone.assert_called_once()
+
+    def test_fetch_repo_source_fast_fails_on_forbidden_api_tree(self):
+        with tempfile.TemporaryDirectory() as target:
+            with patch("analyzer.download_repo_api_files", side_effect=SourceFetchBlocked("GitHub API rejected source tree with 403")):
+                with patch("analyzer.download_repo_archive") as archive:
+                    with patch("analyzer.clone_repo") as clone:
+                        ok = fetch_repo_source("https://github.com/acme/private.git", target)
+
+        self.assertFalse(ok)
+        archive.assert_not_called()
+        clone.assert_not_called()
 
 
 class AnalyzerScoringTests(unittest.TestCase):

@@ -1,106 +1,204 @@
-# 🧬 CODE DNA
-### **Technical Identity. Decoded.**
+# CODE DNA
 
-[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-[![Framer Motion](https://img.shields.io/badge/Framer-Motion-black?style=for-the-badge&logo=framer)](https://www.framer.com/motion/)
-[![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python)](https://www.python.org/)
+**Technical identity, decoded from real code.**
 
-**Code DNA** is a high-fidelity developer discovery platform that goes beyond quantitative git history. By parsing source code into **Abstract Syntax Trees (AST)**, we generate a unique technical fingerprint for every developer, mapping logical patterns, architectural choices, and structural complexity across 8 distinct dimensions.
+Code DNA is a developer intelligence platform that analyzes GitHub repositories and turns source-code patterns into a living technical fingerprint. It looks beyond contribution counts and language badges to understand how a developer structures logic, handles complexity, writes tests, documents intent, and evolves code over time.
 
----
+This is not a vanity dashboard. It is an analysis engine, a distributed worker system, and a profile experience built for serious developer discovery.
 
-## 🚀 Key Features
+## What It Does
 
-### 🔍 **Structural AST Engine**
-Our proprietary analysis engine doesn't just count lines—it understands code. It maps:
-- **Nesting Depth & Logical Complexity**
-- **Refactoring Tendencies & Structural Modularity**
-- **Error Handling Patterns & Resilience**
-- **Multi-Language Fluency** (TS, JS, PY, GO, RS, etc.)
+Code DNA connects to GitHub, discovers a developer's repositories, fetches selected source files, and produces an eight-axis coding fingerprint:
 
-### 💎 **High-Fidelity Interface**
-A premium, glassmorphism-driven dashboard that visualizes technical "DNA" using:
-- **8-Axis Radar Diagnostics**
-- **Language DNA Sequencing Bars**
-- **Real-Time Activity Heatmaps**
+- Readability
+- Complexity control
+- Documentation quality
+- Test mindset
+- Commit discipline
+- Language depth
+- Refactor tendency
+- Error handling
 
-### 🛡️ **Security & Anti-Scraping**
-Designed as a secure diagnostic portal with built-in protections:
-- **Deceptive Source Protection:** Intercepts `Ctrl+U` to prevent easy source cloning.
-- **SecurityGuard:** Industrial-grade console warnings and anti-debugging measures.
-- **Privacy First:** Read-only access with zero-retention analysis.
+The result is a shareable developer profile with strengths, growth areas, language statistics, commit patterns, activity pulse, and a developer archetype.
 
----
+## The Engine
 
-## 🛠️ Tech Stack
+The Python engine is built to behave like a distributed agent system.
 
-- **Frontend:** Next.js 14 (App Router), Tailwind CSS, Framer Motion, Lucide Icons.
-- **Backend:** Node.js, Express, Prisma ORM.
-- **Database:** PostgreSQL.
-- **Analysis Engine:** Python-based AST Parser.
-- **Authentication:** NextAuth.js (GitHub OAuth).
+- Repository work is split into adaptive batches.
+- Multiple engine peers process work in parallel.
+- Fast engines keep pulling pending work instead of waiting on slow batches.
+- Medium and large repositories spawn internal file-analysis workers.
+- GitHub API source fetching downloads selected analyzable files instead of entire repos.
+- Archive and git clone paths remain as fallbacks.
+- Watchdogs skip stuck repos, stuck file workers, and final straggler batches.
+- Engine health exposes the active runtime settings.
 
----
+In plain terms: one slow repository should not freeze the whole analysis.
 
-## 📦 Getting Started
+## Architecture
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/sairaman436/CODE-DNA.git
-cd CODE-DNA
+```text
+GitHub
+  |
+  v
+Next.js Frontend
+  |
+  v
+Node.js Backend
+  |
+  v
+Python Engine Pool
+  |-- Engine 8000
+  |-- Engine 8001
+  |-- Engine 8002
+  |
+  v
+Webhook Results
+  |
+  v
+Database + Profile UI
 ```
 
-### 2. Set Up Environment Variables
-Create a `.env` file in the `frontend` and `backend` directories:
-```env
-# Backend
-DATABASE_URL="your-postgresql-url"
-JWT_SECRET="your-secret"
+## Stack
 
-# Frontend
-NEXT_PUBLIC_API_URL="http://localhost:5000"
-GITHUB_ID="your-github-id"
-GITHUB_SECRET="your-github-secret"
+- Frontend: Next.js 14, React, Tailwind CSS, Framer Motion
+- Backend: Node.js, Express, Prisma
+- Engine: Python, FastAPI, AST parsing, tree-sitter when available
+- Auth: NextAuth with GitHub OAuth
+- Database: Prisma-supported SQL database
+- Runtime: Multi-engine local worker pool with production-style guardrails
+
+## Engine Highlights
+
+### Source Fetching
+
+Default mode is API source fetch:
+
+```text
+GitHub tree API -> select useful source files -> download blobs in parallel -> analyze
 ```
 
-### 3. Install Dependencies
+This avoids downloading huge assets, build folders, vendored dependencies, and files the engine will never score.
+
+### Adaptive Scheduling
+
+Small GitHub accounts get tiny batches for fairness. Large accounts get larger dynamic work batches to avoid hundreds of HTTP calls while still keeping multiple engine waves active.
+
+### Straggler Protection
+
+The engine has watchdogs for:
+
+- File analysis workers
+- Repo workers
+- Final repo stragglers
+- Peer engine batches
+- Final distributed engine tails
+
+If one repo gets stuck, Code DNA logs it, skips it, and keeps the fingerprint moving.
+
+## Run Locally
+
+Install dependencies:
+
 ```bash
-# Install frontend deps
 cd frontend && npm install
-
-# Install backend deps
 cd ../backend && npm install
-
-# Install engine deps
 cd ../engine && pip install -r requirements.txt
 ```
 
-### 4. Run the Platform
-Use the provided startup script (Windows):
+Start everything on Windows:
+
 ```powershell
 .\start.bat
 ```
 
----
+Start everything on macOS/Linux:
 
-## 🧬 Diagnostic Dimensions
+```bash
+./start.sh
+```
 
-1. **Readability:** Cleanliness and naming consistency.
-2. **Complexity:** Logical branch depth and cyclomatic weight.
-3. **Modularity:** Function isolation and reusable patterns.
-4. **Resilience:** Error handling and edge-case coverage.
-5. **Testing:** Test-to-logic coverage ratios.
-6. **Documentation:** Quality and frequency of structural comments.
-7. **Refactoring:** Frequency of structural improvements.
-8. **Scalability:** Architectural growth potential.
+Local services:
 
----
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:5000`
+- Engine 1: `http://localhost:8000`
+- Engine 2: `http://localhost:8001`
+- Engine 3: `http://localhost:8002`
 
-## 📜 License
-Distributed under the MIT License. See `LICENSE` for more information.
+Check an engine:
 
----
-<p align="center">
-  Built with ❤️ for the global developer community by <b>Sairamana</b>
-</p>
+```bash
+curl http://localhost:8000/health
+```
+
+## Important Environment Variables
+
+Backend:
+
+```env
+DATABASE_URL=...
+WEBHOOK_SECRET=...
+GITHUB_TOKEN=...
+ANALYSIS_SERVICE_URLS=http://localhost:8000,http://localhost:8001,http://localhost:8002
+```
+
+Frontend:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXTAUTH_SECRET=...
+GITHUB_ID=...
+GITHUB_SECRET=...
+```
+
+Engine:
+
+```env
+CODEDNA_SOURCE_FETCH_MODE=api
+CODEDNA_DISTRIBUTED_BATCH_SIZE=0
+CODEDNA_MAX_REPO_WORKERS=2
+CODEDNA_FILE_ANALYSIS_WORKERS=4
+CODEDNA_API_FILE_FETCH_WORKERS=8
+CODEDNA_FAST_FAIL_GITHUB_API_STATUSES=403,404,451
+CODEDNA_TAIL_REPO_TIMEOUT_SECONDS=45
+CODEDNA_DISTRIBUTED_TAIL_TIMEOUT_SECONDS=75
+```
+
+Repository discovery defaults:
+
+```env
+CODEDNA_INCLUDE_FORKS=1
+CODEDNA_INCLUDE_ARCHIVED=1
+CODEDNA_MAX_REPO_SIZE_KB=0
+```
+
+`CODEDNA_MAX_REPO_SIZE_KB=0` means no size cap.
+
+## Verification
+
+Run the production checks:
+
+```bash
+cd backend && npm test
+cd ../engine && python -m unittest discover -s tests -v
+python -m py_compile analyzer.py main.py
+cd ../frontend && npx tsc --noEmit
+```
+
+## Production Notes
+
+- Always configure `WEBHOOK_SECRET` in both backend and engine.
+- Use authenticated GitHub tokens to avoid low public API rate limits.
+- Scale engine ports horizontally behind `ANALYSIS_SERVICE_URLS`.
+- Keep `.next` out of synced folders when possible; the dev script cleans stale Next cache before startup.
+- Watch `/health` on each engine to confirm runtime settings.
+
+## Why Code DNA Exists
+
+GitHub shows what happened. Code DNA tries to show how a developer thinks.
+
+It reads structure, pressure points, habits, and tradeoffs. It turns scattered repositories into a technical identity that other developers, teams, and recruiters can actually understand.
+
+Built by Sairaman for developers who want their code to speak with more signal.

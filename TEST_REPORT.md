@@ -12,7 +12,7 @@ Added executable regression coverage for the backend API layer and Python analys
 
 Command: `npm test`
 
-Result: 17 passing tests.
+Result: 20 passing tests.
 
 Files:
 
@@ -27,7 +27,7 @@ Covered cases:
 - Auth registration required fields, GitHub email ownership rejection, OTP invalidation, GitHub user linking, mail-safe registration path.
 - Login banned-user blocking, failed-attempt incrementing, security lockout after repeated failures.
 - OTP verification consumes the OTP, marks the user verified, returns a safe user payload without password leakage.
-- GitHub repository filtering excludes forks, archived repos, empty repos, learning repos, and hackathon repos.
+- GitHub repository discovery includes every non-empty owner repository by default; optional env flags can exclude forks, archived repos, or oversized repos for constrained deployments.
 - GitHub fetch uses token-authenticated endpoint correctly and returns every eligible repository.
 - GitHub repository discovery keeps paging until GitHub is exhausted by default.
 - Giant repositories are included by default for complete analysis.
@@ -45,7 +45,7 @@ Covered cases:
 
 Command: `python -m unittest discover -s tests -v`
 
-Result: 28 passing tests.
+Result: 29 passing tests.
 
 Files:
 
@@ -74,6 +74,7 @@ Covered cases:
 - Engine service uses `ThreadPoolExecutor` for I/O-bound analysis to avoid Windows multiprocessing overhead.
 - GitHub API source-file fetch is the default path, with archive and git clone fallbacks.
 - GitHub API source-file fetch downloads only selected analyzable source files and skips vendor/assets before download.
+- GitHub API hard failures such as 403 fail fast for that repo instead of burning the full repo watchdog on slower fallbacks.
 - Archive extraction is path-safe and does not allow zip entries to escape the temp directory.
 - Distributed analysis uses dynamic micro-batches so fast engines keep taking pending repositories instead of waiting on static slow batches.
 - Distributed batch size auto-scales by repository count and engine count when `CODEDNA_DISTRIBUTED_BATCH_SIZE=0`.
@@ -87,6 +88,7 @@ Covered cases:
 - Replaced `--filter=blob:none` with `--filter blob:limit=200k`, so small source files are available locally after clone instead of triggering a network fetch per file read.
 - Replaced whole-repository downloading as the default path with GitHub API tree/blob fetching, so analysis downloads selected source files instead of entire repos.
 - Kept `zipball` archive download and git clone as fallbacks when API source-file fetching cannot be used.
+- Fast-fails GitHub API hard rejection statuses before archive/git fallback to avoid 180-second waits on blocked repos.
 - Replaced static three-way engine splitting with dynamic engine work scheduling to reduce slow-tail batch delays.
 - Added adaptive distributed batch sizing so users with many repositories get larger dynamic batches while smaller profiles keep one-repo micro-batches.
 - Added repo-local file analysis workers for medium/big repos, matching the engine-agent model inside a single repository.
@@ -118,6 +120,9 @@ Covered cases:
 - `CODEDNA_ENGINE_SELF_URL`: current engine URL, used to avoid dispatching a remote batch back to itself.
 - `CODEDNA_DISTRIBUTED_BATCH_SIZE`: repositories per dynamic distributed work batch, default `0` for automatic per-user sizing.
 - `CODEDNA_SOURCE_FETCH_MODE`: source fetch strategy, default `api`; set to `archive` or `git` to force older fetch paths.
+- `CODEDNA_FAST_FAIL_GITHUB_API_STATUSES`: comma-separated GitHub API statuses that should skip slow fallbacks, default `403,404,451`.
+- `CODEDNA_INCLUDE_FORKS`: include forked repositories by default; set `0` to exclude forks.
+- `CODEDNA_INCLUDE_ARCHIVED`: include archived repositories by default; set `0` to exclude archived repositories.
 - `CODEDNA_API_FILE_FETCH_WORKERS`: concurrent GitHub blob downloads for API source fetch, default `8`.
 - `CODEDNA_FILE_ANALYSIS_WORKERS`: internal workers for medium/big repo file analysis, default `4`.
 - `CODEDNA_FILE_ANALYSIS_PARALLEL_THRESHOLD`: selected-file count where a repo spawns file-analysis workers, default `20`.

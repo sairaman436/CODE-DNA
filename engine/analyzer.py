@@ -127,6 +127,11 @@ TAIL_REPO_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_TAIL_REPO_TIMEOUT_SECONDS', '
 DISTRIBUTED_TAIL_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_DISTRIBUTED_TAIL_TIMEOUT_SECONDS', '75'))
 SOURCE_FETCH_MODE = os.getenv('CODEDNA_SOURCE_FETCH_MODE', 'api').lower()
 ARCHIVE_FETCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_ARCHIVE_FETCH_TIMEOUT_SECONDS', '30'))
+FAST_FAIL_GITHUB_API_STATUSES = {
+    int(status)
+    for status in os.getenv('CODEDNA_FAST_FAIL_GITHUB_API_STATUSES', '403,404,451').split(',')
+    if status.strip().isdigit()
+}
 DISTRIBUTED_BATCH_SIZE = int(os.getenv('CODEDNA_DISTRIBUTED_BATCH_SIZE', '0'))
 API_FILE_FETCH_WORKERS = max(1, int(os.getenv('CODEDNA_API_FILE_FETCH_WORKERS', '8')))
 FILE_ANALYSIS_WORKERS = max(1, int(os.getenv('CODEDNA_FILE_ANALYSIS_WORKERS', '4')))
@@ -150,6 +155,10 @@ LANGUAGE_PRIORITY = {
     'YAML': 25,
     'TOML': 25,
 }
+
+
+class SourceFetchBlocked(Exception):
+    """Raised when GitHub tells us not to keep trying slower fallbacks."""
 
 
 def should_skip_file(filepath: str) -> bool:
@@ -448,6 +457,8 @@ def download_repo_api_files(clone_url: str, target_dir: str, token: str = None, 
         response = requests.get(tree_url, headers=headers, timeout=ARCHIVE_FETCH_TIMEOUT_SECONDS)
         if response.status_code >= 400:
             print(f"  ! API tree fetch failed for {_redact_token(clone_url, token)}: {response.status_code}", flush=True)
+            if response.status_code in FAST_FAIL_GITHUB_API_STATUSES:
+                raise SourceFetchBlocked(f"GitHub API rejected source tree with {response.status_code}")
             return False
 
         selected = _select_tree_source_files(response.json().get('tree', []))
@@ -535,8 +546,15 @@ def download_repo_archive(clone_url: str, target_dir: str, token: str = None, de
 def fetch_repo_source(clone_url: str, target_dir: str, token: str = None, default_branch: str = None) -> bool:
     """Fetch source using the fastest configured strategy, with git fallback."""
     if SOURCE_FETCH_MODE not in {'git', 'archive'}:
-        if download_repo_api_files(clone_url, target_dir, token=token, default_branch=default_branch):
-            return True
+        try:
+            if download_repo_api_files(clone_url, target_dir, token=token, default_branch=default_branch):
+                return True
+        except SourceFetchBlocked as error:
+            print(
+                f"  ! Skipping slow fallbacks for {_redact_token(clone_url, token)}: {error}",
+                flush=True,
+            )
+            return False
         _clear_clone_target(target_dir)
 
     if SOURCE_FETCH_MODE != 'git':
@@ -1159,13 +1177,6 @@ def _analyze_single_repo(username: str, index: int, repo: dict, access_token: st
     try:
         clone_url = repo.get('clone_url', '')
         if not clone_url:
-            return None
-
-        # Engine Hard Rule 4: Never penalize for learning repositories
-        repo_name = repo.get('name', '').lower()
-        learning_keywords = ['learn', 'practice', 'tutorial', 'course', 'exercise', 'kata', 'bootcamp', 'hello', 'test-', 'demo']
-        if any(k in repo_name for k in learning_keywords):
-            print(f"  > Skipping learning repo (Rule 4): {repo['name']}", flush=True)
             return None
 
         repo_size = repo.get('size')
