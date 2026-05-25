@@ -87,20 +87,16 @@ router.post('/', async (req, res) => {
       user = await prisma.user.findUnique({ where: { id: sessionUserId } });
     }
 
-    const finalGithubId = github_id || (user ? user.github_id : null);
-    const finalGithubUsername = username || (user ? user.github_username : null);
-
-    if (!finalGithubUsername || !finalGithubId) {
-      return res.status(400).json({ error: 'Missing required fields: username and github_id. Please link your GitHub account first.' });
-    }
+    let finalGithubId = github_id || (user ? user.github_id : null);
+    let finalGithubUsername = username || (user ? user.github_username : null);
 
     // Fallback: lookup by github_id
-    if (!user) {
+    if (!user && finalGithubId) {
       user = await prisma.user.findUnique({ where: { github_id: finalGithubId.toString() } });
     }
     
     // Fallback: lookup by username variants
-    if (!user) {
+    if (!user && finalGithubUsername) {
       user = await prisma.user.findFirst({ 
         where: { 
           OR: [
@@ -110,6 +106,16 @@ router.post('/', async (req, res) => {
           ]
         } 
       });
+    }
+
+    // Resolve actual GitHub credentials from database if user is found
+    if (user) {
+      if (user.github_username) finalGithubUsername = user.github_username;
+      if (user.github_id) finalGithubId = user.github_id;
+    }
+
+    if (!finalGithubUsername || !finalGithubId) {
+      return res.status(400).json({ error: 'Missing required fields: username and github_id. Please link your GitHub account first.' });
     }
 
     // 2. Update existing or create new user

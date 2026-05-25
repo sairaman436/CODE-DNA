@@ -32,10 +32,8 @@ async function fetchAndFilterRepos(username, token) {
 
   if (token) {
     headers['Authorization'] = `token ${token}`;
-  } else if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
-    // Fallback to OAuth App basic auth to get 5000 req/hr rate limit instead of 60 req/hr
-    const credentials = Buffer.from(`${process.env.GITHUB_CLIENT_ID}:${process.env.GITHUB_CLIENT_SECRET}`).toString('base64');
-    headers['Authorization'] = `Basic ${credentials}`;
+  } else if (process.env.GITHUB_TOKEN) {
+    headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
   }
 
   let eligibleRepos = [];
@@ -94,9 +92,6 @@ async function checkGatewayRequirements(username, accessToken) {
 
   if (tokenToUse) {
     authHeader = `token ${tokenToUse}`;
-  } else if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
-    const credentials = Buffer.from(`${process.env.GITHUB_CLIENT_ID}:${process.env.GITHUB_CLIENT_SECRET}`).toString('base64');
-    authHeader = `Basic ${credentials}`;
   } else if (process.env.GITHUB_TOKEN) {
     authHeader = `token ${process.env.GITHUB_TOKEN}`;
   }
