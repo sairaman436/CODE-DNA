@@ -33,6 +33,7 @@ test('fetchAndFilterRepos filters forks archives empty learning and hackathon re
       clone_url: 'https://github.com/alice/real-product.git',
       language: 'TypeScript',
       default_branch: 'main',
+      size: 10,
     },
   ]);
 });
@@ -63,6 +64,52 @@ test('fetchAndFilterRepos uses token endpoint and caps results to 10 recent repo
   assert.equal(repos.length, 10);
   assert.equal(repos[0].name, 'service-11');
   assert.equal(repos[9].name, 'service-2');
+});
+
+test('fetchAndFilterRepos stops paging after enough eligible repos for large accounts', async (t) => {
+  const originalFetch = global.fetch;
+  let calls = 0;
+  t.after(() => {
+    global.fetch = originalFetch;
+  });
+
+  global.fetch = async () => {
+    calls++;
+    return {
+      ok: true,
+      json: async () =>
+        Array.from({ length: 100 }, (_, index) =>
+          repo({
+            name: `recent-service-${index}`,
+            pushed_at: new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
+          })
+        ),
+    };
+  };
+
+  const repos = await fetchAndFilterRepos('alice');
+
+  assert.equal(calls, 1);
+  assert.equal(repos.length, 10);
+});
+
+test('fetchAndFilterRepos skips giant repositories by default', async (t) => {
+  const originalFetch = global.fetch;
+  t.after(() => {
+    global.fetch = originalFetch;
+  });
+
+  global.fetch = async () => ({
+    ok: true,
+    json: async () => [
+      repo({ name: 'huge-monolith', size: 250000, pushed_at: '2026-05-25T00:00:00Z' }),
+      repo({ name: 'right-sized-service', size: 4200, pushed_at: '2026-05-24T00:00:00Z' }),
+    ],
+  });
+
+  const repos = await fetchAndFilterRepos('alice');
+
+  assert.deepEqual(repos.map((item) => item.name), ['right-sized-service']);
 });
 
 test('fetchAndFilterRepos surfaces GitHub API errors', async (t) => {

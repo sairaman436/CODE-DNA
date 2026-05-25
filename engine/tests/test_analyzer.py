@@ -187,6 +187,19 @@ class AnalyzerScoringTests(unittest.TestCase):
         self.assertEqual(len(result["activity_pulse"]), 90)
         self.assertEqual(result["developer_type"], "The Pragmatist")
 
+    def test_perform_full_analysis_skips_oversized_repos_before_clone(self):
+        with patch("analyzer.clone_repo") as clone:
+            result = perform_full_analysis("huge-user", [
+                {
+                    "name": "huge-monolith",
+                    "clone_url": "https://github.com/acme/huge-monolith.git",
+                    "size": 250000,
+                }
+            ])
+
+        clone.assert_not_called()
+        self.assertEqual(result["repos_analyzed"], 0)
+
     def test_developer_classification_boundaries(self):
         scores = {
             "readability": 80,

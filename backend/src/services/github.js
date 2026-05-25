@@ -9,6 +9,9 @@ const EXCLUSION_KEYWORDS = [
 
 const HACKATHON_KEYWORDS = ['hackathon', 'hack', '24h', '48h', 'devpost'];
 const GITHUB_FETCH_TIMEOUT_MS = Number(process.env.GITHUB_FETCH_TIMEOUT_MS || 10000);
+const GITHUB_MAX_REPO_PAGES = Number(process.env.GITHUB_MAX_REPO_PAGES || 2);
+const GITHUB_ELIGIBLE_REPO_BUFFER = Number(process.env.GITHUB_ELIGIBLE_REPO_BUFFER || 20);
+const CODEDNA_MAX_REPO_SIZE_KB = Number(process.env.CODEDNA_MAX_REPO_SIZE_KB || 100000);
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = GITHUB_FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -32,7 +35,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = GITHUB_FETCH_TIME
 async function fetchAndFilterRepos(username, token) {
   const headers = {
     'Accept': 'application/vnd.github.v3+json',
-    'User-Agent': 'CodeDNA-Engine/1.0'
+    'User-Agent': 'CodeDNA-Engine/1.0',
   };
 
   if (token) {
@@ -43,17 +46,17 @@ async function fetchAndFilterRepos(username, token) {
     headers['Authorization'] = `Basic ${credentials}`;
   }
 
-  let allRepos = [];
+  let eligibleRepos = [];
   let page = 1;
   let hasMore = true;
 
-  while (hasMore && page <= 5) { // Cap at 500 repos to prevent excessive requests
-    const url = token 
-      ? `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner&visibility=public` 
+  while (hasMore && page <= GITHUB_MAX_REPO_PAGES && eligibleRepos.length < GITHUB_ELIGIBLE_REPO_BUFFER) {
+    const url = token
+      ? `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner&visibility=public`
       : `https://api.github.com/users/${username}/repos?per_page=100&page=${page}&sort=updated&type=owner`;
 
     const response = await fetchWithTimeout(url, { headers });
-    
+
     if (!response.ok) {
       throw new Error(`GitHub API Error: ${response.status} ${response.statusText}`);
     }
@@ -62,39 +65,13 @@ async function fetchAndFilterRepos(username, token) {
     if (repos.length === 0) {
       hasMore = false;
     } else {
-      allRepos = allRepos.concat(repos);
+      eligibleRepos = eligibleRepos.concat(repos.filter(isEligibleRepo));
       if (repos.length < 100) hasMore = false;
       page++;
     }
   }
 
-  // Apply filters from CodeDNA_Engine_DoNot.md
-  const filteredRepos = allRepos.filter(repo => {
-    // Exclude forks (Rule 10: authorship ambiguity)
-    if (repo.fork) return false;
-
-    // Exclude archived repos (Rule 9)
-    if (repo.archived) return false;
-
-    // Allow repositories of any size with at least some content (even 1 commit)
-    if (repo.size <= 0) return false;
-
-    const name = repo.name.toLowerCase();
-    const desc = (repo.description || '').toLowerCase();
-
-    // Rule 3: Check learning/practice keywords
-    const isLearning = EXCLUSION_KEYWORDS.some(kw => name.includes(kw) || desc.includes(kw));
-    if (isLearning) return false;
-
-    // Rule 9: Check hackathon keywords
-    const isHackathon = HACKATHON_KEYWORDS.some(kw => name.includes(kw) || desc.includes(kw));
-    if (isHackathon) return false;
-
-    return true;
-  });
-
-  // Sort by activity and take top 10 (Blueprint §11 Step 2)
-  const sorted = filteredRepos
+  const sorted = eligibleRepos
     .sort((a, b) => new Date(b.pushed_at) - new Date(a.pushed_at))
     .slice(0, 10);
 
@@ -103,7 +80,31 @@ async function fetchAndFilterRepos(username, token) {
     clone_url: repo.clone_url,
     language: repo.language,
     default_branch: repo.default_branch,
+    size: repo.size,
   }));
 }
 
-module.exports = { fetchAndFilterRepos, fetchWithTimeout };
+function isEligibleRepo(repo) {
+  // Exclude forks (Rule 10: authorship ambiguity)
+  if (repo.fork) return false;
+
+  // Exclude archived repos (Rule 9)
+  if (repo.archived) return false;
+
+  // Allow repositories of any size with at least some content, then cap giant
+  // repos for latency. CODEDNA_MAX_REPO_SIZE_KB can be raised for deeper scans.
+  if (repo.size <= 0 || repo.size > CODEDNA_MAX_REPO_SIZE_KB) return false;
+
+  const name = repo.name.toLowerCase();
+  const desc = (repo.description || '').toLowerCase();
+
+  const isLearning = EXCLUSION_KEYWORDS.some(kw => name.includes(kw) || desc.includes(kw));
+  if (isLearning) return false;
+
+  const isHackathon = HACKATHON_KEYWORDS.some(kw => name.includes(kw) || desc.includes(kw));
+  if (isHackathon) return false;
+
+  return true;
+}
+
+module.exports = { fetchAndFilterRepos, fetchWithTimeout, isEligibleRepo };

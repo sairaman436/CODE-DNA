@@ -35,6 +35,7 @@ class Repository(BaseModel):
     clone_url: str
     language: Optional[str] = None
     default_branch: Optional[str] = None
+    size: Optional[int] = None
 
 class AnalysisRequest(BaseModel):
     jobId: str

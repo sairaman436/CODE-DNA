@@ -4,7 +4,7 @@ Date: 2026-05-25
 
 ## Summary
 
-Added executable regression coverage for the backend API layer and Python analysis engine, then verified the frontend TypeScript surface. A second pass upgraded the engine hot path for faster GitHub repository analysis. A third pass added production guardrails for high-traffic behavior: bounded engine queueing, network timeouts, webhook authentication, and malformed result rejection.
+Added executable regression coverage for the backend API layer and Python analysis engine, then verified the frontend TypeScript surface. Later passes upgraded the engine hot path, stabilized clone fallback behavior, and added high-traffic guardrails for users with large GitHub accounts.
 
 ## Tests Added
 
@@ -12,7 +12,7 @@ Added executable regression coverage for the backend API layer and Python analys
 
 Command: `npm test`
 
-Result: 15 passing tests.
+Result: 17 passing tests.
 
 Files:
 
@@ -29,6 +29,8 @@ Covered cases:
 - OTP verification consumes the OTP, marks the user verified, returns a safe user payload without password leakage.
 - GitHub repository filtering excludes forks, archived repos, empty repos, learning repos, and hackathon repos.
 - GitHub fetch uses token-authenticated endpoint correctly and caps eligible repositories to the 10 most recent.
+- GitHub repository discovery stops paging after enough recent eligible repos are found.
+- Giant repositories are skipped by default to avoid long clone jobs.
 - GitHub API failures are surfaced as errors.
 - Username availability validates missing, malformed, reserved, duplicate, and available names.
 - Username claiming validates bad format, reserved names, missing users, duplicate conflicts, cooldown, and successful lowercased claim.
@@ -42,7 +44,7 @@ Covered cases:
 
 Command: `python -m unittest discover -s tests -v`
 
-Result: 12 passing tests.
+Result: 14 passing tests.
 
 Files:
 
@@ -64,6 +66,8 @@ Covered cases:
 - Clone fallback path works when partial clone filters are unsupported.
 - Engine webhook requests include the shared secret only when configured.
 - Engine job slot reservation rejects overload and releases capacity.
+- Partial clone fallback clears a dirty target directory before retrying.
+- Oversized repositories are skipped before clone.
 
 ## Engine Performance Upgrades
 
@@ -77,6 +81,7 @@ Covered cases:
 - Bounded candidate scanning with `CODEDNA_MAX_CANDIDATE_FILES=2000`.
 - Bounded scoring with `CODEDNA_MAX_FILES_TO_SCORE=80`.
 - Skips files over `CODEDNA_MAX_FILE_BYTES=200000` before opening them.
+- Skips repositories over `CODEDNA_MAX_REPO_SIZE_KB=100000` before cloning them.
 - Replaced “largest 50 files” selection with representative source ranking by language, file size, tests, README, and project manifest files.
 - Added configurable repo concurrency through `CODEDNA_MAX_REPO_WORKERS=6`.
 - Added configurable engine job workers through `CODEDNA_ENGINE_WORKERS`, defaulting to at most 4.
@@ -86,7 +91,10 @@ Covered cases:
 
 - `WEBHOOK_SECRET`: optional shared secret enforced by backend webhook routes and sent by the engine. Configure the same value in backend and engine environments.
 - `GITHUB_FETCH_TIMEOUT_MS`: caps GitHub API calls in the backend, default `10000`.
+- `GITHUB_MAX_REPO_PAGES`: caps GitHub repository pages fetched, default `2`.
+- `GITHUB_ELIGIBLE_REPO_BUFFER`: stops discovery once enough eligible repos are found, default `20`.
 - `ENGINE_REQUEST_TIMEOUT_MS`: caps backend-to-engine dispatch requests, default `5000`.
+- `CODEDNA_MAX_REPO_SIZE_KB`: skips giant repos before clone, default `100000`.
 - `CODEDNA_ENGINE_WORKERS`: caps concurrent engine process workers, default `min(cpu_count, 4)`.
 - `CODEDNA_ENGINE_QUEUE_LIMIT`: caps queued/in-flight engine jobs, default `CODEDNA_ENGINE_WORKERS * 4`; overloaded requests return `503`.
 - `/health` now exposes engine workers, queue limit, jobs in flight, and available cores.
