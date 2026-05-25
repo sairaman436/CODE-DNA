@@ -28,9 +28,9 @@ Covered cases:
 - Login banned-user blocking, failed-attempt incrementing, security lockout after repeated failures.
 - OTP verification consumes the OTP, marks the user verified, returns a safe user payload without password leakage.
 - GitHub repository filtering excludes forks, archived repos, empty repos, learning repos, and hackathon repos.
-- GitHub fetch uses token-authenticated endpoint correctly and caps eligible repositories to the 10 most recent.
-- GitHub repository discovery stops paging after enough recent eligible repos are found.
-- Giant repositories are skipped by default to avoid long clone jobs.
+- GitHub fetch uses token-authenticated endpoint correctly and returns every eligible repository.
+- GitHub repository discovery keeps paging until GitHub is exhausted by default.
+- Giant repositories are included by default for complete analysis.
 - GitHub API failures are surfaced as errors.
 - Username availability validates missing, malformed, reserved, duplicate, and available names.
 - Username claiming validates bad format, reserved names, missing users, duplicate conflicts, cooldown, and successful lowercased claim.
@@ -67,7 +67,7 @@ Covered cases:
 - Engine webhook requests include the shared secret only when configured.
 - Engine job slot reservation rejects overload and releases capacity.
 - Partial clone fallback clears a dirty target directory before retrying.
-- Oversized repositories are skipped before clone.
+- Oversized repositories are attempted by default; repo-size skipping is an optional deployment brake.
 
 ## Engine Performance Upgrades
 
@@ -81,7 +81,7 @@ Covered cases:
 - Bounded candidate scanning with `CODEDNA_MAX_CANDIDATE_FILES=2000`.
 - Bounded scoring with `CODEDNA_MAX_FILES_TO_SCORE=80`.
 - Skips files over `CODEDNA_MAX_FILE_BYTES=200000` before opening them.
-- Skips repositories over `CODEDNA_MAX_REPO_SIZE_KB=100000` before cloning them.
+- Analyzes all repositories by default; `CODEDNA_MAX_REPO_SIZE_KB` can optionally cap clone size for constrained deployments.
 - Replaced “largest 50 files” selection with representative source ranking by language, file size, tests, README, and project manifest files.
 - Added configurable repo concurrency through `CODEDNA_MAX_REPO_WORKERS=6`.
 - Added configurable engine job workers through `CODEDNA_ENGINE_WORKERS`, defaulting to at most 4.
@@ -91,10 +91,9 @@ Covered cases:
 
 - `WEBHOOK_SECRET`: optional shared secret enforced by backend webhook routes and sent by the engine. Configure the same value in backend and engine environments.
 - `GITHUB_FETCH_TIMEOUT_MS`: caps GitHub API calls in the backend, default `10000`.
-- `GITHUB_MAX_REPO_PAGES`: caps GitHub repository pages fetched, default `2`.
-- `GITHUB_ELIGIBLE_REPO_BUFFER`: stops discovery once enough eligible repos are found, default `20`.
+- `GITHUB_MAX_REPO_PAGES`: optional cap for GitHub repository pages fetched, default `0` for no cap.
 - `ENGINE_REQUEST_TIMEOUT_MS`: caps backend-to-engine dispatch requests, default `5000`.
-- `CODEDNA_MAX_REPO_SIZE_KB`: skips giant repos before clone, default `100000`.
+- `CODEDNA_MAX_REPO_SIZE_KB`: optional giant-repo skip, default `0` for no size cap.
 - `CODEDNA_ENGINE_WORKERS`: caps concurrent engine process workers, default `min(cpu_count, 4)`.
 - `CODEDNA_ENGINE_QUEUE_LIMIT`: caps queued/in-flight engine jobs, default `CODEDNA_ENGINE_WORKERS * 4`; overloaded requests return `503`.
 - `/health` now exposes engine workers, queue limit, jobs in flight, and available cores.

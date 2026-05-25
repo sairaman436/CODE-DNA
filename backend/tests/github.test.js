@@ -38,7 +38,7 @@ test('fetchAndFilterRepos filters forks archives empty learning and hackathon re
   ]);
 });
 
-test('fetchAndFilterRepos uses token endpoint and caps results to 10 recent repos', async (t) => {
+test('fetchAndFilterRepos uses token endpoint and returns all eligible repos', async (t) => {
   const originalFetch = global.fetch;
   t.after(() => {
     global.fetch = originalFetch;
@@ -61,12 +61,12 @@ test('fetchAndFilterRepos uses token endpoint and caps results to 10 recent repo
 
   const repos = await fetchAndFilterRepos('ignored-when-token-present', 'secret-token');
 
-  assert.equal(repos.length, 10);
+  assert.equal(repos.length, 12);
   assert.equal(repos[0].name, 'service-11');
-  assert.equal(repos[9].name, 'service-2');
+  assert.equal(repos[11].name, 'service-0');
 });
 
-test('fetchAndFilterRepos stops paging after enough eligible repos for large accounts', async (t) => {
+test('fetchAndFilterRepos keeps paging until GitHub is exhausted for large accounts', async (t) => {
   const originalFetch = global.fetch;
   let calls = 0;
   t.after(() => {
@@ -78,10 +78,10 @@ test('fetchAndFilterRepos stops paging after enough eligible repos for large acc
     return {
       ok: true,
       json: async () =>
-        Array.from({ length: 100 }, (_, index) =>
+        Array.from({ length: calls === 1 ? 100 : 2 }, (_, index) =>
           repo({
-            name: `recent-service-${index}`,
-            pushed_at: new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
+            name: `page-${calls}-service-${index}`,
+            pushed_at: new Date(Date.UTC(2026, calls, index + 1)).toISOString(),
           })
         ),
     };
@@ -89,11 +89,11 @@ test('fetchAndFilterRepos stops paging after enough eligible repos for large acc
 
   const repos = await fetchAndFilterRepos('alice');
 
-  assert.equal(calls, 1);
-  assert.equal(repos.length, 10);
+  assert.equal(calls, 2);
+  assert.equal(repos.length, 102);
 });
 
-test('fetchAndFilterRepos skips giant repositories by default', async (t) => {
+test('fetchAndFilterRepos includes giant repositories by default for complete analysis', async (t) => {
   const originalFetch = global.fetch;
   t.after(() => {
     global.fetch = originalFetch;
@@ -109,7 +109,7 @@ test('fetchAndFilterRepos skips giant repositories by default', async (t) => {
 
   const repos = await fetchAndFilterRepos('alice');
 
-  assert.deepEqual(repos.map((item) => item.name), ['right-sized-service']);
+  assert.deepEqual(repos.map((item) => item.name), ['huge-monolith', 'right-sized-service']);
 });
 
 test('fetchAndFilterRepos surfaces GitHub API errors', async (t) => {

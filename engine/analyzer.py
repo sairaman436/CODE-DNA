@@ -108,9 +108,9 @@ CLONE_DEPTH = int(os.getenv('CODEDNA_CLONE_DEPTH', '20'))
 CLONE_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_CLONE_TIMEOUT_SECONDS', '90'))
 GIT_LOG_LIMIT = int(os.getenv('CODEDNA_GIT_LOG_LIMIT', '50'))
 GIT_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_GIT_TIMEOUT_SECONDS', '12'))
-MAX_REPOS_TO_ANALYZE = int(os.getenv('CODEDNA_MAX_REPOS', '10'))
+MAX_REPOS_TO_ANALYZE = int(os.getenv('CODEDNA_MAX_REPOS', '0'))
 MAX_REPO_WORKERS = int(os.getenv('CODEDNA_MAX_REPO_WORKERS', '6'))
-MAX_REPO_SIZE_KB = int(os.getenv('CODEDNA_MAX_REPO_SIZE_KB', '100000'))
+MAX_REPO_SIZE_KB = int(os.getenv('CODEDNA_MAX_REPO_SIZE_KB', '0'))
 MAX_CANDIDATE_FILES = int(os.getenv('CODEDNA_MAX_CANDIDATE_FILES', '2000'))
 MAX_FILES_TO_SCORE = int(os.getenv('CODEDNA_MAX_FILES_TO_SCORE', '80'))
 MAX_FILE_BYTES = int(os.getenv('CODEDNA_MAX_FILE_BYTES', '200000'))
@@ -864,7 +864,7 @@ def perform_full_analysis(username: str, repositories: list, progress_callback=N
     all_repo_results = []
     language_stats = Counter()
     repos_analyzed = 0
-    selected_repos = repositories[:MAX_REPOS_TO_ANALYZE]
+    selected_repos = repositories[:MAX_REPOS_TO_ANALYZE] if MAX_REPOS_TO_ANALYZE > 0 else repositories
     total_repos = len(selected_repos)
 
     def analyze_single_repo(index, repo):
@@ -882,7 +882,7 @@ def perform_full_analysis(username: str, repositories: list, progress_callback=N
                 return None
 
             repo_size = repo.get('size')
-            if isinstance(repo_size, int) and repo_size > MAX_REPO_SIZE_KB:
+            if MAX_REPO_SIZE_KB > 0 and isinstance(repo_size, int) and repo_size > MAX_REPO_SIZE_KB:
                 print(f"  > Skipping oversized repo: {repo['name']} ({repo_size} KB)", flush=True)
                 return None
 
