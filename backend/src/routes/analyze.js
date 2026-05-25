@@ -156,7 +156,10 @@ router.post('/', async (req, res) => {
       filteredRepos = await fetchAndFilterRepos(finalGithubUsername, tokenToUse);
       await prisma.analysisJob.update({
         where: { id: job.id },
-        data: { current_step: `Found ${filteredRepos.length} eligible repositories`, progress: 10 }
+        data: {
+          current_step: `Repository graph mapped: ${filteredRepos.length} production signal sources detected`,
+          progress: 10
+        }
       });
     } catch (githubErr) {
       console.error('GitHub fetch error:', githubErr.message);

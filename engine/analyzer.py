@@ -1076,6 +1076,30 @@ def _webhook_headers() -> dict:
     return {'x-webhook-secret': secret} if secret else {}
 
 
+def _analysis_progress_message(repo_name: str, completed: int, total: int) -> str:
+    ratio = completed / max(total, 1)
+    if ratio < 0.25:
+        return f"Calibrating source signal from {repo_name}"
+    if ratio < 0.5:
+        return f"Agent lanes are mapping code structure inside {repo_name}"
+    if ratio < 0.75:
+        return f"Extracting behavior patterns from {repo_name}"
+    if ratio < 1:
+        return f"Converging final DNA signals from {repo_name}"
+    return f"Repository signal locked from {repo_name}; synthesizing profile"
+
+
+def _distributed_progress_message(completed_repos: int, total_repos: int) -> str:
+    ratio = completed_repos / max(total_repos, 1)
+    if ratio < 0.35:
+        return "Engine agents are fanning out across the repository graph"
+    if ratio < 0.7:
+        return "Code signals are streaming back from distributed engines"
+    if ratio < 1:
+        return "Final agent lanes are converging into one DNA fingerprint"
+    return "All engine lanes merged; synthesizing the developer fingerprint"
+
+
 def _source_file_priority(rel_path: str, language: str, size: int) -> float:
     name = os.path.basename(rel_path).lower()
     priority = LANGUAGE_PRIORITY.get(language, 50)
@@ -1250,7 +1274,7 @@ def analyze_repository_batch(username: str, repositories: list, access_token: st
 
             if progress_callback:
                 current_progress = 10 + int((completed / max(total_repos, 1)) * 80)
-                progress_callback(current_progress, f"Processed {repo_name} ({completed}/{total_repos})")
+                progress_callback(current_progress, _analysis_progress_message(repo_name, completed, total_repos))
     finally:
         if future_to_repo:
             for future in future_to_repo:
@@ -1312,8 +1336,7 @@ def analyze_repositories_distributed(username: str, repositories: list, progress
     if progress_callback:
         progress_callback(
             12,
-            f"Distributing {len(repositories)} repositories as {len(chunks)} dynamic work batch(es) "
-            f"of up to {batch_size} repo(s) across {len(workers)} engine(s)"
+            f"Launching {len(workers)} engine agents across {len(chunks)} adaptive work lanes"
         )
 
     def run_chunk(worker, chunk):
@@ -1388,7 +1411,7 @@ def analyze_repositories_distributed(username: str, repositories: list, progress
                     progress = 12 + int((completed_repos / max(len(repositories), 1)) * 78)
                     progress_callback(
                         min(progress, 90),
-                        f"Completed {completed_repos}/{len(repositories)} repositories across dynamic engine batches"
+                        _distributed_progress_message(completed_repos, len(repositories))
                     )
 
                 chunk = next_chunk()
@@ -1452,6 +1475,9 @@ def perform_full_analysis(username: str, repositories: list, progress_callback=N
     selected_repos = _selected_repositories(repositories)
     if progress_callback and len(selected_repos) == 0:
         progress_callback(90, "No eligible repositories found")
+
+    if progress_callback and selected_repos:
+        progress_callback(10, "Repository graph mapped; waking distributed analysis agents")
 
     all_repo_results = analyze_repositories_distributed(username, selected_repos, progress_callback, access_token)
     return build_analysis_response(all_repo_results)

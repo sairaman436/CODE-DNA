@@ -144,6 +144,8 @@ Result: passed.
 Covered cases:
 
 - Full frontend TypeScript compile/type surface across Next.js app routes, components, auth declarations, store, and middleware.
+- Analysis screen now presents engine-agent phases and live signal lanes instead of plain repository counters.
+- Backend and engine progress copy now describes active analysis phases without mechanical `x/y repo` status text.
 
 ## Bugs Fixed During Testing
 

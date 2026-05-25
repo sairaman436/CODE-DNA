@@ -10,20 +10,31 @@ import { Confetti } from "@/components/Confetti";
 import Link from "next/link";
 
 const STEPS = [
-  { text: "Fetching repository metadata" },
-  { text: "Cloning repositories in parallel" },
-  { text: "Parsing abstract syntax trees" },
-  { text: "Extracting developer metrics" },
-  { text: "Synthesizing DNA profile" },
+  { text: "Mapping repository graph" },
+  { text: "Launching engine agents" },
+  { text: "Tracing code structure" },
+  { text: "Extracting behavior signals" },
+  { text: "Forging DNA fingerprint" },
 ];
 
 const FACTS = [
-  "Developers who write longer commit messages have 23% fewer reverts.",
-  "The average developer spends 30% of their time reading code, not writing it.",
-  "Consistency in naming conventions correlates with 15% fewer bugs.",
-  "Only 12% of open source contributors have 'The Architect' personality type.",
-  "Code DNA parses function nesting depth up to 12 levels.",
-  "Our engine processes ~50 files per repository in under 2 seconds.",
+  "Signal agents ignore generated files and focus on source that carries intent.",
+  "Naming, nesting, tests, error paths, and commit rhythm all leave a fingerprint.",
+  "Large repositories are split into file lanes so one heavy project does not own the room.",
+  "The engine reads code structure, not just language badges.",
+  "Final synthesis weighs both breadth across repos and depth inside selected files.",
+  "Slow tail repositories are watched and skipped if they stop the rest of the analysis.",
+];
+
+const SIGNALS = [
+  "source graph",
+  "agent lanes",
+  "syntax traces",
+  "test pulse",
+  "error paths",
+  "naming rhythm",
+  "commit echo",
+  "DNA merge",
 ];
 
 export default function AnalyzingPage() {
@@ -128,6 +139,7 @@ export default function AnalyzingPage() {
   }, [error, jobId]);
 
   const progress = Math.round(((currentStep + 1) / STEPS.length) * 100);
+  const visibleSignals = SIGNALS.slice(0, Math.min(SIGNALS.length, currentStep + 4));
 
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans flex flex-col items-center justify-center selection:bg-white/20 relative noise">
@@ -169,7 +181,7 @@ export default function AnalyzingPage() {
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-100 mb-1">
           Analyzing <span className="text-zinc-500">@{username}</span>
         </h1>
-        <p className="text-[13px] text-zinc-600 mb-10">Building your unique developer fingerprint</p>
+        <p className="text-[13px] text-zinc-600 mb-10">Orchestrating engine agents across your code graph</p>
 
         {/* Error */}
         {error && (
@@ -199,6 +211,29 @@ export default function AnalyzingPage() {
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
               />
+            </div>
+
+            {/* Signal Console */}
+            <div className="w-full mb-8 grid grid-cols-2 gap-2">
+              {visibleSignals.map((signal, idx) => {
+                const isHot = idx % STEPS.length === currentStep % STEPS.length;
+                return (
+                  <motion.div
+                    key={signal}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: isHot ? 1 : 0.55, y: 0 }}
+                    transition={{ duration: 0.35 }}
+                    className={`h-9 rounded-md border px-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.12em] ${
+                      isHot
+                        ? 'border-emerald-400/30 bg-emerald-400/[0.07] text-emerald-200'
+                        : 'border-white/[0.06] bg-white/[0.03] text-zinc-600'
+                    }`}
+                  >
+                    <span>{signal}</span>
+                    <span className={`h-1.5 w-1.5 rounded-full ${isHot ? 'bg-emerald-300 animate-pulse' : 'bg-zinc-700'}`} />
+                  </motion.div>
+                );
+              })}
             </div>
 
             {/* Steps */}
@@ -231,7 +266,7 @@ export default function AnalyzingPage() {
 
             {/* Server status */}
             {serverStep && (
-              <div className="text-[11px] text-zinc-600 font-mono mb-6 px-3 py-1.5 rounded-md bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
+              <div className="text-[11px] text-emerald-200/80 font-mono mb-6 px-3 py-2 rounded-md bg-emerald-400/[0.06] border border-emerald-400/[0.14] backdrop-blur-md max-w-full leading-relaxed">
                 {serverStep}
               </div>
             )}
