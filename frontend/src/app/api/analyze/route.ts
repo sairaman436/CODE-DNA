@@ -35,8 +35,13 @@ export async function POST(req: Request) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      return NextResponse.json({ error: errorData.error || 'Backend error' }, { status: response.status });
+      const errorData = await response.json().catch(() => ({}));
+      return NextResponse.json({ 
+        error: errorData.error || 'Backend error',
+        message: errorData.message || null,
+        starred: errorData.starred !== undefined ? errorData.starred : null,
+        followed: errorData.followed !== undefined ? errorData.followed : null
+      }, { status: response.status });
     }
 
     const data = await response.json();

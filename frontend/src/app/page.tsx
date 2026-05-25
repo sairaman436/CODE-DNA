@@ -7,7 +7,7 @@ import Link from "next/link";
 import { 
   ArrowUpRight, Activity, Trophy, Clock, Zap, Sparkles, 
   Globe, Target, LayoutGrid, ArrowRight, Scale,
-  MessageSquare, Code2, GitPullRequest
+  MessageSquare, Code2, GitPullRequest, GitCommit
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
@@ -499,6 +499,14 @@ function UserDashboard({ session }: { session: any }) {
         })
       });
       const result = await res.json();
+      if (!res.ok) {
+        if (res.status === 403 || res.status === 429) {
+          router.push(`/analyzing/${targetGithubUsername}`);
+        } else {
+          alert(result.message || result.error || 'Failed to start analysis');
+        }
+        return;
+      }
       if (result.jobId) {
         setAnalyzingJobId(result.jobId);
       }
@@ -600,7 +608,7 @@ function UserDashboard({ session }: { session: any }) {
             </div>
 
             {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/[0.08] rounded-[32px] overflow-hidden border border-white/[0.08] shadow-2xl">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-white/[0.08] rounded-[32px] overflow-hidden border border-white/[0.08] shadow-2xl">
               <div className="bg-white/[0.03] p-8 backdrop-blur-xl hover:bg-white/[0.06] transition-all group/stat">
                 <div className="flex items-center gap-3 mb-4 text-zinc-600 group-hover/stat:text-emerald-500 transition-colors">
                   <Globe className="w-4 h-4" />
@@ -635,6 +643,15 @@ function UserDashboard({ session }: { session: any }) {
                 </div>
                 <div className="text-2xl font-black text-zinc-100 tracking-tighter">
                   {data?.repos_analyzed || 0} <span className="text-[14px] text-zinc-600">REPOS</span>
+                </div>
+              </div>
+              <div className="bg-white/[0.03] p-8 backdrop-blur-xl hover:bg-white/[0.06] transition-all group/stat">
+                <div className="flex items-center gap-3 mb-4 text-zinc-600 group-hover/stat:text-emerald-500 transition-colors">
+                  <GitCommit className="w-4 h-4" />
+                  <span className="text-[10px] uppercase font-black tracking-[0.2em]">Commits</span>
+                </div>
+                <div className="text-2xl font-black text-zinc-100 tracking-tighter">
+                  {data?.total_commits ? data.total_commits.toLocaleString() : '0'} <span className="text-[14px] text-zinc-600">PARSED</span>
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
-const { fetchAndFilterRepos } = require('../services/github');
+const { fetchAndFilterRepos, checkGatewayRequirements } = require('../services/github');
 
 const router = express.Router();
 const ENGINE_REQUEST_TIMEOUT_MS = Number(process.env.ENGINE_REQUEST_TIMEOUT_MS || 5000);
@@ -136,6 +136,61 @@ router.post('/', async (req, res) => {
           codedna_username: finalGithubUsername
         }
       });
+    }
+
+    // Gateway & Rate Limiting Enforcement
+    const isAdmin = user.role === 'ADMIN' || user.email === 'sairamanladi2007@gmail.com' || finalGithubUsername.toLowerCase() === 'sairaman436';
+    const isAnalyzingOwnRepos = finalGithubUsername.toLowerCase() === user.github_username?.toLowerCase() ||
+                                finalGithubUsername.toLowerCase() === user.username?.toLowerCase() ||
+                                finalGithubUsername.toLowerCase() === user.codedna_username?.toLowerCase();
+
+    if (isAnalyzingOwnRepos && !isAdmin) {
+      // 1. Rate Limiting Check: 4 analyses in 2 hours
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const recentJobsCount = await prisma.analysisJob.count({
+        where: {
+          user_id: user.id,
+          created_at: { gte: twoHoursAgo }
+        }
+      });
+
+      if (recentJobsCount >= 4) {
+        const oldestJob = await prisma.analysisJob.findFirst({
+          where: {
+            user_id: user.id,
+            created_at: { gte: twoHoursAgo }
+          },
+          orderBy: { created_at: 'asc' }
+        });
+
+        let remainingMinutes = 120;
+        if (oldestJob && oldestJob.created_at) {
+          const diffMs = (oldestJob.created_at.getTime() + 2 * 60 * 60 * 1000) - Date.now();
+          remainingMinutes = Math.max(1, Math.ceil(diffMs / (60 * 1000)));
+        }
+
+        return res.status(429).json({
+          error: 'RATE_LIMIT_EXCEEDED',
+          message: `Rate limit reached. You can only analyze your repositories 4 times every 2 hours. Please try again in ${remainingMinutes} minutes.`
+        });
+      }
+
+      // 2. Gateway Check: Star and Follow
+      const { access_token } = req.body;
+      const gatewayResult = await checkGatewayRequirements(finalGithubUsername, access_token);
+      
+      if (gatewayResult.error) {
+        return res.status(400).json({ error: 'GATEWAY_ERROR', message: gatewayResult.error });
+      }
+
+      if (!gatewayResult.starred || !gatewayResult.followed) {
+        return res.status(403).json({
+          error: 'GATEWAY_REQUIRED',
+          message: 'To analyze your repositories, you must star the CODE-DNA repository and follow the creator on GitHub.',
+          starred: gatewayResult.starred,
+          followed: gatewayResult.followed
+        });
+      }
     }
 
     // 2. Create Analysis Job in DB

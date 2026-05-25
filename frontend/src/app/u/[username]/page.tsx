@@ -378,14 +378,18 @@ export default function PublicProfilePage() {
                   <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-600 mb-2">Class Assignment</h3>
                   <p className={`text-[16px] font-bold tracking-tight ${accent.text}`}>{profile.type}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-6 rounded-[28px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
-                    <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-700 mb-1">Score</h3>
-                    <p className={`text-3xl font-black tracking-tighter ${accent.text}`}>{isAnalyzed ? overallScore : "---"}</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-4 rounded-[24px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
+                    <h3 className="text-[9px] uppercase tracking-[0.15em] font-black text-zinc-500 mb-1">Score</h3>
+                    <p className={`text-2xl font-black tracking-tighter ${accent.text}`}>{isAnalyzed ? overallScore : "---"}</p>
                   </div>
-                  <div className="p-6 rounded-[28px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
-                    <h3 className="text-[10px] uppercase tracking-[0.2em] font-black text-zinc-700 mb-1">Repos</h3>
-                    <p className="text-3xl font-black text-zinc-100 tracking-tighter">{isAnalyzed ? profile.repos_analyzed : "0"}</p>
+                  <div className="p-4 rounded-[24px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
+                    <h3 className="text-[9px] uppercase tracking-[0.15em] font-black text-zinc-500 mb-1">Repos</h3>
+                    <p className="text-2xl font-black text-zinc-100 tracking-tighter">{isAnalyzed ? profile.repos_analyzed : "0"}</p>
+                  </div>
+                  <div className="p-4 rounded-[24px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
+                    <h3 className="text-[9px] uppercase tracking-[0.15em] font-black text-zinc-500 mb-1">Commits</h3>
+                    <p className="text-2xl font-black text-zinc-100 tracking-tighter">{isAnalyzed ? (profile.total_commits || 0).toLocaleString() : "0"}</p>
                   </div>
                 </div>
               </div>

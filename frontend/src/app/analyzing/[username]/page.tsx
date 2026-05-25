@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Star, UserPlus, ArrowRight, Loader2, Lock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Confetti } from "@/components/Confetti";
 import Link from "next/link";
@@ -49,32 +49,52 @@ export default function AnalyzingPage() {
   const [error, setError] = useState<string | null>(null);
   const [serverStep, setServerStep] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+
+  // Gateway states
+  const [isGatewayBlocked, setIsGatewayBlocked] = useState(false);
+  const [starredStatus, setStarredStatus] = useState(false);
+  const [followedStatus, setFollowedStatus] = useState(false);
+  const [isCheckingGateway, setIsCheckingGateway] = useState(false);
+
   const hasTriggered = useRef(false);
 
-  // 1. Trigger analysis
+  const runAnalysis = async () => {
+    setError(null);
+    setIsCheckingGateway(true);
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        if (data.error === 'GATEWAY_REQUIRED') {
+          setIsGatewayBlocked(true);
+          setStarredStatus(data.starred);
+          setFollowedStatus(data.followed);
+        } else {
+          setError(data.message || data.error || 'Failed to start analysis');
+        }
+        return;
+      }
+      
+      // Success! Clear gateway block and start polling
+      setIsGatewayBlocked(false);
+      setJobId(data.jobId);
+    } catch (err) {
+      setError('Could not connect to the backend. Make sure all services are running.');
+    } finally {
+      setIsCheckingGateway(false);
+    }
+  };
+
+  // 1. Trigger analysis on mount
   useEffect(() => {
     if (hasTriggered.current) return;
     hasTriggered.current = true;
-
-    async function triggerAnalysis() {
-      try {
-        const res = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username })
-        });
-        if (!res.ok) {
-          const data = await res.json();
-          setError(data.error || 'Failed to start analysis');
-          return;
-        }
-        const data = await res.json();
-        setJobId(data.jobId);
-      } catch (err) {
-        setError('Could not connect to the backend. Make sure all services are running.');
-      }
-    }
-    triggerAnalysis();
+    runAnalysis();
   }, []);
 
   // 2. Poll for status
@@ -157,118 +177,236 @@ export default function AnalyzingPage() {
       <div className="relative z-10 max-w-lg w-full px-6 flex flex-col items-center text-center">
 
         {/* Animated Orb */}
-        <div className="w-24 h-24 mb-12 relative flex items-center justify-center">
-          {[0, 1, 2].map((i) => (
-            <motion.div
-              key={i}
-              className="absolute inset-0 rounded-full border border-white/20"
-              animate={{
-                rotate: [0, 360],
-                scale: [1, 1.05, 1],
-              }}
-              transition={{
-                rotate: { duration: 6 + i * 3, repeat: Infinity, ease: "linear" },
-                scale: { duration: 3 + i, repeat: Infinity, ease: "easeInOut" },
-              }}
-              style={{
-                borderRadius: i % 2 === 0 ? '40% 60% 60% 40% / 40% 50% 50% 60%' : '60% 40% 40% 60% / 50% 40% 60% 50%'
-              }}
-            />
-          ))}
-          <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-        </div>
-
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-100 mb-1">
-          Analyzing <span className="text-zinc-500">@{username}</span>
-        </h1>
-        <p className="text-[13px] text-zinc-600 mb-10">Orchestrating engine agents across your code graph</p>
-
-        {/* Error */}
-        {error && (
-          <div className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl p-5 mb-8 text-left">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertCircle className="w-4 h-4 text-zinc-300" />
-              <h3 className="text-[13px] font-semibold text-zinc-300">Analysis Error</h3>
-            </div>
-            <p className="text-[12px] text-zinc-500 mb-4">{error}</p>
-            <Button
-              variant="outline"
-              className="border-white/15 text-zinc-300 hover:bg-white/10 rounded-lg h-8 text-xs font-medium"
-              onClick={() => window.location.reload()}
-            >
-              Try Again
-            </Button>
+        {!isGatewayBlocked && (
+          <div className="w-24 h-24 mb-12 relative flex items-center justify-center">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="absolute inset-0 rounded-full border border-white/20"
+                animate={{
+                  rotate: [0, 360],
+                  scale: [1, 1.05, 1],
+                }}
+                transition={{
+                  rotate: { duration: 6 + i * 3, repeat: Infinity, ease: "linear" },
+                  scale: { duration: 3 + i, repeat: Infinity, ease: "easeInOut" },
+                }}
+                style={{
+                  borderRadius: i % 2 === 0 ? '40% 60% 60% 40% / 40% 50% 50% 60%' : '60% 40% 40% 60% / 50% 40% 60% 50%'
+                }}
+              />
+            ))}
+            <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
           </div>
         )}
 
-        {/* Progress */}
-        {!error && (
-          <>
-            {/* Progress bar */}
-            <div className="w-full h-1 bg-white/[0.04] rounded-full mb-8 overflow-hidden">
-              <motion.div
-                className="h-full bg-white/60 rounded-full"
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-              />
-            </div>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-100 mb-1">
+          {isGatewayBlocked ? (
+            "Gateway Unlock"
+          ) : (
+            <>Analyzing <span className="text-zinc-500">@{username}</span></>
+          )}
+        </h1>
+        <p className="text-[13px] text-zinc-600 mb-10">
+          {isGatewayBlocked ? (
+            "Complete verification steps to analyze your repositories"
+          ) : (
+            "Orchestrating engine agents across your code graph"
+          )}
+        </p>
 
-            {/* Signal Console */}
-            <div className="w-full mb-8 grid grid-cols-2 gap-2">
-              {visibleSignals.map((signal, idx) => {
-                const isHot = idx % STEPS.length === currentStep % STEPS.length;
-                return (
-                  <motion.div
-                    key={signal}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: isHot ? 1 : 0.55, y: 0 }}
-                    transition={{ duration: 0.35 }}
-                    className={`h-9 rounded-md border px-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.12em] ${
-                      isHot
-                        ? 'border-emerald-400/30 bg-emerald-400/[0.07] text-emerald-200'
-                        : 'border-white/[0.06] bg-white/[0.03] text-zinc-600'
-                    }`}
-                  >
-                    <span>{signal}</span>
-                    <span className={`h-1.5 w-1.5 rounded-full ${isHot ? 'bg-emerald-300 animate-pulse' : 'bg-zinc-700'}`} />
-                  </motion.div>
-                );
-              })}
-            </div>
+        {isGatewayBlocked ? (
+          <div className="w-full rounded-2xl border border-white/[0.08] bg-zinc-950/40 backdrop-blur-xl p-6 mb-8 text-left relative overflow-hidden">
+            {/* Ambient Background Glow */}
+            <div className="absolute -right-24 -top-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-[80px]" />
+            <div className="absolute -left-24 -bottom-24 w-48 h-48 bg-sky-500/10 rounded-full blur-[80px]" />
 
-            {/* Steps */}
-            <div className="w-full text-left space-y-0 mb-10">
-              {STEPS.map((step, idx) => {
-                const isActive = idx === currentStep;
-                const isPast = idx < currentStep;
-                return (
-                  <div key={idx} className={`flex items-center gap-4 py-3 border-b border-white/[0.03] transition-all duration-500 ${isPast || isActive ? 'opacity-100' : 'opacity-20'}`}>
-                    <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold transition-all ${
-                      isPast ? 'bg-white/10 text-zinc-400' :
-                      isActive ? 'bg-white text-black' :
-                      'bg-white/[0.03] text-zinc-700'
-                    }`}>
-                      {isPast ? (
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <span>{String(idx + 1).padStart(2, '0')}</span>
-                      )}
-                    </div>
-                    <span className={`text-[13px] font-medium ${isActive ? 'text-zinc-100' : isPast ? 'text-zinc-500' : 'text-zinc-700'}`}>
-                      {step.text}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Server status */}
-            {serverStep && (
-              <div className="text-[11px] text-emerald-200/80 font-mono mb-6 px-3 py-2 rounded-md bg-emerald-400/[0.06] border border-emerald-400/[0.14] backdrop-blur-md max-w-full leading-relaxed">
-                {serverStep}
+            <div className="flex items-center gap-2.5 mb-6 pb-4 border-b border-white/[0.04]">
+              <Lock className="w-4 h-4 text-emerald-400" />
+              <div>
+                <h3 className="text-[14px] font-semibold text-zinc-200">Gateway Validation Required</h3>
+                <p className="text-[11px] text-zinc-500">Perform the following tasks to begin analysis</p>
               </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              {/* Task 1: Star Repo */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.04] transition-all hover:bg-white/[0.04] hover:border-white/[0.08]">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5">
+                    <Star className={`w-4 h-4 ${starredStatus ? 'text-amber-400 fill-amber-400/20 animate-pulse' : 'text-zinc-500'}`} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
+                      Star CODE-DNA Repository
+                      <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider bg-white/[0.04] px-1.5 py-0.5 rounded">Required</span>
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 mt-0.5">Support the open-source blueprint</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {starredStatus ? (
+                    <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Completed
+                    </span>
+                  ) : (
+                    <a
+                      href="https://github.com/sairaman436/CODE-DNA"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400 hover:text-sky-300 transition-colors bg-sky-500/[0.08] hover:bg-sky-500/[0.12] border border-sky-500/25 px-2.5 py-1 rounded-md"
+                    >
+                      Star Repo <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Task 2: Follow Creator */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.04] transition-all hover:bg-white/[0.04] hover:border-white/[0.08]">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5">
+                    <UserPlus className={`w-4 h-4 ${followedStatus ? 'text-sky-400' : 'text-zinc-500'}`} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
+                      Follow @sairaman436
+                      <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider bg-white/[0.04] px-1.5 py-0.5 rounded">Required</span>
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 mt-0.5">Verify your developer graph</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {followedStatus ? (
+                    <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Completed
+                    </span>
+                  ) : (
+                    <a
+                      href="https://github.com/sairaman436"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400 hover:text-sky-300 transition-colors bg-sky-500/[0.08] hover:bg-sky-500/[0.12] border border-sky-500/25 px-2.5 py-1 rounded-md"
+                    >
+                      Follow Creator <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2.5">
+              <Button
+                onClick={runAnalysis}
+                disabled={isCheckingGateway}
+                className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-500/50 disabled:cursor-not-allowed text-black rounded-lg h-9 text-xs font-semibold shadow-[0_0_12px_rgba(16,185,129,0.2)] hover:shadow-[0_0_16px_rgba(16,185,129,0.3)] transition-all flex items-center justify-center gap-1.5"
+              >
+                {isCheckingGateway ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Verifying Status...
+                  </>
+                ) : (
+                  <>
+                    Verify & Proceed <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </Button>
+              <p className="text-[10px] text-zinc-500 text-center leading-relaxed">
+                Note: Caching may delay GitHub API updates. Please wait 5-10 seconds before verifying.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Error */}
+            {error && (
+              <div className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl p-5 mb-8 text-left">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-zinc-300" />
+                  <h3 className="text-[13px] font-semibold text-zinc-300">Analysis Error</h3>
+                </div>
+                <p className="text-[12px] text-zinc-500 mb-4">{error}</p>
+                <Button
+                  variant="outline"
+                  className="border-white/15 text-zinc-300 hover:bg-white/10 rounded-lg h-8 text-xs font-medium"
+                  onClick={() => window.location.reload()}
+                >
+                  Try Again
+                </Button>
+              </div>
+            )}
+
+            {/* Progress */}
+            {!error && (
+              <>
+                {/* Progress bar */}
+                <div className="w-full h-1 bg-white/[0.04] rounded-full mb-8 overflow-hidden">
+                  <motion.div
+                    className="h-full bg-white/60 rounded-full"
+                    animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                  />
+                </div>
+
+                {/* Signal Console */}
+                <div className="w-full mb-8 grid grid-cols-2 gap-2">
+                  {visibleSignals.map((signal, idx) => {
+                    const isHot = idx % STEPS.length === currentStep % STEPS.length;
+                    return (
+                      <motion.div
+                        key={signal}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: isHot ? 1 : 0.55, y: 0 }}
+                        transition={{ duration: 0.35 }}
+                        className={`h-9 rounded-md border px-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.12em] ${
+                          isHot
+                            ? 'border-emerald-400/30 bg-emerald-400/[0.07] text-emerald-200'
+                            : 'border-white/[0.06] bg-white/[0.03] text-zinc-600'
+                        }`}
+                      >
+                        <span>{signal}</span>
+                        <span className={`h-1.5 w-1.5 rounded-full ${isHot ? 'bg-emerald-300 animate-pulse' : 'bg-zinc-700'}`} />
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {/* Steps */}
+                <div className="w-full text-left space-y-0 mb-10">
+                  {STEPS.map((step, idx) => {
+                    const isActive = idx === currentStep;
+                    const isPast = idx < currentStep;
+                    return (
+                      <div key={idx} className={`flex items-center gap-4 py-3 border-b border-white/[0.03] transition-all duration-500 ${isPast || isActive ? 'opacity-100' : 'opacity-20'}`}>
+                        <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold transition-all ${
+                          isPast ? 'bg-white/10 text-zinc-400' :
+                          isActive ? 'bg-white text-black' :
+                          'bg-white/[0.03] text-zinc-700'
+                        }`}>
+                          {isPast ? (
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <span>{String(idx + 1).padStart(2, '0')}</span>
+                          )}
+                        </div>
+                        <span className={`text-[13px] font-medium ${isActive ? 'text-zinc-100' : isPast ? 'text-zinc-500' : 'text-zinc-700'}`}>
+                          {step.text}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Server status */}
+                {serverStep && (
+                  <div className="text-[11px] text-emerald-200/80 font-mono mb-6 px-3 py-2 rounded-md bg-emerald-400/[0.06] border border-emerald-400/[0.14] backdrop-blur-md max-w-full leading-relaxed">
+                    {serverStep}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

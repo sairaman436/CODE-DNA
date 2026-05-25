@@ -19,6 +19,7 @@ import Footer from "@/components/Footer";
 interface ProfileData {
   user: { 
     username: string; 
+    codedna_username?: string | null;
     display_name: string | null; 
     avatar_url: string | null; 
     last_analyzed_at: string | null;
@@ -70,6 +71,145 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/u/${username}`);
+    addToast("Link copied to clipboard!", "success");
+  };
+
+  const handleDownloadPNG = () => {
+    if (!profileData) return;
+    const displayName = profileData.user.display_name || profileData.user.codedna_username || profileData.user.username;
+    const handle = profileData.user.codedna_username || profileData.user.username;
+    const avatar = profileData.user.avatar_url || `https://avatar.vercel.sh/${handle}`;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 900;
+    canvas.height = 240;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Draw background
+    ctx.fillStyle = "#0c0c0e";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw border
+    ctx.strokeStyle = "#1e1e24";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+
+    // Draw background glows
+    const gradient = ctx.createRadialGradient(80, 120, 10, 80, 120, 200);
+    gradient.addColorStop(0, "rgba(16, 185, 129, 0.08)");
+    gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw profile details
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.fillText(displayName, 150, 75);
+
+    ctx.fillStyle = "#52525b";
+    ctx.font = "13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.fillText(`@${handle} • codedna.dev`, 150, 105);
+
+    // Draw Archetype badge box
+    const badgeText = (profileData.type || "Developer").toUpperCase();
+    ctx.font = "bold 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    const textWidth = ctx.measureText(badgeText).width;
+    const boxWidth = textWidth + 24;
+    const boxHeight = 26;
+    const boxX = 150;
+    const boxY = 125;
+    
+    // Draw rounded badge box
+    ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
+    } else {
+      ctx.rect(boxX, boxY, boxWidth, boxHeight);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#d4d4d8";
+    ctx.fillText(badgeText, boxX + 12, boxY + 16);
+
+    // Function to draw stats columns
+    const drawStat = (label: string, value: string, x: number, isAccent = false) => {
+      ctx.textAlign = "center";
+      
+      // Draw Value
+      ctx.fillStyle = isAccent ? "#34d399" : "#ffffff";
+      ctx.font = "black 32px monospace";
+      ctx.fillText(value, x, 95);
+
+      // Draw Label
+      ctx.fillStyle = "#52525b";
+      ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      ctx.fillText(label.toUpperCase(), x, 125);
+    };
+
+    const readability = String(profileData.radar.find(r => r.axis === 'Readability')?.value || 0);
+    const discipline = String(profileData.radar.find(r => r.axis === 'Commit Discipline')?.value || 0);
+    const depth = String(profileData.radar.find(r => r.axis === 'Language Depth')?.value || 0);
+    const topPct = `${100 - (profileData.radar.find(r => r.axis === 'Readability')?.value || 50)}%`;
+
+    drawStat("Readability", readability, 520);
+    drawStat("Discipline", discipline, 640);
+    drawStat("Lang Depth", depth, 760);
+    drawStat("Top", topPct, 850, true);
+
+    const triggerDownload = () => {
+      const link = document.createElement("a");
+      link.download = `${handle}_codedna.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    };
+
+    // Draw Avatar
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      ctx.save();
+      ctx.beginPath();
+      // Rounded square path for avatar
+      if (ctx.roundRect) {
+        ctx.roundRect(40, 60, 80, 80, 20);
+      } else {
+        ctx.rect(40, 60, 80, 80);
+      }
+      ctx.clip();
+      ctx.drawImage(img, 40, 60, 80, 80);
+      ctx.restore();
+      triggerDownload();
+    };
+
+    img.onerror = () => {
+      // Fallback: draw initials avatar
+      ctx.save();
+      ctx.fillStyle = "#27272a";
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(40, 60, 80, 80, 20);
+      } else {
+        ctx.rect(40, 60, 80, 80);
+      }
+      ctx.fill();
+      
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.font = "bold 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      ctx.fillText(handle.slice(0, 2).toUpperCase(), 80, 110);
+      ctx.restore();
+      triggerDownload();
+    };
+
+    img.src = avatar;
+  };
 
   useEffect(() => {
     async function fetchProfile() {
@@ -427,10 +567,17 @@ export default function ProfilePage() {
                 <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">{profileData.type}</span>
               </div>
               <div className="flex gap-4">
-                <Button className="h-10 rounded-xl bg-white/[0.03] border border-white/[0.06] text-white hover:bg-white/5 font-semibold text-xs px-6 transition-all">
+                <Button 
+                  onClick={handleDownloadPNG}
+                  className="h-10 rounded-xl bg-white/[0.03] border border-white/[0.06] text-white hover:bg-white/5 font-semibold text-xs px-6 transition-all"
+                >
                   <Download className="w-3.5 h-3.5 mr-2" /> Download PNG
                 </Button>
-                <Button variant="outline" className="h-10 rounded-xl border-white/[0.06] text-zinc-400 hover:text-white font-semibold text-xs px-6">
+                <Button 
+                  onClick={handleCopyLink}
+                  variant="outline" 
+                  className="h-10 rounded-xl border-white/[0.06] text-zinc-400 hover:text-white font-semibold text-xs px-6"
+                >
                   Copy link
                 </Button>
               </div>

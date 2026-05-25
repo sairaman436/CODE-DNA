@@ -88,4 +88,104 @@ function isEligibleRepo(repo) {
   return true;
 }
 
-module.exports = { fetchAndFilterRepos, fetchWithTimeout, isEligibleRepo };
+async function checkGatewayRequirements(username, accessToken) {
+  let tokenToUse = accessToken;
+  let authHeader = null;
+
+  if (tokenToUse) {
+    authHeader = `token ${tokenToUse}`;
+  } else if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
+    const credentials = Buffer.from(`${process.env.GITHUB_CLIENT_ID}:${process.env.GITHUB_CLIENT_SECRET}`).toString('base64');
+    authHeader = `Basic ${credentials}`;
+  } else if (process.env.GITHUB_TOKEN) {
+    authHeader = `token ${process.env.GITHUB_TOKEN}`;
+  }
+
+  let followed = false;
+  let starred = false;
+
+  // Bypass checks for target creator
+  if (username.toLowerCase() === 'sairaman436') {
+    return { followed: true, starred: true };
+  }
+
+  // 1. Check Follow status
+  try {
+    const followUrl = accessToken
+      ? `https://api.github.com/user/following/sairaman436`
+      : `https://api.github.com/users/${username}/following/sairaman436`;
+
+    const response = await fetchWithTimeout(followUrl, {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'CodeDNA-Engine/1.0',
+        ...(authHeader ? { 'Authorization': authHeader } : {})
+      }
+    });
+
+    if (response.status === 204) {
+      followed = true;
+    }
+  } catch (err) {
+    console.error(`Error checking follow status for ${username}:`, err.message);
+  }
+
+  // 2. Check Star status
+  try {
+    if (accessToken) {
+      const starUrl = `https://api.github.com/user/starred/sairaman436/CODE-DNA`;
+      const response = await fetchWithTimeout(starUrl, {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'CodeDNA-Engine/1.0',
+          'Authorization': authHeader
+        }
+      });
+
+      if (response.status === 204) {
+        starred = true;
+      }
+    } else {
+      // Fallback: search the public starred repositories list
+      let page = 1;
+      let hasMore = true;
+      const maxPages = 3; // Check up to 300 starred repos to avoid timeouts
+      
+      while (hasMore && page <= maxPages) {
+        const starUrl = `https://api.github.com/users/${username}/starred?per_page=100&page=${page}`;
+        const response = await fetchWithTimeout(starUrl, {
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'CodeDNA-Engine/1.0',
+            ...(authHeader ? { 'Authorization': authHeader } : {})
+          }
+        });
+
+        if (!response.ok) {
+          console.error(`Star check list returned status ${response.status}`);
+          break;
+        }
+
+        const repos = await response.json();
+        if (repos.length === 0) {
+          hasMore = false;
+        } else {
+          const found = repos.some(r => r.full_name?.toLowerCase() === 'sairaman436/code-dna');
+          if (found) {
+            starred = true;
+            break;
+          }
+          if (repos.length < 100) hasMore = false;
+          page++;
+        }
+      }
+    }
+  } catch (err) {
+    console.error(`Error checking star status for ${username}:`, err.message);
+  }
+
+  return { followed, starred };
+}
+
+module.exports = { fetchAndFilterRepos, fetchWithTimeout, isEligibleRepo, checkGatewayRequirements };
+
