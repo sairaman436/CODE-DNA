@@ -633,7 +633,30 @@ def clone_repo(clone_url: str, target_dir: str, token: str = None, default_branc
         return False
 
 
-def analyze_repository(repo_dir: str) -> dict:
+def _fetch_commits_via_api(clone_url: str, token: str = None, default_branch: str = None) -> list:
+    """Fetch recent commits for the repository directly from the GitHub API."""
+    try:
+        parts = _github_repo_parts(clone_url)
+        if not parts:
+            return []
+        owner, repo = parts
+        headers = _github_headers(token)
+        
+        # Build commits URL
+        ref = quote(default_branch or '', safe='')
+        url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page={GIT_LOG_LIMIT}"
+        if ref:
+            url += f"&sha={ref}"
+            
+        response = requests.get(url, headers=headers, timeout=ARCHIVE_FETCH_TIMEOUT_SECONDS)
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        print(f"  ! Failed to fetch commits from API for {clone_url}: {e}", flush=True)
+    return []
+
+
+def analyze_repository(repo_dir: str, clone_url: str = None, token: str = None, default_branch: str = None) -> dict:
     """Walk all source files in a cloned repo and extract metrics in parallel."""
     language_line_counts = Counter()
     test_file_count = 0
@@ -679,61 +702,93 @@ def analyze_repository(repo_dir: str) -> dict:
         'emoji_usage_pct': 0,
     }
     try:
-        if not os.path.isdir(os.path.join(repo_dir, '.git')):
-            log_output = ''
-        else:
-        # Get last 100 commits, include shortstat for commit size, and special delimiter
+        if os.path.isdir(os.path.join(repo_dir, '.git')):
+            # Get last 100 commits, include shortstat for commit size, and special delimiter
             log_output = subprocess.check_output(
                 ['git', '--no-pager', 'log', '-n', str(GIT_LOG_LIMIT), '--format=@@@%ad|%s', '--date=iso', '--shortstat'],
                 cwd=repo_dir, env=os.environ, stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT_SECONDS
             ).decode('utf-8', errors='ignore')
-        
-        if log_output:
-            commits_data = [c for c in log_output.split('@@@') if c.strip()]
-            total_len = 0
-            hours = []
-            fixes = 0
-            emojis = 0
-            total_lines_changed = 0
-            valid_commits = 0
             
-            for c_data in commits_data:
-                lines = c_data.strip().split('\n')
-                if not lines: continue
+            if log_output:
+                commits_data = [c for c in log_output.split('@@@') if c.strip()]
+                total_len = 0
+                hours = []
+                fixes = 0
+                emojis = 0
+                total_lines_changed = 0
+                valid_commits = 0
                 
-                header = lines[0]
-                if '|' not in header: continue
-                date_str, msg = header.split('|', 1)
+                for c_data in commits_data:
+                    lines = c_data.strip().split('\n')
+                    if not lines: continue
+                    
+                    header = lines[0]
+                    if '|' not in header: continue
+                    date_str, msg = header.split('|', 1)
+                    
+                    total_len += len(msg)
+                    
+                    hour_match = re.search(r' (\d{2}):', date_str)
+                    if hour_match: hours.append(int(hour_match.group(1)))
+                    
+                    if re.search(r'\b(fix|bug|patch|issue)\b', msg, re.I): fixes += 1
+                    if re.search(r'[\U0001F000-\U0001FAFF]', msg): emojis += 1
+                    
+                    stat_line = lines[-1] if len(lines) > 1 else ""
+                    if ' changed' in stat_line and (' insertion' in stat_line or ' deletion' in stat_line):
+                        ins_match = re.search(r'(\d+) insertion', stat_line)
+                        del_match = re.search(r'(\d+) deletion', stat_line)
+                        ins = int(ins_match.group(1)) if ins_match else 0
+                        dels = int(del_match.group(1)) if del_match else 0
+                        total_lines_changed += (ins + dels)
+                    
+                    valid_commits += 1
                 
-                total_len += len(msg)
+                if valid_commits > 0:
+                    commit_metrics['total_commits'] = valid_commits
+                    commit_metrics['avg_message_length'] = total_len / valid_commits
+                    if hours: commit_metrics['most_active_hour'] = Counter(hours).most_common(1)[0][0]
+                    commit_metrics['fix_to_feature_ratio'] = fixes / valid_commits
+                    commit_metrics['commit_style'] = 'Descriptive' if (total_len / valid_commits) > 50 else 'Imperative'
+                    commit_metrics['avg_commit_size'] = total_lines_changed / valid_commits
+                    commit_metrics['emoji_usage_pct'] = (emojis / valid_commits) * 100
+        elif clone_url:
+            # Fallback to API if we don't have git history
+            commits = _fetch_commits_via_api(clone_url, token=token, default_branch=default_branch)
+            if commits:
+                total_len = 0
+                hours = []
+                fixes = 0
+                emojis = 0
+                valid_commits = 0
                 
-                hour_match = re.search(r' (\d{2}):', date_str)
-                if hour_match: hours.append(int(hour_match.group(1)))
-                
-                if re.search(r'\b(fix|bug|patch|issue)\b', msg, re.I): fixes += 1
-                if re.search(r'[\U0001F000-\U0001FAFF]', msg): emojis += 1
-                
-                stat_line = lines[-1] if len(lines) > 1 else ""
-                if ' changed' in stat_line and (' insertion' in stat_line or ' deletion' in stat_line):
-                    ins_match = re.search(r'(\d+) insertion', stat_line)
-                    del_match = re.search(r'(\d+) deletion', stat_line)
-                    ins = int(ins_match.group(1)) if ins_match else 0
-                    dels = int(del_match.group(1)) if del_match else 0
-                    total_lines_changed += (ins + dels)
-                
-                valid_commits += 1
-            
-            if valid_commits > 0:
-                commit_metrics['total_commits'] = valid_commits
-                commit_metrics['avg_message_length'] = total_len / valid_commits
-                if hours: commit_metrics['most_active_hour'] = Counter(hours).most_common(1)[0][0]
-                commit_metrics['fix_to_feature_ratio'] = fixes / valid_commits
-                commit_metrics['commit_style'] = 'Descriptive' if (total_len / valid_commits) > 50 else 'Imperative'
-                commit_metrics['avg_commit_size'] = total_lines_changed / valid_commits
-                commit_metrics['emoji_usage_pct'] = (emojis / valid_commits) * 100
-
+                for item in commits:
+                    commit_obj = item.get('commit')
+                    if not commit_obj: continue
+                    msg = commit_obj.get('message', '')
+                    date_str = commit_obj.get('author', {}).get('date', '')
+                    
+                    total_len += len(msg)
+                    
+                    hour_match = re.search(r'T(\d{2}):', date_str)
+                    if hour_match:
+                        hours.append(int(hour_match.group(1)))
+                    
+                    if re.search(r'\b(fix|bug|patch|issue)\b', msg, re.I): fixes += 1
+                    if re.search(r'[\U0001F000-\U0001FAFF]', msg): emojis += 1
+                    
+                    valid_commits += 1
+                    
+                if valid_commits > 0:
+                    commit_metrics['total_commits'] = valid_commits
+                    commit_metrics['avg_message_length'] = total_len / valid_commits
+                    if hours: commit_metrics['most_active_hour'] = Counter(hours).most_common(1)[0][0]
+                    commit_metrics['fix_to_feature_ratio'] = fixes / valid_commits
+                    commit_metrics['commit_style'] = 'Descriptive' if (total_len / valid_commits) > 50 else 'Imperative'
+                    commit_metrics['avg_commit_size'] = 30  # Estimated average size
+                    commit_metrics['emoji_usage_pct'] = (emojis / valid_commits) * 100
     except Exception as e:
-        print(f"  ! Git log analysis failed: {e}")
+        print(f"  ! Git history / API analysis failed: {e}")
 
     # 3. Score the most representative files, not simply the largest files.
     source_files = sorted(
@@ -1194,7 +1249,12 @@ def _analyze_single_repo(username: str, index: int, repo: dict, access_token: st
 
         print(f"  > Analyzing {repo['name']}...", flush=True)
         analyze_started = time.time()
-        result = analyze_repository(tmp_dir)
+        result = analyze_repository(
+            tmp_dir,
+            clone_url=clone_url,
+            token=access_token,
+            default_branch=repo.get('default_branch')
+        )
         analyze_elapsed = round(time.time() - analyze_started, 1)
         total_elapsed = round(time.time() - repo_started, 1)
         print(
