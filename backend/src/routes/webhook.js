@@ -1,7 +1,42 @@
 const express = require('express');
+const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 
 const router = express.Router();
+const SCORE_KEYS = [
+  'readability',
+  'complexity',
+  'documentation',
+  'test_mindset',
+  'commit_discipline',
+  'language_depth',
+  'refactor_tendency',
+  'error_handling',
+];
+
+function verifyWebhookSecret(req, res, next) {
+  const expected = process.env.WEBHOOK_SECRET;
+  if (!expected) return next();
+
+  const received = req.headers['x-webhook-secret'];
+  if (typeof received !== 'string') {
+    return res.status(401).json({ error: 'Unauthorized webhook' });
+  }
+
+  const expectedBuffer = Buffer.from(expected);
+  const receivedBuffer = Buffer.from(received);
+  if (expectedBuffer.length !== receivedBuffer.length || !crypto.timingSafeEqual(expectedBuffer, receivedBuffer)) {
+    return res.status(401).json({ error: 'Unauthorized webhook' });
+  }
+
+  return next();
+}
+
+function hasValidScores(results) {
+  return !!results?.scores && SCORE_KEYS.every((key) => Number.isFinite(results.scores[key]));
+}
+
+router.use(verifyWebhookSecret);
 
 // Python engine calls this endpoint when analysis is complete
 router.post('/results', async (req, res) => {
@@ -10,6 +45,10 @@ router.post('/results', async (req, res) => {
 
     if (!jobId || !userId || !results) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    if (!hasValidScores(results)) {
+      return res.status(400).json({ error: 'Invalid analysis scores' });
     }
 
     // 1. Update the analysis job to completed

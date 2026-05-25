@@ -73,7 +73,7 @@ SECRET_PATTERNS = [
 
 # Test file patterns
 TEST_PATTERNS = re.compile(
-    r'(test_|_test\.|\.test\.|\.spec\.|tests/|test/|__tests__/|spec/)',
+    r'(test_|_test\.|\.test\.|\.spec\.|tests[\\/]|test[\\/]|__tests__[\\/]|spec[\\/])',
     re.IGNORECASE
 )
 
@@ -104,10 +104,40 @@ NAMING_STANDARDS = {
     'Ruby': 'snake_case',
 }
 
+CLONE_DEPTH = int(os.getenv('CODEDNA_CLONE_DEPTH', '20'))
+CLONE_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_CLONE_TIMEOUT_SECONDS', '90'))
+GIT_LOG_LIMIT = int(os.getenv('CODEDNA_GIT_LOG_LIMIT', '50'))
+GIT_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_GIT_TIMEOUT_SECONDS', '12'))
+MAX_REPOS_TO_ANALYZE = int(os.getenv('CODEDNA_MAX_REPOS', '10'))
+MAX_REPO_WORKERS = int(os.getenv('CODEDNA_MAX_REPO_WORKERS', '6'))
+MAX_CANDIDATE_FILES = int(os.getenv('CODEDNA_MAX_CANDIDATE_FILES', '2000'))
+MAX_FILES_TO_SCORE = int(os.getenv('CODEDNA_MAX_FILES_TO_SCORE', '80'))
+MAX_FILE_BYTES = int(os.getenv('CODEDNA_MAX_FILE_BYTES', '200000'))
+PARTIAL_CLONE_FILTER = os.getenv('CODEDNA_PARTIAL_CLONE_FILTER', 'blob:limit=200k')
+
+LANGUAGE_PRIORITY = {
+    'Python': 110,
+    'TypeScript': 105,
+    'JavaScript': 100,
+    'Go': 95,
+    'Java': 90,
+    'Rust': 90,
+    'C++': 85,
+    'C': 80,
+    'C#': 80,
+    'PHP': 75,
+    'Ruby': 75,
+    'Markdown': 40,
+    'JSON': 25,
+    'YAML': 25,
+    'TOML': 25,
+}
+
 
 def should_skip_file(filepath: str) -> bool:
     """Check if a file should be skipped."""
-    filepath_lower = filepath.lower()
+    filepath_lower = filepath.lower().replace('\\', '/')
+    path_parts = [part for part in filepath_lower.split('/') if part]
     
     # 1. Block secrets immediately
     for secret in SECRET_PATTERNS:
@@ -116,7 +146,12 @@ def should_skip_file(filepath: str) -> bool:
             
     # 2. Block generated/vendor files
     for pattern in SKIP_PATTERNS:
-        if pattern in filepath:
+        normalized = pattern.lower().replace('\\', '/')
+        if normalized.startswith('.') and filepath_lower.endswith(normalized):
+            return True
+        if '/' in normalized and normalized in filepath_lower:
+            return True
+        if normalized in path_parts:
             return True
             
     return False
@@ -149,9 +184,7 @@ def analyze_python_ast(content: str) -> dict:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             func_lines = node.end_lineno - node.lineno + 1 if node.end_lineno else 1
             functions.append(func_lines)
-            # Check for docstring
-            if (node.body and isinstance(node.body[0], ast.Expr)
-                    and isinstance(node.body[0].value, (ast.Str, ast.Constant))):
+            if ast.get_docstring(node):
                 docstrings += 1
         elif isinstance(node, ast.ClassDef):
             classes += 1
@@ -318,30 +351,77 @@ def analyze_file_generic(content: str, language: str) -> dict:
     }
 
 
-def clone_repo(clone_url: str, target_dir: str, token: str = None) -> bool:
-    """Ultra-lean shallow clone: No tags, single branch, blob filter."""
+def _redact_token(value: str, token: str | None) -> str:
+    if token:
+        return value.replace(token, '***')
+    return value
+
+
+def clone_repo(clone_url: str, target_dir: str, token: str = None, default_branch: str = None) -> bool:
+    """Ultra-lean shallow clone with small source blobs available locally."""
     try:
         env = os.environ.copy()
         env['GIT_TERMINAL_PROMPT'] = '0'
         env['GIT_ASKPASS'] = 'echo'
         env['GCM_INTERACTIVE'] = 'never'
+        env['GIT_LFS_SKIP_SMUDGE'] = '1'
         
         # Inject token into URL for private repo access if provided
         final_url = clone_url
         if token and 'github.com' in clone_url:
             final_url = clone_url.replace('https://', f'https://{token}@')
 
-        # Rule: Use --depth 50 to get enough history for the activity pulse without the extreme slowness of shallow-since
-        subprocess.run(
-            ['git', 'clone', '--depth', '50', '--single-branch', '--no-tags', '--filter=blob:none', final_url, target_dir],
-            capture_output=True, timeout=180, check=True, env=env
+        command = [
+            'git', 'clone',
+            '--depth', str(CLONE_DEPTH),
+            '--single-branch',
+            '--no-tags',
+            '--filter', PARTIAL_CLONE_FILTER,
+        ]
+        if default_branch:
+            command.extend(['--branch', default_branch])
+        command.extend([final_url, target_dir])
+
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=CLONE_TIMEOUT_SECONDS,
+            check=False,
+            env=env
         )
+        if result.returncode == 0:
+            return True
+
+        # Some hosts/proxies do not support partial clone filters. Fall back to a
+        # plain shallow clone so analysis still completes instead of hanging.
+        fallback = [
+            'git', 'clone',
+            '--depth', '1',
+            '--single-branch',
+            '--no-tags',
+        ]
+        if default_branch:
+            fallback.extend(['--branch', default_branch])
+        fallback.extend([final_url, target_dir])
+        result = subprocess.run(
+            fallback,
+            capture_output=True,
+            text=True,
+            timeout=CLONE_TIMEOUT_SECONDS,
+            check=False,
+            env=env
+        )
+        if result.returncode != 0:
+            stderr = _redact_token(result.stderr.strip(), token)
+            print(f"  ! Failed to clone {_redact_token(clone_url, token)}: {stderr}", flush=True)
+            return False
         return True
     except subprocess.TimeoutExpired:
-        print(f"  ! Timeout cloning {clone_url}", flush=True)
+        print(f"  ! Timeout cloning {_redact_token(clone_url, token)}", flush=True)
         return False
     except Exception as e:
-        print(f"  ! Failed to clone {clone_url}: {e}", flush=True)
+        print(f"  ! Failed to clone {_redact_token(clone_url, token)}: {_redact_token(str(e), token)}", flush=True)
         return False
 
 
@@ -352,10 +432,12 @@ def analyze_repository(repo_dir: str) -> dict:
     total_files = 0
     total_assertions = 0
     
-    # 1. Collect all valid source files first
+    # 1. Collect a bounded set of source candidates first. Large repos often
+    # contain thousands of generated/config files; scanning forever makes the
+    # user wait without improving the profile.
     source_files = []
     for root, dirs, files in os.walk(repo_dir):
-        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in SKIP_PATTERNS]
+        dirs[:] = [d for d in dirs if not d.startswith('.') and not should_skip_file(d)]
         for fname in files:
             filepath = os.path.join(root, fname)
             rel_path = os.path.relpath(filepath, repo_dir)
@@ -363,8 +445,19 @@ def analyze_repository(repo_dir: str) -> dict:
             
             language = detect_language(fname)
             if not language: continue
-            
-            source_files.append((filepath, rel_path, language))
+
+            try:
+                size = os.path.getsize(filepath)
+            except OSError:
+                continue
+            if size <= 0 or size > MAX_FILE_BYTES:
+                continue
+
+            source_files.append((filepath, rel_path, language, size))
+            if len(source_files) >= MAX_CANDIDATE_FILES:
+                break
+        if len(source_files) >= MAX_CANDIDATE_FILES:
+            break
 
     # 2. Extract Git History Metrics (Real Data)
     commit_metrics = {
@@ -380,8 +473,8 @@ def analyze_repository(repo_dir: str) -> dict:
     try:
         # Get last 100 commits, include shortstat for commit size, and special delimiter
         log_output = subprocess.check_output(
-            ['git', '--no-pager', 'log', '-n', '100', '--format=@@@%ad|%s', '--date=iso', '--shortstat'],
-            cwd=repo_dir, env=os.environ, stderr=subprocess.DEVNULL, timeout=60
+            ['git', '--no-pager', 'log', '-n', str(GIT_LOG_LIMIT), '--format=@@@%ad|%s', '--date=iso', '--shortstat'],
+            cwd=repo_dir, env=os.environ, stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT_SECONDS
         ).decode('utf-8', errors='ignore')
         
         if log_output:
@@ -431,15 +524,36 @@ def analyze_repository(repo_dir: str) -> dict:
     except Exception as e:
         print(f"  ! Git log analysis failed: {e}")
 
-    # 3. Limit to top 50 most significant files to ensure blazing speed
-    source_files = sorted(source_files, key=lambda x: os.path.getsize(x[0]), reverse=True)[:50]
+    def file_priority(file_info):
+        filepath, rel_path, language, size = file_info
+        name = os.path.basename(rel_path).lower()
+        priority = LANGUAGE_PRIORITY.get(language, 50)
+        if is_test_file(rel_path):
+            priority -= 8
+        if name.startswith('readme'):
+            priority += 20
+        if name in {'package.json', 'pyproject.toml', 'requirements.txt', 'go.mod', 'cargo.toml'}:
+            priority += 14
+
+        # Prefer meaningful medium-sized source files. Huge files are slower and
+        # more likely generated; tiny files rarely carry enough signal.
+        if size < 400:
+            size_score = size / 400
+        elif size <= 60_000:
+            size_score = 1
+        else:
+            size_score = max(0.2, 1 - ((size - 60_000) / MAX_FILE_BYTES))
+        return priority + (size_score * 25)
+
+    # 3. Score the most representative files, not simply the largest files.
+    source_files = sorted(source_files, key=file_priority, reverse=True)[:MAX_FILES_TO_SCORE]
 
     def analyze_file_task(file_info):
-        filepath, rel_path, language = file_info
+        filepath, rel_path, language, size = file_info
         try:
             with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
-            if len(content) > 200_000: return None # Skip massive files
+            if len(content) > MAX_FILE_BYTES: return None
             
             is_test = is_test_file(rel_path)
             metrics = analyze_file_generic(content, language)
@@ -462,7 +576,8 @@ def analyze_repository(repo_dir: str) -> dict:
         except:
             return None
 
-    # 3. Analyze files sequentially (avoids GIL thrashing since outer loop is already parallel)
+    # 4. Analyze files sequentially. The outer repo analysis is already parallel,
+    # so this keeps CPU and disk pressure predictable.
     file_metrics = []
     for file_info in source_files:
         m = analyze_file_task(file_info)
@@ -489,8 +604,8 @@ def get_repo_activity(repo_path: str) -> list:
     """Extract commit dates for the last 90 days using git log."""
     try:
         # Get commit timestamps from last 90 days
-        cmd = ["git", "--no-pager", "log", "--format=%at"]
-        result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True, check=True, timeout=60)
+        cmd = ["git", "--no-pager", "log", "--since=90.days.ago", "--format=%at"]
+        result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True, check=True, timeout=GIT_TIMEOUT_SECONDS)
         timestamps = result.stdout.splitlines()
         
         from datetime import datetime, timezone
@@ -549,7 +664,10 @@ def compute_scores(all_repo_results: list) -> dict:
         agg_emoji_pcts.append(cm.get('emoji_usage_pct', 0))
 
     if not all_metrics:
-        return _default_scores()
+        return {
+            'scores': _default_scores(),
+            'patterns': _default_patterns(),
+        }
 
     # --- Axis 1: Code Readability ---
     naming_scores = [m.get('naming_consistency', 0.5) for m in all_metrics]
@@ -649,6 +767,21 @@ def _default_scores():
     ]}
 
 
+def _default_patterns():
+    """Return neutral pattern values when no repositories can be analyzed."""
+    return {
+        'naming_style': 'unknown',
+        'avg_fn_length': 0,
+        'commit_style': 'Imperative',
+        'most_active_hour': 12,
+        'avg_message_length': 0,
+        'fix_to_feature_ratio': 0,
+        'avg_commit_size': 0,
+        'emoji_usage_pct': 0,
+        'total_commits': 0,
+    }
+
+
 def classify_developer_type(scores: dict) -> tuple[str, str]:
     """
     Classify developer into one of 8 types using a decision tree.
@@ -724,7 +857,8 @@ def perform_full_analysis(username: str, repositories: list, progress_callback=N
     all_repo_results = []
     language_stats = Counter()
     repos_analyzed = 0
-    total_repos = len(repositories[:10])
+    selected_repos = repositories[:MAX_REPOS_TO_ANALYZE]
+    total_repos = len(selected_repos)
 
     def analyze_single_repo(index, repo):
         tmp_dir = tempfile.mkdtemp(prefix=f'codedna_{username}_{index}_')
@@ -741,7 +875,7 @@ def perform_full_analysis(username: str, repositories: list, progress_callback=N
                 return None
 
             print(f"  > Cloning {repo['name']} (Parallel)...", flush=True)
-            if not clone_repo(clone_url, tmp_dir, token=access_token):
+            if not clone_repo(clone_url, tmp_dir, token=access_token, default_branch=repo.get('default_branch')):
                 return None
 
             print(f"  > Analyzing {repo['name']}...", flush=True)
@@ -749,18 +883,23 @@ def perform_full_analysis(username: str, repositories: list, progress_callback=N
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    # Use balanced concurrency for I/O bound cloning tasks to prevent network timeouts
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    if progress_callback and total_repos == 0:
+        progress_callback(90, "No eligible repositories found")
+
+    # Use balanced concurrency for I/O-bound cloning tasks to prevent network
+    # timeouts while still keeping multiple repos moving at once.
+    worker_count = max(1, min(MAX_REPO_WORKERS, total_repos or 1))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
         future_to_repo = {
             executor.submit(analyze_single_repo, i, repo): repo 
-            for i, repo in enumerate(repositories[:10])
+            for i, repo in enumerate(selected_repos)
         }
         
         completed = 0
         for future in concurrent.futures.as_completed(future_to_repo):
             completed += 1
             if progress_callback:
-                current_progress = 10 + int((completed / total_repos) * 80)
+                current_progress = 10 + int((completed / max(total_repos, 1)) * 80)
                 repo_name = future_to_repo[future]['name']
                 progress_callback(current_progress, f"Processed {repo_name} ({completed}/{total_repos})")
             

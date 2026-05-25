@@ -8,6 +8,26 @@ const EXCLUSION_KEYWORDS = [
 ];
 
 const HACKATHON_KEYWORDS = ['hackathon', 'hack', '24h', '48h', 'devpost'];
+const GITHUB_FETCH_TIMEOUT_MS = Number(process.env.GITHUB_FETCH_TIMEOUT_MS || 10000);
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = GITHUB_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error(`GitHub API timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 async function fetchAndFilterRepos(username, token) {
   const headers = {
@@ -32,7 +52,7 @@ async function fetchAndFilterRepos(username, token) {
       ? `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner&visibility=public` 
       : `https://api.github.com/users/${username}/repos?per_page=100&page=${page}&sort=updated&type=owner`;
 
-    const response = await fetch(url, { headers });
+    const response = await fetchWithTimeout(url, { headers });
     
     if (!response.ok) {
       throw new Error(`GitHub API Error: ${response.status} ${response.statusText}`);
@@ -86,4 +106,4 @@ async function fetchAndFilterRepos(username, token) {
   }));
 }
 
-module.exports = { fetchAndFilterRepos };
+module.exports = { fetchAndFilterRepos, fetchWithTimeout };

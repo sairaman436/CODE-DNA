@@ -22,9 +22,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 NODE_BACKEND_URL = "http://localhost:5000"
 
 # ─── Industrial Scalability: Parallel Processing Pool ───
-# We use a ProcessPoolExecutor to handle CPU-bound AST analysis across all available cores.
-# This ensures that one user's analysis doesn't block another's.
-executor = ProcessPoolExecutor(max_workers=os.cpu_count() or 4)
+# Keep analysis jobs isolated without letting simultaneous clone-heavy jobs
+# exhaust the machine. Tune with CODEDNA_ENGINE_WORKERS for production.
+ENGINE_WORKERS = int(os.getenv("CODEDNA_ENGINE_WORKERS", str(min(os.cpu_count() or 4, 4))))
+ENGINE_QUEUE_LIMIT = int(os.getenv("CODEDNA_ENGINE_QUEUE_LIMIT", str(ENGINE_WORKERS * 4)))
+executor = ProcessPoolExecutor(max_workers=ENGINE_WORKERS)
+active_jobs = 0
+active_jobs_lock = asyncio.Lock()
 
 class Repository(BaseModel):
     name: str
@@ -39,6 +43,26 @@ class AnalysisRequest(BaseModel):
     repositories: List[Repository] = []
     access_token: Optional[str] = None
 
+def webhook_headers():
+    headers = {}
+    secret = os.getenv("WEBHOOK_SECRET")
+    if secret:
+        headers["x-webhook-secret"] = secret
+    return headers
+
+async def reserve_job_slot() -> bool:
+    global active_jobs
+    async with active_jobs_lock:
+        if active_jobs >= ENGINE_QUEUE_LIMIT:
+            return False
+        active_jobs += 1
+        return True
+
+async def release_job_slot():
+    global active_jobs
+    async with active_jobs_lock:
+        active_jobs = max(0, active_jobs - 1)
+
 def update_job_progress(job_id: str, progress: int, step: str):
     """Update the analysis job status in Node.js backend."""
     try:
@@ -46,6 +70,7 @@ def update_job_progress(job_id: str, progress: int, step: str):
         requests.post(
             f"{NODE_BACKEND_URL}/api/webhook/progress",
             json={"jobId": job_id, "progress": progress, "step": step},
+            headers=webhook_headers(),
             timeout=5
         )
     except Exception as e:
@@ -87,6 +112,7 @@ def run_analysis_task(request_data: dict):
         requests.post(
             f"{NODE_BACKEND_URL}/api/webhook/results",
             json=payload,
+            headers=webhook_headers(),
             timeout=30
         )
 
@@ -109,6 +135,7 @@ def run_analysis_task(request_data: dict):
                         "growth_areas": [],
                     }
                 },
+                headers=webhook_headers(),
                 timeout=10
             )
         except: pass
@@ -119,18 +146,24 @@ async def start_analysis(request: AnalysisRequest):
     if not request.jobId or not request.userId:
         raise HTTPException(status_code=400, detail="Missing required fields")
 
+    if not await reserve_job_slot():
+        raise HTTPException(status_code=503, detail="Analysis engine is busy. Please retry shortly.")
+
     # We convert to dict because Pydantic models aren't always pickleable for multiprocessing
     request_data = {
         'jobId': request.jobId,
         'userId': request.userId,
         'username': request.username,
-        'repositories': [r.dict() for r in request.repositories],
+        'repositories': [r.model_dump() for r in request.repositories],
         'access_token': request.access_token
     }
 
     # Dispatch to the Process Pool (Non-blocking for the API thread)
     loop = asyncio.get_event_loop()
-    loop.run_in_executor(executor, run_analysis_task, request_data)
+    future = loop.run_in_executor(executor, run_analysis_task, request_data)
+    future.add_done_callback(
+        lambda _: loop.call_soon_threadsafe(asyncio.create_task, release_job_slot())
+    )
 
     return {"message": "Analysis dispatched to parallel worker pool", "jobId": request.jobId}
 
@@ -140,5 +173,8 @@ async def health_check():
         "status": "ok", 
         "service": "codedna-python-engine", 
         "concurrency": "ProcessPoolExecutor",
-        "cores_active": os.cpu_count() or 4
+        "workers_active": ENGINE_WORKERS,
+        "queue_limit": ENGINE_QUEUE_LIMIT,
+        "jobs_in_flight": active_jobs,
+        "cores_available": os.cpu_count() or 4
     }

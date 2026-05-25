@@ -3,6 +3,40 @@ const prisma = require('../lib/prisma');
 const { fetchAndFilterRepos } = require('../services/github');
 
 const router = express.Router();
+const ENGINE_REQUEST_TIMEOUT_MS = Number(process.env.ENGINE_REQUEST_TIMEOUT_MS || 5000);
+
+function engineHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  if (process.env.WEBHOOK_SECRET) {
+    headers['x-webhook-secret'] = process.env.WEBHOOK_SECRET;
+  }
+  return headers;
+}
+
+async function dispatchToEngine(engineUrl, payload) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ENGINE_REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${engineUrl}/analyze`, {
+      method: 'POST',
+      headers: engineHeaders(),
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Analysis engine rejected job: ${response.status} ${response.statusText}`);
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error(`Analysis engine timeout after ${ENGINE_REQUEST_TIMEOUT_MS}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 router.post('/', async (req, res) => {
   try {
@@ -103,21 +137,17 @@ router.post('/', async (req, res) => {
 
     // 4. Fire-and-forget HTTP request to the Python Engine
     const engineUrl = process.env.ANALYSIS_SERVICE_URL || 'http://localhost:8000';
-    fetch(`${engineUrl}/analyze`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    dispatchToEngine(engineUrl, {
         jobId: job.id,
         userId: user.id,
         username: user.username,
         repositories: filteredRepos,
         access_token: req.body.access_token || process.env.GITHUB_TOKEN
-      })
     }).catch(err => {
       console.error('Python engine unreachable:', err.message);
       prisma.analysisJob.update({
         where: { id: job.id },
-        data: { status: 'failed', error_message: 'Analysis engine unreachable' }
+        data: { status: 'failed', error_message: err.message }
       }).catch(() => {});
     });
 
@@ -130,3 +160,4 @@ router.post('/', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.dispatchToEngine = dispatchToEngine;
