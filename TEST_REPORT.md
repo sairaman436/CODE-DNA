@@ -4,7 +4,7 @@ Date: 2026-05-25
 
 ## Summary
 
-Added executable regression coverage for the backend API layer and Python analysis engine, then verified the frontend TypeScript surface. Later passes upgraded the engine hot path, stabilized clone fallback behavior, and added high-traffic guardrails for users with large GitHub accounts.
+Added executable regression coverage for the backend API layer and Python analysis engine, then verified the frontend TypeScript surface. Later passes upgraded the engine hot path, stabilized clone fallback behavior, added high-traffic guardrails for users with large GitHub accounts, and introduced a multi-engine dispatch pool.
 
 ## Tests Added
 
@@ -39,6 +39,7 @@ Covered cases:
 - Webhook routes reject missing/invalid shared secrets when `WEBHOOK_SECRET` is configured.
 - Webhook results reject malformed score contracts.
 - GitHub API timeout handling aborts stalled requests.
+- Backend dispatches analysis jobs across a comma-separated `ANALYSIS_SERVICE_URLS` engine pool with round-robin selection and failover.
 
 ### Engine
 
@@ -90,6 +91,7 @@ Covered cases:
 ## Production Guardrails Added
 
 - `WEBHOOK_SECRET`: optional shared secret enforced by backend webhook routes and sent by the engine. Configure the same value in backend and engine environments.
+- `ANALYSIS_SERVICE_URLS`: comma-separated engine pool, e.g. `http://localhost:8000,http://localhost:8001,http://localhost:8002`.
 - `GITHUB_FETCH_TIMEOUT_MS`: caps GitHub API calls in the backend, default `10000`.
 - `GITHUB_MAX_REPO_PAGES`: optional cap for GitHub repository pages fetched, default `0` for no cap.
 - `ENGINE_REQUEST_TIMEOUT_MS`: caps backend-to-engine dispatch requests, default `5000`.

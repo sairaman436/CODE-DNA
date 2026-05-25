@@ -4,6 +4,7 @@ const { fetchAndFilterRepos } = require('../services/github');
 
 const router = express.Router();
 const ENGINE_REQUEST_TIMEOUT_MS = Number(process.env.ENGINE_REQUEST_TIMEOUT_MS || 5000);
+let nextEngineIndex = 0;
 
 function engineHeaders() {
   const headers = { 'Content-Type': 'application/json' };
@@ -36,6 +37,37 @@ async function dispatchToEngine(engineUrl, payload) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function getEnginePool() {
+  const raw = process.env.ANALYSIS_SERVICE_URLS || process.env.ANALYSIS_SERVICE_URL || 'http://localhost:8000';
+  return raw
+    .split(',')
+    .map((url) => url.trim())
+    .filter(Boolean);
+}
+
+async function dispatchToEnginePool(payload) {
+  const engines = getEnginePool();
+  if (engines.length === 0) {
+    throw new Error('No analysis engines configured');
+  }
+
+  const errors = [];
+  const startIndex = nextEngineIndex % engines.length;
+  nextEngineIndex = (nextEngineIndex + 1) % engines.length;
+
+  for (let attempt = 0; attempt < engines.length; attempt++) {
+    const engineUrl = engines[(startIndex + attempt) % engines.length];
+    try {
+      await dispatchToEngine(engineUrl, payload);
+      return engineUrl;
+    } catch (error) {
+      errors.push(`${engineUrl}: ${error.message}`);
+    }
+  }
+
+  throw new Error(`All analysis engines failed: ${errors.join('; ')}`);
 }
 
 router.post('/', async (req, res) => {
@@ -135,9 +167,8 @@ router.post('/', async (req, res) => {
       return res.status(502).json({ error: 'Failed to fetch GitHub repositories', jobId: job.id });
     }
 
-    // 4. Fire-and-forget HTTP request to the Python Engine
-    const engineUrl = process.env.ANALYSIS_SERVICE_URL || 'http://localhost:8000';
-    dispatchToEngine(engineUrl, {
+    // 4. Fire-and-forget HTTP request to the Python Engine pool
+    dispatchToEnginePool({
         jobId: job.id,
         userId: user.id,
         username: user.username,
@@ -161,3 +192,5 @@ router.post('/', async (req, res) => {
 
 module.exports = router;
 module.exports.dispatchToEngine = dispatchToEngine;
+module.exports.dispatchToEnginePool = dispatchToEnginePool;
+module.exports.getEnginePool = getEnginePool;
