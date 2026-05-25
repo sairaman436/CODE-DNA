@@ -11,7 +11,7 @@ import time
 import os
 import asyncio
 from typing import List, Optional
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 from analyzer import analyze_repository_batch, perform_full_analysis
@@ -22,11 +22,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 NODE_BACKEND_URL = "http://localhost:5000"
 
 # ─── Industrial Scalability: Parallel Processing Pool ───
-# Keep analysis jobs isolated without letting simultaneous clone-heavy jobs
-# exhaust the machine. Tune with CODEDNA_ENGINE_WORKERS for production.
-ENGINE_WORKERS = int(os.getenv("CODEDNA_ENGINE_WORKERS", str(min(os.cpu_count() or 4, 4))))
+# Keep analysis jobs isolated without process-spawn overhead. Repository
+# analysis is dominated by git/network/disk I/O, so threads are faster and
+# quieter on Windows than process workers.
+ENGINE_WORKERS = int(os.getenv("CODEDNA_ENGINE_WORKERS", "2"))
 ENGINE_QUEUE_LIMIT = int(os.getenv("CODEDNA_ENGINE_QUEUE_LIMIT", str(ENGINE_WORKERS * 4)))
-executor = ProcessPoolExecutor(max_workers=ENGINE_WORKERS)
+executor = ThreadPoolExecutor(max_workers=ENGINE_WORKERS)
 active_jobs = 0
 active_jobs_lock = asyncio.Lock()
 
@@ -91,8 +92,7 @@ def update_job_progress(job_id: str, progress: int, step: str):
 
 def run_analysis_task(request_data: dict):
     """
-    Synchronous wrapper for the analysis task, suitable for ProcessPoolExecutor.
-    Note: Inside a separate process, we don't share the main thread's memory.
+    Synchronous wrapper for the analysis task, suitable for ThreadPoolExecutor.
     """
     job_id = request_data['jobId']
     user_id = request_data['userId']
@@ -171,7 +171,7 @@ async def start_analysis(request: AnalysisRequest, http_request: Request):
     if not await reserve_job_slot():
         raise HTTPException(status_code=503, detail="Analysis engine is busy. Please retry shortly.")
 
-    # We convert to dict because Pydantic models aren't always pickleable for multiprocessing
+    # Keep worker payload as plain data so it remains executor-agnostic.
     request_data = {
         'jobId': request.jobId,
         'userId': request.userId,
@@ -180,7 +180,7 @@ async def start_analysis(request: AnalysisRequest, http_request: Request):
         'access_token': request.access_token
     }
 
-    # Dispatch to the Process Pool (Non-blocking for the API thread)
+    # Dispatch to the worker pool (non-blocking for the API thread)
     loop = asyncio.get_event_loop()
     future = loop.run_in_executor(executor, run_analysis_task, request_data)
     future.add_done_callback(
@@ -211,7 +211,7 @@ async def health_check():
     return {
         "status": "ok", 
         "service": "codedna-python-engine", 
-        "concurrency": "ProcessPoolExecutor",
+        "concurrency": "ThreadPoolExecutor",
         "workers_active": ENGINE_WORKERS,
         "queue_limit": ENGINE_QUEUE_LIMIT,
         "jobs_in_flight": active_jobs,

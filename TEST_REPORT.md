@@ -45,7 +45,7 @@ Covered cases:
 
 Command: `python -m unittest discover -s tests -v`
 
-Result: 16 passing tests.
+Result: 18 passing tests.
 
 Files:
 
@@ -71,6 +71,7 @@ Covered cases:
 - Oversized repositories are attempted by default; repo-size skipping is an optional deployment brake.
 - Repository batches are balanced by repo size before distribution.
 - Coordinator engines dispatch repo batches to peer engines and merge raw results into one fingerprint.
+- Engine service uses `ThreadPoolExecutor` for I/O-bound analysis to avoid Windows multiprocessing overhead.
 
 ## Engine Performance Upgrades
 
@@ -87,7 +88,7 @@ Covered cases:
 - Analyzes all repositories by default; `CODEDNA_MAX_REPO_SIZE_KB` can optionally cap clone size for constrained deployments.
 - Replaced “largest 50 files” selection with representative source ranking by language, file size, tests, README, and project manifest files.
 - Added configurable repo concurrency through `CODEDNA_MAX_REPO_WORKERS=6`.
-- Added configurable engine job workers through `CODEDNA_ENGINE_WORKERS`, defaulting to at most 4.
+- Added configurable engine job workers through `CODEDNA_ENGINE_WORKERS`, defaulting to 2 threaded workers.
 - Redacted GitHub access tokens from clone error logs.
 
 ## Production Guardrails Added
@@ -100,7 +101,7 @@ Covered cases:
 - `GITHUB_MAX_REPO_PAGES`: optional cap for GitHub repository pages fetched, default `0` for no cap.
 - `ENGINE_REQUEST_TIMEOUT_MS`: caps backend-to-engine dispatch requests, default `5000`.
 - `CODEDNA_MAX_REPO_SIZE_KB`: optional giant-repo skip, default `0` for no size cap.
-- `CODEDNA_ENGINE_WORKERS`: caps concurrent engine process workers, default `min(cpu_count, 4)`.
+- `CODEDNA_ENGINE_WORKERS`: caps concurrent engine thread workers, default `2`.
 - `CODEDNA_ENGINE_QUEUE_LIMIT`: caps queued/in-flight engine jobs, default `CODEDNA_ENGINE_WORKERS * 4`; overloaded requests return `503`.
 - `/health` now exposes engine workers, queue limit, jobs in flight, and available cores.
 

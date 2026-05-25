@@ -3,6 +3,7 @@ import os
 import pickle
 import sys
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -55,6 +56,10 @@ class EngineProductionGuardTests(unittest.TestCase):
         result = main.run_batch_analysis_task(payload)
         self.assertEqual(result["repo_results"], [])
         self.assertEqual(result["repos_analyzed"], 0)
+
+    def test_engine_uses_thread_pool_for_io_bound_analysis(self):
+        self.assertIsInstance(main.executor, ThreadPoolExecutor)
+        self.assertEqual(main.health_check.__name__, "health_check")
 
 
 if __name__ == "__main__":
