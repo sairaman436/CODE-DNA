@@ -219,6 +219,8 @@ async def health_check():
         "source_fetch_mode": analyzer.SOURCE_FETCH_MODE,
         "distributed_batch_size": analyzer.DISTRIBUTED_BATCH_SIZE,
         "api_file_fetch_workers": analyzer.API_FILE_FETCH_WORKERS,
+        "file_analysis_workers": analyzer.FILE_ANALYSIS_WORKERS,
+        "file_analysis_parallel_threshold": analyzer.FILE_ANALYSIS_PARALLEL_THRESHOLD,
         "max_repo_workers": analyzer.MAX_REPO_WORKERS,
         "cores_available": os.cpu_count() or 4
     }

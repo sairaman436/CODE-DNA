@@ -124,8 +124,10 @@ PARTIAL_CLONE_FILTER = os.getenv('CODEDNA_PARTIAL_CLONE_FILTER', 'blob:limit=200
 PEER_BATCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_PEER_BATCH_TIMEOUT_SECONDS', '900'))
 SOURCE_FETCH_MODE = os.getenv('CODEDNA_SOURCE_FETCH_MODE', 'api').lower()
 ARCHIVE_FETCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_ARCHIVE_FETCH_TIMEOUT_SECONDS', '30'))
-DISTRIBUTED_BATCH_SIZE = max(1, int(os.getenv('CODEDNA_DISTRIBUTED_BATCH_SIZE', '1')))
+DISTRIBUTED_BATCH_SIZE = int(os.getenv('CODEDNA_DISTRIBUTED_BATCH_SIZE', '0'))
 API_FILE_FETCH_WORKERS = max(1, int(os.getenv('CODEDNA_API_FILE_FETCH_WORKERS', '8')))
+FILE_ANALYSIS_WORKERS = max(1, int(os.getenv('CODEDNA_FILE_ANALYSIS_WORKERS', '4')))
+FILE_ANALYSIS_PARALLEL_THRESHOLD = max(1, int(os.getenv('CODEDNA_FILE_ANALYSIS_PARALLEL_THRESHOLD', '20')))
 
 LANGUAGE_PRIORITY = {
     'Python': 110,
@@ -739,11 +741,19 @@ def analyze_repository(repo_dir: str) -> dict:
         except:
             return None
 
-    # 4. Analyze files sequentially. The outer repo analysis is already parallel,
-    # so this keeps CPU and disk pressure predictable.
     file_metrics = []
-    for file_info in source_files:
-        m = analyze_file_task(file_info)
+    file_worker_count = 1
+    if len(source_files) >= FILE_ANALYSIS_PARALLEL_THRESHOLD:
+        file_worker_count = min(FILE_ANALYSIS_WORKERS, len(source_files))
+
+    if file_worker_count > 1:
+        print(f"  > Spawning {file_worker_count} file agents for {len(source_files)} selected files", flush=True)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=file_worker_count) as executor:
+            analyzed_metrics = list(executor.map(analyze_file_task, source_files))
+    else:
+        analyzed_metrics = [analyze_file_task(file_info) for file_info in source_files]
+
+    for m in analyzed_metrics:
         if m:
             file_metrics.append(m)
             language_line_counts[m['language']] += m['code_lines']
@@ -1063,11 +1073,28 @@ def _split_repositories(repositories: list, worker_count: int) -> list:
     return [chunk for chunk in chunks if chunk]
 
 
-def _repository_work_batches(repositories: list, batch_size: int = DISTRIBUTED_BATCH_SIZE) -> list:
+def _adaptive_distributed_batch_size(repo_count: int, worker_count: int) -> int:
+    if DISTRIBUTED_BATCH_SIZE > 0:
+        return DISTRIBUTED_BATCH_SIZE
+    if repo_count <= 0:
+        return 1
+
+    # Keep multiple waves per engine so fast engines continue pulling work, but
+    # increase batch size for very large accounts to avoid hundreds of tiny
+    # remote HTTP calls.
+    target_batches = max(worker_count * 6, 1)
+    return max(1, math.ceil(repo_count / target_batches))
+
+
+def _repository_work_batches(repositories: list, batch_size: int | None = None, worker_count: int = 1) -> list:
+    effective_batch_size = batch_size if batch_size and batch_size > 0 else _adaptive_distributed_batch_size(
+        len(repositories),
+        worker_count,
+    )
     sorted_repos = sorted(repositories, key=lambda repo: repo.get('size') or 0, reverse=True)
     return [
-        sorted_repos[index:index + batch_size]
-        for index in range(0, len(sorted_repos), batch_size)
+        sorted_repos[index:index + effective_batch_size]
+        for index in range(0, len(sorted_repos), effective_batch_size)
     ]
 
 
@@ -1175,7 +1202,8 @@ def analyze_repositories_distributed(username: str, repositories: list, progress
         return analyze_repository_batch(username, repositories, access_token, progress_callback)['repo_results']
 
     workers = ['local'] + peers
-    chunks = _repository_work_batches(repositories)
+    batch_size = _adaptive_distributed_batch_size(len(repositories), len(workers))
+    chunks = _repository_work_batches(repositories, batch_size=batch_size, worker_count=len(workers))
     repo_results = []
     pending_chunks = list(chunks)
     completed_repos = 0
@@ -1183,7 +1211,8 @@ def analyze_repositories_distributed(username: str, repositories: list, progress
     if progress_callback:
         progress_callback(
             12,
-            f"Distributing {len(repositories)} repositories as {len(chunks)} dynamic work batch(es) across {len(workers)} engine(s)"
+            f"Distributing {len(repositories)} repositories as {len(chunks)} dynamic work batch(es) "
+            f"of up to {batch_size} repo(s) across {len(workers)} engine(s)"
         )
 
     def run_chunk(worker, chunk):

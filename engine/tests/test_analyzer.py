@@ -10,8 +10,10 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from analyzer import (  # noqa: E402
+    _adaptive_distributed_batch_size,
     _split_repositories,
     _repository_work_batches,
+    analyze_repository,
     analyze_repositories_distributed,
     analyze_file_generic,
     analyze_python_ast,
@@ -308,6 +310,40 @@ class AnalyzerScoringTests(unittest.TestCase):
             ["huge", "medium"],
             ["small", "tiny"],
         ])
+
+    def test_adaptive_batch_size_scales_with_repo_count(self):
+        small = _adaptive_distributed_batch_size(repo_count=9, worker_count=3)
+        large = _adaptive_distributed_batch_size(repo_count=100, worker_count=3)
+
+        self.assertEqual(small, 1)
+        self.assertGreater(large, small)
+
+    def test_medium_repo_spawns_file_analysis_agents(self):
+        with tempfile.TemporaryDirectory() as repo_dir:
+            for index in range(24):
+                path = os.path.join(repo_dir, f"file_{index}.py")
+                with open(path, "w", encoding="utf-8") as handle:
+                    handle.write(f"def fn_{index}():\n    return {index}\n")
+
+            with patch("analyzer.FILE_ANALYSIS_PARALLEL_THRESHOLD", 2):
+                with patch("analyzer.FILE_ANALYSIS_WORKERS", 3):
+                    with patch("analyzer.concurrent.futures.ThreadPoolExecutor") as pool:
+                        class ImmediateExecutor:
+                            def __enter__(self):
+                                return self
+
+                            def __exit__(self, *args):
+                                return False
+
+                            def map(self, fn, items):
+                                return [fn(item) for item in items]
+
+                        pool.return_value = ImmediateExecutor()
+                        result = analyze_repository(repo_dir)
+
+        pool.assert_called_once()
+        self.assertEqual(pool.call_args.kwargs["max_workers"], 3)
+        self.assertGreaterEqual(result["total_files"], 20)
 
     def test_distributed_analysis_uses_peer_batches_and_local_fallback(self):
         repos = [
