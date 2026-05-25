@@ -1468,12 +1468,33 @@ def build_analysis_response(all_repo_results: list) -> dict:
     dev_type, summary = classify_developer_type(scores)
     strengths, growth_areas = determine_strengths_and_growth(scores)
 
+    total_commits = patterns.get('total_commits', 0)
+    top_langs = language_stats.most_common(10)
+
+    # Distribute commits proportionally to the top 10 languages
+    lang_commits = {}
+    total_top_lines = sum(lines for lang, lines in top_langs)
+
+    if total_top_lines > 0:
+        remaining_commits = total_commits
+        for i, (lang, lines) in enumerate(top_langs):
+            if i == len(top_langs) - 1:
+                lang_commits[lang] = max(0, remaining_commits)
+            else:
+                share = int(total_commits * (lines / total_top_lines))
+                lang_commits[lang] = share
+                remaining_commits -= share
+    else:
+        lang_commits = {}
+        if top_langs:
+            lang_commits[top_langs[0][0]] = total_commits
+
     lang_stats_list = []
-    for lang, lines in language_stats.most_common(10):
+    for lang, lines in top_langs:
         lang_stats_list.append({
             'language': lang,
             'total_lines': lines,
-            'total_commits': 0,
+            'total_commits': lang_commits.get(lang, 0),
             'trend': 'stable',
         })
 
