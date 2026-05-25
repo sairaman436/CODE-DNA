@@ -2,6 +2,8 @@ import os
 import tempfile
 import sys
 import unittest
+import zipfile
+from io import BytesIO
 from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -15,6 +17,8 @@ from analyzer import (  # noqa: E402
     clone_repo,
     compute_scores,
     detect_language,
+    download_repo_archive,
+    fetch_repo_source,
     is_test_file,
     perform_full_analysis,
     should_skip_file,
@@ -132,6 +136,41 @@ function doThing(value) {
 
             self.assertTrue(ok)
 
+    def test_download_repo_archive_extracts_github_zipball_safely(self):
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w") as archive:
+            archive.writestr("repo-main/src/app.py", "print('ok')")
+            archive.writestr("repo-main/../evil.txt", "nope")
+
+        class Response:
+            status_code = 200
+            content = zip_buffer.getvalue()
+
+        with tempfile.TemporaryDirectory() as target:
+            with patch("analyzer.requests.get", return_value=Response()) as get:
+                ok = download_repo_archive(
+                    "https://github.com/acme/app.git",
+                    target,
+                    token="secret-token",
+                    default_branch="main",
+                )
+
+            self.assertTrue(ok)
+            self.assertTrue(os.path.exists(os.path.join(target, "src", "app.py")))
+            self.assertFalse(os.path.exists(os.path.join(os.path.dirname(target), "evil.txt")))
+            args, kwargs = get.call_args
+            self.assertEqual(args[0], "https://api.github.com/repos/acme/app/zipball/main")
+            self.assertEqual(kwargs["headers"]["Authorization"], "token secret-token")
+
+    def test_fetch_repo_source_falls_back_to_git_when_archive_fails(self):
+        with tempfile.TemporaryDirectory() as target:
+            with patch("analyzer.download_repo_archive", return_value=False):
+                with patch("analyzer.clone_repo", return_value=True) as clone:
+                    ok = fetch_repo_source("https://github.com/acme/app.git", target)
+
+        self.assertTrue(ok)
+        clone.assert_called_once()
+
 
 class AnalyzerScoringTests(unittest.TestCase):
     def test_compute_scores_returns_full_contract_when_no_metrics_exist(self):
@@ -190,7 +229,7 @@ class AnalyzerScoringTests(unittest.TestCase):
         self.assertEqual(result["developer_type"], "The Pragmatist")
 
     def test_perform_full_analysis_attempts_oversized_repos_by_default(self):
-        with patch("analyzer.clone_repo", return_value=False) as clone:
+        with patch("analyzer.fetch_repo_source", return_value=False) as fetch:
             result = perform_full_analysis("huge-user", [
                 {
                     "name": "huge-monolith",
@@ -199,7 +238,7 @@ class AnalyzerScoringTests(unittest.TestCase):
                 }
             ])
 
-        clone.assert_called_once()
+        fetch.assert_called_once()
         self.assertEqual(result["repos_analyzed"], 0)
 
     def test_split_repositories_balances_by_repo_size(self):

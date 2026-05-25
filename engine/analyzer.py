@@ -16,7 +16,10 @@ import tempfile
 import subprocess
 import concurrent.futures
 import requests
+import zipfile
+from io import BytesIO
 from pathlib import Path
+from urllib.parse import quote
 from collections import Counter, defaultdict
 
 try:
@@ -117,6 +120,8 @@ MAX_FILES_TO_SCORE = int(os.getenv('CODEDNA_MAX_FILES_TO_SCORE', '80'))
 MAX_FILE_BYTES = int(os.getenv('CODEDNA_MAX_FILE_BYTES', '200000'))
 PARTIAL_CLONE_FILTER = os.getenv('CODEDNA_PARTIAL_CLONE_FILTER', 'blob:limit=200k')
 PEER_BATCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_PEER_BATCH_TIMEOUT_SECONDS', '900'))
+SOURCE_FETCH_MODE = os.getenv('CODEDNA_SOURCE_FETCH_MODE', 'archive').lower()
+ARCHIVE_FETCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_ARCHIVE_FETCH_TIMEOUT_SECONDS', '90'))
 
 LANGUAGE_PRIORITY = {
     'Python': 110,
@@ -363,6 +368,72 @@ def _redact_token(value: str, token: str | None) -> str:
 def _clear_clone_target(target_dir: str):
     if os.path.exists(target_dir):
         shutil.rmtree(target_dir, ignore_errors=True)
+
+
+def _github_repo_parts(clone_url: str) -> tuple[str, str] | None:
+    match = re.search(r'github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$', clone_url)
+    if not match:
+        return None
+    return match.group(1), match.group(2)
+
+
+def _safe_extract_zip(zip_bytes: bytes, target_dir: str):
+    target = Path(target_dir).resolve()
+    with zipfile.ZipFile(BytesIO(zip_bytes)) as archive:
+        for member in archive.infolist():
+            parts = Path(member.filename).parts
+            if len(parts) <= 1:
+                continue
+            relative = Path(*parts[1:])
+            destination = (target / relative).resolve()
+            if os.path.commonpath([target, destination]) != str(target):
+                continue
+            if member.is_dir():
+                destination.mkdir(parents=True, exist_ok=True)
+                continue
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with archive.open(member) as source, open(destination, 'wb') as output:
+                shutil.copyfileobj(source, output)
+
+
+def download_repo_archive(clone_url: str, target_dir: str, token: str = None, default_branch: str = None) -> bool:
+    """Download the latest GitHub source snapshot without git history."""
+    try:
+        parts = _github_repo_parts(clone_url)
+        if not parts:
+            return False
+
+        owner, repo = parts
+        ref = quote(default_branch or 'HEAD', safe='')
+        url = f"https://api.github.com/repos/{owner}/{repo}/zipball/{ref}"
+        headers = {
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'CodeDNA-Engine/1.0',
+        }
+        if token:
+            headers['Authorization'] = f'token {token}'
+
+        _clear_clone_target(target_dir)
+        os.makedirs(target_dir, exist_ok=True)
+        response = requests.get(url, headers=headers, timeout=ARCHIVE_FETCH_TIMEOUT_SECONDS)
+        if response.status_code >= 400:
+            print(f"  ! Archive fetch failed for {_redact_token(clone_url, token)}: {response.status_code}", flush=True)
+            return False
+
+        _safe_extract_zip(response.content, target_dir)
+        return True
+    except Exception as e:
+        print(f"  ! Archive fetch failed for {_redact_token(clone_url, token)}: {_redact_token(str(e), token)}", flush=True)
+        return False
+
+
+def fetch_repo_source(clone_url: str, target_dir: str, token: str = None, default_branch: str = None) -> bool:
+    """Fetch source using the fastest configured strategy, with git fallback."""
+    if SOURCE_FETCH_MODE != 'git':
+        if download_repo_archive(clone_url, target_dir, token=token, default_branch=default_branch):
+            return True
+        _clear_clone_target(target_dir)
+    return clone_repo(clone_url, target_dir, token=token, default_branch=default_branch)
 
 
 def clone_repo(clone_url: str, target_dir: str, token: str = None, default_branch: str = None) -> bool:
@@ -905,8 +976,8 @@ def _analyze_single_repo(username: str, index: int, repo: dict, access_token: st
             print(f"  > Skipping oversized repo: {repo['name']} ({repo_size} KB)", flush=True)
             return None
 
-        print(f"  > Cloning {repo['name']} (Parallel)...", flush=True)
-        if not clone_repo(clone_url, tmp_dir, token=access_token, default_branch=repo.get('default_branch')):
+        print(f"  > Fetching {repo['name']} (Parallel)...", flush=True)
+        if not fetch_repo_source(clone_url, tmp_dir, token=access_token, default_branch=repo.get('default_branch')):
             return None
 
         print(f"  > Analyzing {repo['name']}...", flush=True)

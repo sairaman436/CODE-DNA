@@ -45,7 +45,7 @@ Covered cases:
 
 Command: `python -m unittest discover -s tests -v`
 
-Result: 18 passing tests.
+Result: 20 passing tests.
 
 Files:
 
@@ -72,10 +72,13 @@ Covered cases:
 - Repository batches are balanced by repo size before distribution.
 - Coordinator engines dispatch repo batches to peer engines and merge raw results into one fingerprint.
 - Engine service uses `ThreadPoolExecutor` for I/O-bound analysis to avoid Windows multiprocessing overhead.
+- GitHub archive/zipball source fetch is the default path, with git clone as fallback.
+- Archive extraction is path-safe and does not allow zip entries to escape the temp directory.
 
 ## Engine Performance Upgrades
 
 - Replaced `--filter=blob:none` with `--filter blob:limit=200k`, so small source files are available locally after clone instead of triggering a network fetch per file read.
+- Replaced git clone as the default GitHub fetch path with `zipball` archive download for latest-source analysis.
 - Reduced clone depth from 50 to configurable `CODEDNA_CLONE_DEPTH=20` by default.
 - Added `GIT_LFS_SKIP_SMUDGE=1` to avoid downloading large LFS assets during analysis.
 - Added branch-aware cloning using repository `default_branch`.
@@ -97,6 +100,8 @@ Covered cases:
 - `ANALYSIS_SERVICE_URLS`: comma-separated engine pool, e.g. `http://localhost:8000,http://localhost:8001,http://localhost:8002`.
 - `CODEDNA_ENGINE_PEER_URLS`: comma-separated peer engine pool used by a coordinator engine to split one user's repos across multiple engines.
 - `CODEDNA_ENGINE_SELF_URL`: current engine URL, used to avoid dispatching a remote batch back to itself.
+- `CODEDNA_SOURCE_FETCH_MODE`: source fetch strategy, default `archive`; set to `git` to force clone-based fetching.
+- `CODEDNA_ARCHIVE_FETCH_TIMEOUT_SECONDS`: caps GitHub archive downloads, default `90`.
 - `GITHUB_FETCH_TIMEOUT_MS`: caps GitHub API calls in the backend, default `10000`.
 - `GITHUB_MAX_REPO_PAGES`: optional cap for GitHub repository pages fetched, default `0` for no cap.
 - `ENGINE_REQUEST_TIMEOUT_MS`: caps backend-to-engine dispatch requests, default `5000`.
