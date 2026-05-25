@@ -3,7 +3,7 @@ CodeDNA Python Engine — FastAPI Entry Point
 Receives analysis jobs from Node.js, runs real AST analysis, sends results back via webhook.
 """
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel
 import requests
 import logging
@@ -14,7 +14,7 @@ from typing import List, Optional
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 
-from analyzer import perform_full_analysis
+from analyzer import analyze_repository_batch, perform_full_analysis
 
 app = FastAPI(title="CodeDNA Analysis Engine", version="1.0.0")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -44,12 +44,24 @@ class AnalysisRequest(BaseModel):
     repositories: List[Repository] = []
     access_token: Optional[str] = None
 
+class BatchAnalysisRequest(BaseModel):
+    username: str
+    repositories: List[Repository] = []
+    access_token: Optional[str] = None
+
 def webhook_headers():
     headers = {}
     secret = os.getenv("WEBHOOK_SECRET")
     if secret:
         headers["x-webhook-secret"] = secret
     return headers
+
+def verify_internal_secret(request: Request):
+    secret = os.getenv("WEBHOOK_SECRET")
+    if not secret:
+        return
+    if request.headers.get("x-webhook-secret") != secret:
+        raise HTTPException(status_code=401, detail="Unauthorized engine request")
 
 async def reserve_job_slot() -> bool:
     global active_jobs
@@ -142,8 +154,9 @@ def run_analysis_task(request_data: dict):
         except: pass
 
 @app.post("/analyze")
-async def start_analysis(request: AnalysisRequest):
+async def start_analysis(request: AnalysisRequest, http_request: Request):
     """Accepts repositories and dispatches them to the Parallel Process Pool."""
+    verify_internal_secret(http_request)
     if not request.jobId or not request.userId:
         raise HTTPException(status_code=400, detail="Missing required fields")
 
@@ -167,6 +180,26 @@ async def start_analysis(request: AnalysisRequest):
     )
 
     return {"message": "Analysis dispatched to parallel worker pool", "jobId": request.jobId}
+
+@app.post("/analyze-batch")
+async def analyze_batch(request: BatchAnalysisRequest, http_request: Request):
+    """Analyze a repo batch for a coordinator engine and return raw results."""
+    verify_internal_secret(http_request)
+    request_data = {
+        'username': request.username,
+        'repositories': [r.model_dump() for r in request.repositories],
+        'access_token': request.access_token,
+    }
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        executor,
+        lambda: analyze_repository_batch(
+            request_data['username'],
+            request_data['repositories'],
+            request_data.get('access_token')
+        )
+    )
 
 @app.get("/health")
 async def health_check():

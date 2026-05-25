@@ -15,6 +15,7 @@ import shutil
 import tempfile
 import subprocess
 import concurrent.futures
+import requests
 from pathlib import Path
 from collections import Counter, defaultdict
 
@@ -115,6 +116,7 @@ MAX_CANDIDATE_FILES = int(os.getenv('CODEDNA_MAX_CANDIDATE_FILES', '2000'))
 MAX_FILES_TO_SCORE = int(os.getenv('CODEDNA_MAX_FILES_TO_SCORE', '80'))
 MAX_FILE_BYTES = int(os.getenv('CODEDNA_MAX_FILE_BYTES', '200000'))
 PARTIAL_CLONE_FILTER = os.getenv('CODEDNA_PARTIAL_CLONE_FILTER', 'blob:limit=200k')
+PEER_BATCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_PEER_BATCH_TIMEOUT_SECONDS', '900'))
 
 LANGUAGE_PRIORITY = {
     'Python': 110,
@@ -856,57 +858,78 @@ def determine_strengths_and_growth(scores: dict) -> tuple[list, list]:
     return strengths, growth
 
 
-def perform_full_analysis(username: str, repositories: list, progress_callback=None, access_token: str = None) -> dict:
-    """
-    The main analysis pipeline.
-    Optimized for speed: Uses Parallel processing and Sparse-Checkout.
-    """
-    all_repo_results = []
+def _selected_repositories(repositories: list) -> list:
+    return repositories[:MAX_REPOS_TO_ANALYZE] if MAX_REPOS_TO_ANALYZE > 0 else repositories
+
+
+def _engine_peer_urls() -> list:
+    raw = os.getenv('CODEDNA_ENGINE_PEER_URLS', '')
+    self_url = os.getenv('CODEDNA_ENGINE_SELF_URL', '').rstrip('/')
+    peers = []
+    for url in raw.split(','):
+        normalized = url.strip().rstrip('/')
+        if normalized and normalized != self_url and normalized not in peers:
+            peers.append(normalized)
+    return peers
+
+
+def _webhook_headers() -> dict:
+    secret = os.getenv('WEBHOOK_SECRET')
+    return {'x-webhook-secret': secret} if secret else {}
+
+
+def _split_repositories(repositories: list, worker_count: int) -> list:
+    chunks = [[] for _ in range(max(1, worker_count))]
+    sorted_repos = sorted(repositories, key=lambda repo: repo.get('size') or 0, reverse=True)
+    for index, repo in enumerate(sorted_repos):
+        chunks[index % len(chunks)].append(repo)
+    return [chunk for chunk in chunks if chunk]
+
+
+def _analyze_single_repo(username: str, index: int, repo: dict, access_token: str = None) -> dict | None:
+    tmp_dir = tempfile.mkdtemp(prefix=f'codedna_{username}_{index}_')
+    try:
+        clone_url = repo.get('clone_url', '')
+        if not clone_url:
+            return None
+
+        # Engine Hard Rule 4: Never penalize for learning repositories
+        repo_name = repo.get('name', '').lower()
+        learning_keywords = ['learn', 'practice', 'tutorial', 'course', 'exercise', 'kata', 'bootcamp', 'hello', 'test-', 'demo']
+        if any(k in repo_name for k in learning_keywords):
+            print(f"  > Skipping learning repo (Rule 4): {repo['name']}", flush=True)
+            return None
+
+        repo_size = repo.get('size')
+        if MAX_REPO_SIZE_KB > 0 and isinstance(repo_size, int) and repo_size > MAX_REPO_SIZE_KB:
+            print(f"  > Skipping oversized repo: {repo['name']} ({repo_size} KB)", flush=True)
+            return None
+
+        print(f"  > Cloning {repo['name']} (Parallel)...", flush=True)
+        if not clone_repo(clone_url, tmp_dir, token=access_token, default_branch=repo.get('default_branch')):
+            return None
+
+        print(f"  > Analyzing {repo['name']}...", flush=True)
+        return analyze_repository(tmp_dir)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def analyze_repository_batch(username: str, repositories: list, access_token: str = None, progress_callback=None) -> dict:
+    repo_results = []
     language_stats = Counter()
-    repos_analyzed = 0
-    selected_repos = repositories[:MAX_REPOS_TO_ANALYZE] if MAX_REPOS_TO_ANALYZE > 0 else repositories
-    total_repos = len(selected_repos)
-
-    def analyze_single_repo(index, repo):
-        tmp_dir = tempfile.mkdtemp(prefix=f'codedna_{username}_{index}_')
-        try:
-            clone_url = repo.get('clone_url', '')
-            if not clone_url:
-                return None
-
-            # Engine Hard Rule 4: Never penalize for learning repositories
-            repo_name = repo.get('name', '').lower()
-            learning_keywords = ['learn', 'practice', 'tutorial', 'course', 'exercise', 'kata', 'bootcamp', 'hello', 'test-', 'demo']
-            if any(k in repo_name for k in learning_keywords):
-                print(f"  > Skipping learning repo (Rule 4): {repo['name']}", flush=True)
-                return None
-
-            repo_size = repo.get('size')
-            if MAX_REPO_SIZE_KB > 0 and isinstance(repo_size, int) and repo_size > MAX_REPO_SIZE_KB:
-                print(f"  > Skipping oversized repo: {repo['name']} ({repo_size} KB)", flush=True)
-                return None
-
-            print(f"  > Cloning {repo['name']} (Parallel)...", flush=True)
-            if not clone_repo(clone_url, tmp_dir, token=access_token, default_branch=repo.get('default_branch')):
-                return None
-
-            print(f"  > Analyzing {repo['name']}...", flush=True)
-            return analyze_repository(tmp_dir)
-        finally:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+    total_repos = len(repositories)
 
     if progress_callback and total_repos == 0:
-        progress_callback(90, "No eligible repositories found")
+        progress_callback(90, "No repositories assigned to this engine")
 
-    # Use balanced concurrency for I/O-bound cloning tasks to prevent network
-    # timeouts while still keeping multiple repos moving at once.
     worker_count = max(1, min(MAX_REPO_WORKERS, total_repos or 1))
     with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
         future_to_repo = {
-            executor.submit(analyze_single_repo, i, repo): repo 
-            for i, repo in enumerate(selected_repos)
+            executor.submit(_analyze_single_repo, username, i, repo, access_token): repo
+            for i, repo in enumerate(repositories)
         }
-        
+
         completed = 0
         for future in concurrent.futures.as_completed(future_to_repo):
             completed += 1
@@ -914,33 +937,93 @@ def perform_full_analysis(username: str, repositories: list, progress_callback=N
                 current_progress = 10 + int((completed / max(total_repos, 1)) * 80)
                 repo_name = future_to_repo[future]['name']
                 progress_callback(current_progress, f"Processed {repo_name} ({completed}/{total_repos})")
-            
+
             result = future.result()
             if result:
-                all_repo_results.append(result)
-                repos_analyzed += 1
+                repo_results.append(result)
                 for lang, lines in result['language_line_counts'].items():
                     language_stats[lang] += lines
 
-    # Compute the 8 DNA scores and patterns
+    return {
+        'repo_results': repo_results,
+        'repos_analyzed': len(repo_results),
+        'language_stats': dict(language_stats),
+    }
+
+
+def _analyze_remote_batch(peer_url: str, username: str, repositories: list, access_token: str = None) -> dict:
+    response = requests.post(
+        f"{peer_url}/analyze-batch",
+        json={
+            "username": username,
+            "repositories": repositories,
+            "access_token": access_token,
+        },
+        headers=_webhook_headers(),
+        timeout=PEER_BATCH_TIMEOUT_SECONDS,
+    )
+    if not response.ok:
+        raise RuntimeError(f"{peer_url} rejected batch: {response.status_code} {response.text[:200]}")
+    return response.json()
+
+
+def analyze_repositories_distributed(username: str, repositories: list, progress_callback=None, access_token: str = None) -> list:
+    peers = _engine_peer_urls()
+    if not peers or len(repositories) < 2:
+        return analyze_repository_batch(username, repositories, access_token, progress_callback)['repo_results']
+
+    workers = ['local'] + peers
+    chunks = _split_repositories(repositories, len(workers))
+    repo_results = []
+
+    if progress_callback:
+        progress_callback(12, f"Distributing {len(repositories)} repositories across {len(chunks)} engine batch(es)")
+
+    def run_chunk(worker, chunk):
+        if worker == 'local':
+            return analyze_repository_batch(username, chunk, access_token)
+        try:
+            return _analyze_remote_batch(worker, username, chunk, access_token)
+        except Exception as error:
+            print(f"  ! Peer engine failed ({worker}): {error}. Falling back locally.", flush=True)
+            return analyze_repository_batch(username, chunk, access_token)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(chunks)) as executor:
+        futures = []
+        for index, chunk in enumerate(chunks):
+            worker = workers[index % len(workers)]
+            futures.append(executor.submit(run_chunk, worker, chunk))
+
+        completed = 0
+        for future in concurrent.futures.as_completed(futures):
+            completed += 1
+            batch = future.result()
+            repo_results.extend(batch.get('repo_results', []))
+            if progress_callback:
+                progress = 12 + int((completed / max(len(futures), 1)) * 78)
+                progress_callback(progress, f"Completed engine batch {completed}/{len(futures)}")
+
+    return repo_results
+
+
+def build_analysis_response(all_repo_results: list) -> dict:
+    language_stats = Counter()
+    for repo_result in all_repo_results:
+        for lang, lines in repo_result['language_line_counts'].items():
+            language_stats[lang] += lines
+
     analysis_results = compute_scores(all_repo_results)
     scores = analysis_results['scores']
     patterns = analysis_results['patterns']
-
-    # Classify developer type
     dev_type, summary = classify_developer_type(scores)
-
-    # Determine strengths and growth areas
     strengths, growth_areas = determine_strengths_and_growth(scores)
 
-    # Build language stats for DB
-    total_lang_lines = sum(language_stats.values())
     lang_stats_list = []
     for lang, lines in language_stats.most_common(10):
         lang_stats_list.append({
             'language': lang,
             'total_lines': lines,
-            'total_commits': 0,  # Would need commit history API for this
+            'total_commits': 0,
             'trend': 'stable',
         })
 
@@ -963,7 +1046,20 @@ def perform_full_analysis(username: str, repositories: list, progress_callback=N
             'avg_fn_length': int(patterns['avg_fn_length']),
             'total_commits': patterns['total_commits'],
         },
-        'repos_analyzed': repos_analyzed,
+        'repos_analyzed': len(all_repo_results),
         'total_files_analyzed': sum(r['total_files'] for r in all_repo_results),
         'activity_pulse': [sum(day) for day in zip(*[r['activity'] for r in all_repo_results])] if all_repo_results else [0]*90
     }
+
+
+def perform_full_analysis(username: str, repositories: list, progress_callback=None, access_token: str = None) -> dict:
+    """
+    The main analysis pipeline.
+    Optimized for speed: distributes repository batches across peer engines when configured.
+    """
+    selected_repos = _selected_repositories(repositories)
+    if progress_callback and len(selected_repos) == 0:
+        progress_callback(90, "No eligible repositories found")
+
+    all_repo_results = analyze_repositories_distributed(username, selected_repos, progress_callback, access_token)
+    return build_analysis_response(all_repo_results)

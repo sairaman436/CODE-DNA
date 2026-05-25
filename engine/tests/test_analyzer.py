@@ -7,6 +7,8 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from analyzer import (  # noqa: E402
+    _split_repositories,
+    analyze_repositories_distributed,
     analyze_file_generic,
     analyze_python_ast,
     classify_developer_type,
@@ -199,6 +201,48 @@ class AnalyzerScoringTests(unittest.TestCase):
 
         clone.assert_called_once()
         self.assertEqual(result["repos_analyzed"], 0)
+
+    def test_split_repositories_balances_by_repo_size(self):
+        chunks = _split_repositories([
+            {"name": "small", "size": 1},
+            {"name": "huge", "size": 100},
+            {"name": "medium", "size": 50},
+        ], 2)
+
+        self.assertEqual(chunks[0][0]["name"], "huge")
+        self.assertEqual(chunks[1][0]["name"], "medium")
+
+    def test_distributed_analysis_uses_peer_batches_and_local_fallback(self):
+        repos = [
+            {"name": "a", "clone_url": "https://github.com/acme/a.git", "size": 1},
+            {"name": "b", "clone_url": "https://github.com/acme/b.git", "size": 2},
+        ]
+        remote_result = {
+            "repo_results": [
+                {
+                    "file_metrics": [],
+                    "language_line_counts": {"Python": 1},
+                    "test_file_count": 0,
+                    "total_files": 1,
+                    "total_assertions": 0,
+                    "activity": [0] * 90,
+                    "commit_metrics": {},
+                }
+            ],
+            "repos_analyzed": 1,
+            "language_stats": {"Python": 1},
+        }
+
+        with patch.dict(os.environ, {
+            "CODEDNA_ENGINE_PEER_URLS": "http://peer-one:8000",
+            "CODEDNA_ENGINE_SELF_URL": "http://self:8000",
+        }):
+            with patch("analyzer._analyze_remote_batch", return_value=remote_result) as remote:
+                with patch("analyzer.analyze_repository_batch", return_value={"repo_results": [], "repos_analyzed": 0, "language_stats": {}}):
+                    results = analyze_repositories_distributed("alice", repos)
+
+        remote.assert_called_once()
+        self.assertEqual(len(results), 1)
 
     def test_developer_classification_boundaries(self):
         scores = {

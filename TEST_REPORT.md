@@ -4,7 +4,7 @@ Date: 2026-05-25
 
 ## Summary
 
-Added executable regression coverage for the backend API layer and Python analysis engine, then verified the frontend TypeScript surface. Later passes upgraded the engine hot path, stabilized clone fallback behavior, added high-traffic guardrails for users with large GitHub accounts, and introduced a multi-engine dispatch pool.
+Added executable regression coverage for the backend API layer and Python analysis engine, then verified the frontend TypeScript surface. Later passes upgraded the engine hot path, stabilized clone fallback behavior, added high-traffic guardrails for users with large GitHub accounts, introduced a multi-engine dispatch pool, and added distributed repo-batch fanout across peer engines.
 
 ## Tests Added
 
@@ -45,7 +45,7 @@ Covered cases:
 
 Command: `python -m unittest discover -s tests -v`
 
-Result: 14 passing tests.
+Result: 16 passing tests.
 
 Files:
 
@@ -69,6 +69,8 @@ Covered cases:
 - Engine job slot reservation rejects overload and releases capacity.
 - Partial clone fallback clears a dirty target directory before retrying.
 - Oversized repositories are attempted by default; repo-size skipping is an optional deployment brake.
+- Repository batches are balanced by repo size before distribution.
+- Coordinator engines dispatch repo batches to peer engines and merge raw results into one fingerprint.
 
 ## Engine Performance Upgrades
 
@@ -92,6 +94,8 @@ Covered cases:
 
 - `WEBHOOK_SECRET`: optional shared secret enforced by backend webhook routes and sent by the engine. Configure the same value in backend and engine environments.
 - `ANALYSIS_SERVICE_URLS`: comma-separated engine pool, e.g. `http://localhost:8000,http://localhost:8001,http://localhost:8002`.
+- `CODEDNA_ENGINE_PEER_URLS`: comma-separated peer engine pool used by a coordinator engine to split one user's repos across multiple engines.
+- `CODEDNA_ENGINE_SELF_URL`: current engine URL, used to avoid dispatching a remote batch back to itself.
 - `GITHUB_FETCH_TIMEOUT_MS`: caps GitHub API calls in the backend, default `10000`.
 - `GITHUB_MAX_REPO_PAGES`: optional cap for GitHub repository pages fetched, default `0` for no cap.
 - `ENGINE_REQUEST_TIMEOUT_MS`: caps backend-to-engine dispatch requests, default `5000`.
