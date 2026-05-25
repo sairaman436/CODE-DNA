@@ -4,6 +4,8 @@ import sys
 import unittest
 import zipfile
 import base64
+import time
+import concurrent.futures
 from io import BytesIO
 from unittest.mock import patch
 
@@ -14,6 +16,7 @@ from analyzer import (  # noqa: E402
     _split_repositories,
     _repository_work_batches,
     analyze_repository,
+    analyze_repository_batch,
     analyze_repositories_distributed,
     analyze_file_generic,
     analyze_python_ast,
@@ -335,8 +338,13 @@ class AnalyzerScoringTests(unittest.TestCase):
                             def __exit__(self, *args):
                                 return False
 
-                            def map(self, fn, items):
-                                return [fn(item) for item in items]
+                            def submit(self, fn, item):
+                                future = concurrent.futures.Future()
+                                future.set_result(fn(item))
+                                return future
+
+                            def shutdown(self, wait=True, cancel_futures=False):
+                                return None
 
                         pool.return_value = ImmediateExecutor()
                         result = analyze_repository(repo_dir)
@@ -344,6 +352,22 @@ class AnalyzerScoringTests(unittest.TestCase):
         pool.assert_called_once()
         self.assertEqual(pool.call_args.kwargs["max_workers"], 3)
         self.assertGreaterEqual(result["total_files"], 20)
+
+    def test_repo_batch_watchdog_skips_stuck_workers(self):
+        repos = [
+            {"name": "stuck", "clone_url": "https://github.com/acme/stuck.git", "size": 1},
+        ]
+
+        def slow_repo(*args, **kwargs):
+            time.sleep(0.2)
+            return None
+
+        with patch("analyzer.REPO_ANALYSIS_TIMEOUT_SECONDS", 0.01):
+            with patch("analyzer._analyze_single_repo", side_effect=slow_repo):
+                result = analyze_repository_batch("alice", repos)
+
+        self.assertEqual(result["repos_analyzed"], 0)
+        self.assertEqual(result["timed_out_repos"], ["stuck"])
 
     def test_distributed_analysis_uses_peer_batches_and_local_fallback(self):
         repos = [

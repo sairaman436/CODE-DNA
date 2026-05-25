@@ -121,13 +121,15 @@ MAX_CANDIDATE_FILES = int(os.getenv('CODEDNA_MAX_CANDIDATE_FILES', '2000'))
 MAX_FILES_TO_SCORE = int(os.getenv('CODEDNA_MAX_FILES_TO_SCORE', '80'))
 MAX_FILE_BYTES = int(os.getenv('CODEDNA_MAX_FILE_BYTES', '200000'))
 PARTIAL_CLONE_FILTER = os.getenv('CODEDNA_PARTIAL_CLONE_FILTER', 'blob:limit=200k')
-PEER_BATCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_PEER_BATCH_TIMEOUT_SECONDS', '900'))
+PEER_BATCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_PEER_BATCH_TIMEOUT_SECONDS', '240'))
+REPO_ANALYSIS_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_REPO_ANALYSIS_TIMEOUT_SECONDS', '180'))
 SOURCE_FETCH_MODE = os.getenv('CODEDNA_SOURCE_FETCH_MODE', 'api').lower()
 ARCHIVE_FETCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_ARCHIVE_FETCH_TIMEOUT_SECONDS', '30'))
 DISTRIBUTED_BATCH_SIZE = int(os.getenv('CODEDNA_DISTRIBUTED_BATCH_SIZE', '0'))
 API_FILE_FETCH_WORKERS = max(1, int(os.getenv('CODEDNA_API_FILE_FETCH_WORKERS', '8')))
 FILE_ANALYSIS_WORKERS = max(1, int(os.getenv('CODEDNA_FILE_ANALYSIS_WORKERS', '4')))
 FILE_ANALYSIS_PARALLEL_THRESHOLD = max(1, int(os.getenv('CODEDNA_FILE_ANALYSIS_PARALLEL_THRESHOLD', '20')))
+FILE_ANALYSIS_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_FILE_ANALYSIS_TIMEOUT_SECONDS', '45'))
 
 LANGUAGE_PRIORITY = {
     'Python': 110,
@@ -421,6 +423,13 @@ def _select_tree_source_files(tree: list) -> list:
         reverse=True,
     )
     return candidates[:MAX_FILES_TO_SCORE]
+
+
+def _future_exception_message(future) -> str:
+    try:
+        return str(future.exception())
+    except Exception as error:
+        return str(error)
 
 
 def download_repo_api_files(clone_url: str, target_dir: str, token: str = None, default_branch: str = None) -> bool:
@@ -741,19 +750,8 @@ def analyze_repository(repo_dir: str) -> dict:
         except:
             return None
 
-    file_metrics = []
-    file_worker_count = 1
-    if len(source_files) >= FILE_ANALYSIS_PARALLEL_THRESHOLD:
-        file_worker_count = min(FILE_ANALYSIS_WORKERS, len(source_files))
-
-    if file_worker_count > 1:
-        print(f"  > Spawning {file_worker_count} file agents for {len(source_files)} selected files", flush=True)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=file_worker_count) as executor:
-            analyzed_metrics = list(executor.map(analyze_file_task, source_files))
-    else:
-        analyzed_metrics = [analyze_file_task(file_info) for file_info in source_files]
-
-    for m in analyzed_metrics:
+    def record_metric(m):
+        nonlocal total_files, test_file_count, total_assertions
         if m:
             file_metrics.append(m)
             language_line_counts[m['language']] += m['code_lines']
@@ -761,6 +759,38 @@ def analyze_repository(repo_dir: str) -> dict:
             if m['is_test']:
                 test_file_count += 1
             total_assertions += m.get('assertion_count', 0)
+
+    file_metrics = []
+    file_worker_count = 1
+    if len(source_files) >= FILE_ANALYSIS_PARALLEL_THRESHOLD:
+        file_worker_count = min(FILE_ANALYSIS_WORKERS, len(source_files))
+
+    if file_worker_count > 1:
+        print(f"  > Spawning {file_worker_count} file agents for {len(source_files)} selected files", flush=True)
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=file_worker_count)
+        future_to_file = {
+            executor.submit(analyze_file_task, file_info): file_info[1]
+            for file_info in source_files
+        }
+        done, pending = concurrent.futures.wait(
+            future_to_file,
+            timeout=FILE_ANALYSIS_TIMEOUT_SECONDS,
+        )
+        for future in done:
+            record_metric(future.result())
+        if pending:
+            stuck_files = ', '.join(future_to_file[future] for future in list(pending)[:5])
+            print(
+                f"  ! File agents timed out after {FILE_ANALYSIS_TIMEOUT_SECONDS}s; "
+                f"skipping {len(pending)} file(s): {stuck_files}",
+                flush=True,
+            )
+            for future in pending:
+                future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+    else:
+        for file_info in source_files:
+            record_metric(analyze_file_task(file_info))
 
     return {
         'file_metrics': file_metrics,
@@ -1145,30 +1175,77 @@ def analyze_repository_batch(username: str, repositories: list, access_token: st
     language_stats = Counter()
     total_repos = len(repositories)
     batch_started = time.time()
+    timed_out_repos = []
 
     if progress_callback and total_repos == 0:
         progress_callback(90, "No repositories assigned to this engine")
 
     worker_count = max(1, min(MAX_REPO_WORKERS, total_repos or 1))
-    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
-        future_to_repo = {
-            executor.submit(_analyze_single_repo, username, i, repo, access_token): repo
-            for i, repo in enumerate(repositories)
-        }
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=worker_count)
+    future_to_repo = {
+        executor.submit(_analyze_single_repo, username, i, repo, access_token): repo
+        for i, repo in enumerate(repositories)
+    }
 
-        completed = 0
-        for future in concurrent.futures.as_completed(future_to_repo):
-            completed += 1
+    completed = 0
+    deadline = time.time() + REPO_ANALYSIS_TIMEOUT_SECONDS
+    try:
+        while future_to_repo:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                timed_out_repos = [repo.get('name', 'unknown') for repo in future_to_repo.values()]
+                break
+
+            done, _ = concurrent.futures.wait(
+                future_to_repo,
+                timeout=min(10, remaining),
+                return_when=concurrent.futures.FIRST_COMPLETED,
+            )
+            if not done:
+                active_names = ', '.join(repo.get('name', 'unknown') for repo in list(future_to_repo.values())[:5])
+                print(
+                    f"  > Waiting on {len(future_to_repo)} active repo worker(s): {active_names}",
+                    flush=True,
+                )
+                continue
+
+            for future in done:
+                repo = future_to_repo.pop(future)
+                completed += 1
+                repo_name = repo.get('name', 'unknown')
+                if future.exception():
+                    print(
+                        f"  ! Repo worker failed for {repo_name}: {_future_exception_message(future)}",
+                        flush=True,
+                    )
+                    continue
+
+                result = future.result()
+                if result:
+                    repo_results.append(result)
+                    for lang, lines in result['language_line_counts'].items():
+                        language_stats[lang] += lines
+
             if progress_callback:
                 current_progress = 10 + int((completed / max(total_repos, 1)) * 80)
-                repo_name = future_to_repo[future]['name']
                 progress_callback(current_progress, f"Processed {repo_name} ({completed}/{total_repos})")
+    finally:
+        if future_to_repo:
+            for future in future_to_repo:
+                future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
 
-            result = future.result()
-            if result:
-                repo_results.append(result)
-                for lang, lines in result['language_line_counts'].items():
-                    language_stats[lang] += lines
+    if timed_out_repos:
+        print(
+            f"  ! Repo batch watchdog timed out after {REPO_ANALYSIS_TIMEOUT_SECONDS}s; "
+            f"skipping {len(timed_out_repos)} repo(s): {', '.join(timed_out_repos[:5])}",
+            flush=True,
+        )
+        if progress_callback:
+            progress_callback(
+                90,
+                f"Skipped {len(timed_out_repos)} stuck repository worker(s) after watchdog timeout"
+            )
 
     elapsed = round(time.time() - batch_started, 1)
     print(f"  > Batch finished: {len(repo_results)}/{total_repos} repos analyzed in {elapsed}s", flush=True)
@@ -1177,6 +1254,7 @@ def analyze_repository_batch(username: str, repositories: list, access_token: st
         'repos_analyzed': len(repo_results),
         'language_stats': dict(language_stats),
         'elapsed_seconds': elapsed,
+        'timed_out_repos': timed_out_repos,
     }
 
 

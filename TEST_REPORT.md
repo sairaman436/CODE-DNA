@@ -45,7 +45,7 @@ Covered cases:
 
 Command: `python -m unittest discover -s tests -v`
 
-Result: 25 passing tests.
+Result: 26 passing tests.
 
 Files:
 
@@ -78,6 +78,7 @@ Covered cases:
 - Distributed analysis uses dynamic micro-batches so fast engines keep taking pending repositories instead of waiting on static slow batches.
 - Distributed batch size auto-scales by repository count and engine count when `CODEDNA_DISTRIBUTED_BATCH_SIZE=0`.
 - Medium/big repositories spawn internal file-analysis workers so selected files are analyzed in parallel.
+- Repo and file worker watchdogs prevent stuck analysis units from blocking the whole engine indefinitely.
 
 ## Engine Performance Upgrades
 
@@ -87,6 +88,7 @@ Covered cases:
 - Replaced static three-way engine splitting with dynamic engine work scheduling to reduce slow-tail batch delays.
 - Added adaptive distributed batch sizing so users with many repositories get larger dynamic batches while smaller profiles keep one-repo micro-batches.
 - Added repo-local file analysis workers for medium/big repos, matching the engine-agent model inside a single repository.
+- Added repo/file watchdog deadlines with explicit stuck-worker logs so analysis can continue instead of freezing mid-run.
 - Reduced clone depth from 50 to configurable `CODEDNA_CLONE_DEPTH=20` by default.
 - Reduced default archive and clone timeout windows so one bad repository cannot block a worker for several minutes before fallback.
 - Added `GIT_LFS_SKIP_SMUDGE=1` to avoid downloading large LFS assets during analysis.
@@ -116,6 +118,9 @@ Covered cases:
 - `CODEDNA_API_FILE_FETCH_WORKERS`: concurrent GitHub blob downloads for API source fetch, default `8`.
 - `CODEDNA_FILE_ANALYSIS_WORKERS`: internal workers for medium/big repo file analysis, default `4`.
 - `CODEDNA_FILE_ANALYSIS_PARALLEL_THRESHOLD`: selected-file count where a repo spawns file-analysis workers, default `20`.
+- `CODEDNA_FILE_ANALYSIS_TIMEOUT_SECONDS`: max wait for repo-local file workers, default `45`.
+- `CODEDNA_REPO_ANALYSIS_TIMEOUT_SECONDS`: max wait for one engine batch's repo workers, default `180`.
+- `CODEDNA_PEER_BATCH_TIMEOUT_SECONDS`: max wait for a peer engine batch, default `240`.
 - `CODEDNA_ARCHIVE_FETCH_TIMEOUT_SECONDS`: caps GitHub archive downloads, default `30`.
 - `CODEDNA_CLONE_TIMEOUT_SECONDS`: caps each git clone attempt, default `45`.
 - `GITHUB_FETCH_TIMEOUT_MS`: caps GitHub API calls in the backend, default `10000`.
