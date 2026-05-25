@@ -11,7 +11,7 @@ echo [2/3] Starting Node.js Backend (Port 5000)...
 start "CodeDNA Backend" cmd /k "cd backend && npm run dev"
 
 echo [3/3] Starting Python Engine (Port 8000)...
-start "CodeDNA Engine" cmd /k "cd engine && python -m uvicorn main:app --port 8000 --reload"
+start "CodeDNA Engine" cmd /k "cd engine && python -m uvicorn main:app --port 8000"
 
 echo.
 echo All three services have been launched in separate windows!

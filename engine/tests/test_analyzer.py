@@ -1,4 +1,5 @@
 import os
+import tempfile
 import sys
 import unittest
 from unittest.mock import patch
@@ -106,6 +107,28 @@ function doThing(value) {
         self.assertTrue(ok)
         self.assertIn("--filter", calls[0])
         self.assertNotIn("--filter", calls[1])
+
+    def test_clone_repo_clears_partial_target_before_fallback(self):
+        with tempfile.TemporaryDirectory() as parent:
+            target = os.path.join(parent, "codedna_partial")
+            os.mkdir(target)
+            with open(os.path.join(target, "leftover.git"), "w", encoding="utf-8") as handle:
+                handle.write("partial clone debris")
+
+            calls = []
+
+            def fake_run(command, **kwargs):
+                calls.append(command)
+                if len(calls) == 1:
+                    return type("Result", (), {"returncode": 1, "stderr": "filtering not recognized"})()
+
+                self.assertFalse(os.path.exists(target))
+                return type("Result", (), {"returncode": 0, "stderr": ""})()
+
+            with patch("analyzer.subprocess.run", side_effect=fake_run):
+                ok = clone_repo("https://github.com/acme/app.git", target)
+
+            self.assertTrue(ok)
 
 
 class AnalyzerScoringTests(unittest.TestCase):

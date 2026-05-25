@@ -357,6 +357,11 @@ def _redact_token(value: str, token: str | None) -> str:
     return value
 
 
+def _clear_clone_target(target_dir: str):
+    if os.path.exists(target_dir):
+        shutil.rmtree(target_dir, ignore_errors=True)
+
+
 def clone_repo(clone_url: str, target_dir: str, token: str = None, default_branch: str = None) -> bool:
     """Ultra-lean shallow clone with small source blobs available locally."""
     try:
@@ -395,6 +400,7 @@ def clone_repo(clone_url: str, target_dir: str, token: str = None, default_branc
 
         # Some hosts/proxies do not support partial clone filters. Fall back to a
         # plain shallow clone so analysis still completes instead of hanging.
+        _clear_clone_target(target_dir)
         fallback = [
             'git', 'clone',
             '--depth', '1',

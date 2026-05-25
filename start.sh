@@ -14,7 +14,7 @@ cd ../backend && npm run dev &
 BACKEND_PID=$!
 
 echo "[3/3] Starting Python Engine (Port 8000)..."
-cd ../engine && python -m uvicorn main:app --port 8000 --reload &
+cd ../engine && python -m uvicorn main:app --port 8000 &
 ENGINE_PID=$!
 
 echo ""
