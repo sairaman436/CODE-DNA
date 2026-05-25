@@ -464,6 +464,45 @@ class AnalyzerScoringTests(unittest.TestCase):
         self.assertGreaterEqual(remote.call_count + local.call_count, 3)
         self.assertEqual(len(results), remote.call_count)
 
+    def test_distributed_tail_watchdog_does_not_wait_for_stuck_local_batch(self):
+        repos = [
+            {"name": "porsche", "clone_url": "https://github.com/acme/porsche.git", "size": 100},
+            {"name": "quick", "clone_url": "https://github.com/acme/quick.git", "size": 1},
+        ]
+        remote_result = {
+            "repo_results": [
+                {
+                    "file_metrics": [],
+                    "language_line_counts": {"Python": 1},
+                    "test_file_count": 0,
+                    "total_files": 1,
+                    "total_assertions": 0,
+                    "activity": [0] * 90,
+                    "commit_metrics": {},
+                }
+            ],
+            "repos_analyzed": 1,
+            "language_stats": {"Python": 1},
+        }
+
+        def slow_local_batch(*args, **kwargs):
+            time.sleep(0.2)
+            return {"repo_results": [], "repos_analyzed": 0, "language_stats": {}}
+
+        with patch.dict(os.environ, {
+            "CODEDNA_ENGINE_PEER_URLS": "http://peer-one:8000",
+            "CODEDNA_ENGINE_SELF_URL": "http://self:8000",
+        }):
+            with patch("analyzer.DISTRIBUTED_TAIL_TIMEOUT_SECONDS", 0.01):
+                with patch("analyzer._analyze_remote_batch", return_value=remote_result):
+                    with patch("analyzer.analyze_repository_batch", side_effect=slow_local_batch):
+                        started = time.time()
+                        results = analyze_repositories_distributed("alice", repos)
+                        elapsed = time.time() - started
+
+        self.assertEqual(len(results), 1)
+        self.assertLess(elapsed, 0.15)
+
     def test_developer_classification_boundaries(self):
         scores = {
             "readability": 80,

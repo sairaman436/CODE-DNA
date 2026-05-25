@@ -45,7 +45,7 @@ Covered cases:
 
 Command: `python -m unittest discover -s tests -v`
 
-Result: 27 passing tests.
+Result: 28 passing tests.
 
 Files:
 
@@ -80,6 +80,7 @@ Covered cases:
 - Medium/big repositories spawn internal file-analysis workers so selected files are analyzed in parallel.
 - Repo and file worker watchdogs prevent stuck analysis units from blocking the whole engine indefinitely.
 - Tail watchdogs cut off the final stuck repository or engine batch so re-analysis does not sit at the last remaining unit.
+- Distributed tail shutdown no longer waits on a stuck local engine thread after deciding to skip the final batch.
 
 ## Engine Performance Upgrades
 

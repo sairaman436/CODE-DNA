@@ -1217,6 +1217,7 @@ def analyze_repository_batch(username: str, repositories: list, access_token: st
     completed = 0
     deadline = time.time() + REPO_ANALYSIS_TIMEOUT_SECONDS
     tail_started_at = None
+    last_repo_wait_log_at = 0
     try:
         while future_to_repo:
             if len(future_to_repo) == 1 and completed > 0:
@@ -1248,11 +1249,13 @@ def analyze_repository_batch(username: str, repositories: list, access_token: st
                 return_when=concurrent.futures.FIRST_COMPLETED,
             )
             if not done:
-                active_names = ', '.join(repo.get('name', 'unknown') for repo in list(future_to_repo.values())[:5])
-                print(
-                    f"  > Waiting on {len(future_to_repo)} active repo worker(s): {active_names}",
-                    flush=True,
-                )
+                if time.time() - last_repo_wait_log_at >= 15:
+                    active_names = ', '.join(repo.get('name', 'unknown') for repo in list(future_to_repo.values())[:5])
+                    print(
+                        f"  > Waiting on {len(future_to_repo)} active repo worker(s): {active_names}",
+                        flush=True,
+                    )
+                    last_repo_wait_log_at = time.time()
                 continue
 
             for future in done:
@@ -1364,9 +1367,12 @@ def analyze_repositories_distributed(username: str, repositories: list, progress
     def next_chunk():
         return pending_chunks.pop(0) if pending_chunks else None
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(workers), len(chunks))) as executor:
-        future_to_worker = {}
-        final_chunk_started_at = None
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=min(len(workers), len(chunks)))
+    future_to_worker = {}
+    final_chunk_started_at = None
+    skipped_tail_batch = False
+    last_engine_wait_log_at = 0
+    try:
         for worker in workers:
             chunk = next_chunk()
             if not chunk:
@@ -1386,18 +1392,28 @@ def analyze_repositories_distributed(username: str, repositories: list, progress
                     )
                     for future in future_to_worker:
                         future.cancel()
+                    future_to_worker.clear()
+                    skipped_tail_batch = True
                     break
             else:
                 final_chunk_started_at = None
 
+            wait_timeout = 5
+            if final_chunk_started_at:
+                wait_timeout = min(
+                    wait_timeout,
+                    max(0.01, DISTRIBUTED_TAIL_TIMEOUT_SECONDS - (time.time() - final_chunk_started_at)),
+                )
             done, _ = concurrent.futures.wait(
                 future_to_worker,
-                timeout=5,
+                timeout=wait_timeout,
                 return_when=concurrent.futures.FIRST_COMPLETED
             )
             if not done:
-                active_workers = ', '.join(future_to_worker.values())
-                print(f"  > Waiting on active engine batch(es): {active_workers}", flush=True)
+                if time.time() - last_engine_wait_log_at >= 15:
+                    active_workers = ', '.join(future_to_worker.values())
+                    print(f"  > Waiting on active engine batch(es): {active_workers}", flush=True)
+                    last_engine_wait_log_at = time.time()
                 continue
             for future in done:
                 worker = future_to_worker.pop(future)
@@ -1417,6 +1433,14 @@ def analyze_repositories_distributed(username: str, repositories: list, progress
                 chunk = next_chunk()
                 if chunk:
                     future_to_worker[executor.submit(run_chunk, worker, chunk)] = worker
+    finally:
+        if future_to_worker:
+            for future in future_to_worker:
+                future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    if skipped_tail_batch and progress_callback:
+        progress_callback(90, "Final slow engine lane skipped; merging available DNA signals")
 
     return repo_results
 
