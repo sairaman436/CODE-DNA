@@ -123,6 +123,8 @@ MAX_FILE_BYTES = int(os.getenv('CODEDNA_MAX_FILE_BYTES', '200000'))
 PARTIAL_CLONE_FILTER = os.getenv('CODEDNA_PARTIAL_CLONE_FILTER', 'blob:limit=200k')
 PEER_BATCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_PEER_BATCH_TIMEOUT_SECONDS', '240'))
 REPO_ANALYSIS_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_REPO_ANALYSIS_TIMEOUT_SECONDS', '180'))
+TAIL_REPO_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_TAIL_REPO_TIMEOUT_SECONDS', '45'))
+DISTRIBUTED_TAIL_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_DISTRIBUTED_TAIL_TIMEOUT_SECONDS', '75'))
 SOURCE_FETCH_MODE = os.getenv('CODEDNA_SOURCE_FETCH_MODE', 'api').lower()
 ARCHIVE_FETCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_ARCHIVE_FETCH_TIMEOUT_SECONDS', '30'))
 DISTRIBUTED_BATCH_SIZE = int(os.getenv('CODEDNA_DISTRIBUTED_BATCH_SIZE', '0'))
@@ -1176,6 +1178,7 @@ def analyze_repository_batch(username: str, repositories: list, access_token: st
     total_repos = len(repositories)
     batch_started = time.time()
     timed_out_repos = []
+    timeout_reason = None
 
     if progress_callback and total_repos == 0:
         progress_callback(90, "No repositories assigned to this engine")
@@ -1189,16 +1192,35 @@ def analyze_repository_batch(username: str, repositories: list, access_token: st
 
     completed = 0
     deadline = time.time() + REPO_ANALYSIS_TIMEOUT_SECONDS
+    tail_started_at = None
     try:
         while future_to_repo:
+            if len(future_to_repo) == 1 and completed > 0:
+                tail_started_at = tail_started_at or time.time()
+                if time.time() - tail_started_at >= TAIL_REPO_TIMEOUT_SECONDS:
+                    timed_out_repos = [repo.get('name', 'unknown') for repo in future_to_repo.values()]
+                    print(
+                        f"  ! Tail repo watchdog timed out after {TAIL_REPO_TIMEOUT_SECONDS}s; "
+                        f"skipping final repo worker: {', '.join(timed_out_repos[:5])}",
+                        flush=True,
+                    )
+                    timeout_reason = 'tail'
+                    break
+            else:
+                tail_started_at = None
+
             remaining = deadline - time.time()
             if remaining <= 0:
                 timed_out_repos = [repo.get('name', 'unknown') for repo in future_to_repo.values()]
+                timeout_reason = 'batch'
                 break
+            wait_timeout = min(10, remaining)
+            if tail_started_at:
+                wait_timeout = min(wait_timeout, max(0.01, TAIL_REPO_TIMEOUT_SECONDS - (time.time() - tail_started_at)))
 
             done, _ = concurrent.futures.wait(
                 future_to_repo,
-                timeout=min(10, remaining),
+                timeout=wait_timeout,
                 return_when=concurrent.futures.FIRST_COMPLETED,
             )
             if not done:
@@ -1236,11 +1258,12 @@ def analyze_repository_batch(username: str, repositories: list, access_token: st
         executor.shutdown(wait=False, cancel_futures=True)
 
     if timed_out_repos:
-        print(
-            f"  ! Repo batch watchdog timed out after {REPO_ANALYSIS_TIMEOUT_SECONDS}s; "
-            f"skipping {len(timed_out_repos)} repo(s): {', '.join(timed_out_repos[:5])}",
-            flush=True,
-        )
+        if timeout_reason != 'tail':
+            print(
+                f"  ! Repo batch watchdog timed out after {REPO_ANALYSIS_TIMEOUT_SECONDS}s; "
+                f"skipping {len(timed_out_repos)} repo(s): {', '.join(timed_out_repos[:5])}",
+                flush=True,
+            )
         if progress_callback:
             progress_callback(
                 90,
@@ -1320,6 +1343,7 @@ def analyze_repositories_distributed(username: str, repositories: list, progress
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(workers), len(chunks))) as executor:
         future_to_worker = {}
+        final_chunk_started_at = None
         for worker in workers:
             chunk = next_chunk()
             if not chunk:
@@ -1328,10 +1352,30 @@ def analyze_repositories_distributed(username: str, repositories: list, progress
             future_to_worker[future] = worker
 
         while future_to_worker:
+            if not pending_chunks and len(future_to_worker) == 1 and completed_repos > 0:
+                final_chunk_started_at = final_chunk_started_at or time.time()
+                if time.time() - final_chunk_started_at >= DISTRIBUTED_TAIL_TIMEOUT_SECONDS:
+                    final_worker = next(iter(future_to_worker.values()))
+                    print(
+                        f"  ! Distributed tail watchdog timed out after {DISTRIBUTED_TAIL_TIMEOUT_SECONDS}s; "
+                        f"skipping final engine batch on {final_worker}",
+                        flush=True,
+                    )
+                    for future in future_to_worker:
+                        future.cancel()
+                    break
+            else:
+                final_chunk_started_at = None
+
             done, _ = concurrent.futures.wait(
                 future_to_worker,
+                timeout=5,
                 return_when=concurrent.futures.FIRST_COMPLETED
             )
+            if not done:
+                active_workers = ', '.join(future_to_worker.values())
+                print(f"  > Waiting on active engine batch(es): {active_workers}", flush=True)
+                continue
             for future in done:
                 worker = future_to_worker.pop(future)
                 batch = future.result()

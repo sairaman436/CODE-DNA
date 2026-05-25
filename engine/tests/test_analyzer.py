@@ -369,6 +369,35 @@ class AnalyzerScoringTests(unittest.TestCase):
         self.assertEqual(result["repos_analyzed"], 0)
         self.assertEqual(result["timed_out_repos"], ["stuck"])
 
+    def test_tail_repo_watchdog_skips_final_straggler(self):
+        repos = [
+            {"name": "fast", "clone_url": "https://github.com/acme/fast.git", "size": 1},
+            {"name": "tail", "clone_url": "https://github.com/acme/tail.git", "size": 1},
+        ]
+        fast_result = {
+            "file_metrics": [],
+            "language_line_counts": {"Python": 1},
+            "test_file_count": 0,
+            "total_files": 1,
+            "total_assertions": 0,
+            "activity": [0] * 90,
+            "commit_metrics": {},
+        }
+
+        def maybe_slow_repo(_username, _index, repo, _access_token=None):
+            if repo["name"] == "tail":
+                time.sleep(0.2)
+                return None
+            return fast_result
+
+        with patch("analyzer.TAIL_REPO_TIMEOUT_SECONDS", 0.01):
+            with patch("analyzer.REPO_ANALYSIS_TIMEOUT_SECONDS", 10):
+                with patch("analyzer._analyze_single_repo", side_effect=maybe_slow_repo):
+                    result = analyze_repository_batch("alice", repos)
+
+        self.assertEqual(result["repos_analyzed"], 1)
+        self.assertEqual(result["timed_out_repos"], ["tail"])
+
     def test_distributed_analysis_uses_peer_batches_and_local_fallback(self):
         repos = [
             {"name": "a", "clone_url": "https://github.com/acme/a.git", "size": 1},

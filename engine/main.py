@@ -223,6 +223,8 @@ async def health_check():
         "file_analysis_parallel_threshold": analyzer.FILE_ANALYSIS_PARALLEL_THRESHOLD,
         "file_analysis_timeout_seconds": analyzer.FILE_ANALYSIS_TIMEOUT_SECONDS,
         "repo_analysis_timeout_seconds": analyzer.REPO_ANALYSIS_TIMEOUT_SECONDS,
+        "tail_repo_timeout_seconds": analyzer.TAIL_REPO_TIMEOUT_SECONDS,
+        "distributed_tail_timeout_seconds": analyzer.DISTRIBUTED_TAIL_TIMEOUT_SECONDS,
         "peer_batch_timeout_seconds": analyzer.PEER_BATCH_TIMEOUT_SECONDS,
         "max_repo_workers": analyzer.MAX_REPO_WORKERS,
         "cores_available": os.cpu_count() or 4
