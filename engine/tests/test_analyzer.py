@@ -3,6 +3,7 @@ import tempfile
 import sys
 import unittest
 import zipfile
+import base64
 from io import BytesIO
 from unittest.mock import patch
 
@@ -18,6 +19,7 @@ from analyzer import (  # noqa: E402
     clone_repo,
     compute_scores,
     detect_language,
+    download_repo_api_files,
     download_repo_archive,
     fetch_repo_source,
     is_test_file,
@@ -163,11 +165,53 @@ function doThing(value) {
             self.assertEqual(args[0], "https://api.github.com/repos/acme/app/zipball/main")
             self.assertEqual(kwargs["headers"]["Authorization"], "token secret-token")
 
+    def test_download_repo_api_files_fetches_only_selected_source_files(self):
+        tree_response = type("Response", (), {
+            "status_code": 200,
+            "json": lambda self: {
+                "tree": [
+                    {"type": "blob", "path": "src/app.py", "sha": "py-sha", "size": 18},
+                    {"type": "blob", "path": "node_modules/pkg/index.js", "sha": "vendor-sha", "size": 10},
+                    {"type": "blob", "path": "assets/video.mp4", "sha": "asset-sha", "size": 10_000},
+                ]
+            },
+        })()
+        blob_response = type("Response", (), {
+            "status_code": 200,
+            "json": lambda self: {
+                "encoding": "base64",
+                "content": base64.b64encode(b"print('fast')").decode("ascii"),
+            },
+        })()
+
+        def fake_get(url, **kwargs):
+            if "/git/trees/" in url:
+                return tree_response
+            return blob_response
+
+        with tempfile.TemporaryDirectory() as target:
+            with patch("analyzer.requests.get", side_effect=fake_get) as get:
+                ok = download_repo_api_files(
+                    "https://github.com/acme/app.git",
+                    target,
+                    token="secret-token",
+                    default_branch="main",
+                )
+
+            self.assertTrue(ok)
+            self.assertTrue(os.path.exists(os.path.join(target, "src", "app.py")))
+            self.assertFalse(os.path.exists(os.path.join(target, "node_modules")))
+            requested_urls = [call.args[0] for call in get.call_args_list]
+            self.assertIn("https://api.github.com/repos/acme/app/git/trees/main?recursive=1", requested_urls)
+            self.assertIn("https://api.github.com/repos/acme/app/git/blobs/py-sha", requested_urls)
+            self.assertNotIn("https://api.github.com/repos/acme/app/git/blobs/vendor-sha", requested_urls)
+
     def test_fetch_repo_source_falls_back_to_git_when_archive_fails(self):
         with tempfile.TemporaryDirectory() as target:
-            with patch("analyzer.download_repo_archive", return_value=False):
-                with patch("analyzer.clone_repo", return_value=True) as clone:
-                    ok = fetch_repo_source("https://github.com/acme/app.git", target)
+            with patch("analyzer.download_repo_api_files", return_value=False):
+                with patch("analyzer.download_repo_archive", return_value=False):
+                    with patch("analyzer.clone_repo", return_value=True) as clone:
+                        ok = fetch_repo_source("https://github.com/acme/app.git", target)
 
         self.assertTrue(ok)
         clone.assert_called_once()

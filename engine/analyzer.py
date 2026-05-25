@@ -12,6 +12,7 @@ import re
 import ast
 import math
 import time
+import base64
 import shutil
 import tempfile
 import subprocess
@@ -121,9 +122,10 @@ MAX_FILES_TO_SCORE = int(os.getenv('CODEDNA_MAX_FILES_TO_SCORE', '80'))
 MAX_FILE_BYTES = int(os.getenv('CODEDNA_MAX_FILE_BYTES', '200000'))
 PARTIAL_CLONE_FILTER = os.getenv('CODEDNA_PARTIAL_CLONE_FILTER', 'blob:limit=200k')
 PEER_BATCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_PEER_BATCH_TIMEOUT_SECONDS', '900'))
-SOURCE_FETCH_MODE = os.getenv('CODEDNA_SOURCE_FETCH_MODE', 'archive').lower()
+SOURCE_FETCH_MODE = os.getenv('CODEDNA_SOURCE_FETCH_MODE', 'api').lower()
 ARCHIVE_FETCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_ARCHIVE_FETCH_TIMEOUT_SECONDS', '30'))
 DISTRIBUTED_BATCH_SIZE = max(1, int(os.getenv('CODEDNA_DISTRIBUTED_BATCH_SIZE', '1')))
+API_FILE_FETCH_WORKERS = max(1, int(os.getenv('CODEDNA_API_FILE_FETCH_WORKERS', '8')))
 
 LANGUAGE_PRIORITY = {
     'Python': 110,
@@ -379,6 +381,99 @@ def _github_repo_parts(clone_url: str) -> tuple[str, str] | None:
     return match.group(1), match.group(2)
 
 
+def _github_headers(token: str = None) -> dict:
+    headers = {
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'CodeDNA-Engine/1.0',
+    }
+    if token:
+        headers['Authorization'] = f'token {token}'
+    return headers
+
+
+def _select_tree_source_files(tree: list) -> list:
+    candidates = []
+    for item in tree:
+        if item.get('type') != 'blob':
+            continue
+        rel_path = item.get('path', '')
+        if not rel_path or should_skip_file(rel_path):
+            continue
+        language = detect_language(rel_path)
+        if not language:
+            continue
+        size = item.get('size') or 0
+        if size <= 0 or size > MAX_FILE_BYTES:
+            continue
+        candidates.append({
+            'path': rel_path,
+            'sha': item.get('sha'),
+            'size': size,
+            'language': language,
+        })
+        if len(candidates) >= MAX_CANDIDATE_FILES:
+            break
+
+    candidates.sort(
+        key=lambda item: _source_file_priority(item['path'], item['language'], item['size']),
+        reverse=True,
+    )
+    return candidates[:MAX_FILES_TO_SCORE]
+
+
+def download_repo_api_files(clone_url: str, target_dir: str, token: str = None, default_branch: str = None) -> bool:
+    """Download only selected source files through the GitHub API."""
+    try:
+        parts = _github_repo_parts(clone_url)
+        if not parts:
+            return False
+
+        owner, repo = parts
+        ref = quote(default_branch or 'HEAD', safe='')
+        headers = _github_headers(token)
+        tree_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/{ref}?recursive=1"
+        response = requests.get(tree_url, headers=headers, timeout=ARCHIVE_FETCH_TIMEOUT_SECONDS)
+        if response.status_code >= 400:
+            print(f"  ! API tree fetch failed for {_redact_token(clone_url, token)}: {response.status_code}", flush=True)
+            return False
+
+        selected = _select_tree_source_files(response.json().get('tree', []))
+        if not selected:
+            return False
+
+        _clear_clone_target(target_dir)
+        os.makedirs(target_dir, exist_ok=True)
+
+        def fetch_blob(item):
+            if not item.get('sha'):
+                return False
+            blob_url = f"https://api.github.com/repos/{owner}/{repo}/git/blobs/{item['sha']}"
+            blob_response = requests.get(blob_url, headers=headers, timeout=ARCHIVE_FETCH_TIMEOUT_SECONDS)
+            if blob_response.status_code >= 400:
+                return False
+            payload = blob_response.json()
+            if payload.get('encoding') != 'base64':
+                return False
+            content = base64.b64decode(payload.get('content', ''), validate=False)
+            destination = (Path(target_dir) / item['path']).resolve()
+            target = Path(target_dir).resolve()
+            if os.path.commonpath([target, destination]) != str(target):
+                return False
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with open(destination, 'wb') as handle:
+                handle.write(content)
+            return True
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(API_FILE_FETCH_WORKERS, len(selected))) as executor:
+            downloaded = sum(1 for ok in executor.map(fetch_blob, selected) if ok)
+
+        print(f"  > API fetched {downloaded}/{len(selected)} source files from {repo}", flush=True)
+        return downloaded > 0
+    except Exception as e:
+        print(f"  ! API source fetch failed for {_redact_token(clone_url, token)}: {_redact_token(str(e), token)}", flush=True)
+        return False
+
+
 def _safe_extract_zip(zip_bytes: bytes, target_dir: str):
     target = Path(target_dir).resolve()
     with zipfile.ZipFile(BytesIO(zip_bytes)) as archive:
@@ -408,12 +503,7 @@ def download_repo_archive(clone_url: str, target_dir: str, token: str = None, de
         owner, repo = parts
         ref = quote(default_branch or 'HEAD', safe='')
         url = f"https://api.github.com/repos/{owner}/{repo}/zipball/{ref}"
-        headers = {
-            'Accept': 'application/vnd.github+json',
-            'User-Agent': 'CodeDNA-Engine/1.0',
-        }
-        if token:
-            headers['Authorization'] = f'token {token}'
+        headers = _github_headers(token)
 
         _clear_clone_target(target_dir)
         os.makedirs(target_dir, exist_ok=True)
@@ -431,6 +521,11 @@ def download_repo_archive(clone_url: str, target_dir: str, token: str = None, de
 
 def fetch_repo_source(clone_url: str, target_dir: str, token: str = None, default_branch: str = None) -> bool:
     """Fetch source using the fastest configured strategy, with git fallback."""
+    if SOURCE_FETCH_MODE not in {'git', 'archive'}:
+        if download_repo_api_files(clone_url, target_dir, token=token, default_branch=default_branch):
+            return True
+        _clear_clone_target(target_dir)
+
     if SOURCE_FETCH_MODE != 'git':
         if download_repo_archive(clone_url, target_dir, token=token, default_branch=default_branch):
             return True
@@ -553,11 +648,14 @@ def analyze_repository(repo_dir: str) -> dict:
         'emoji_usage_pct': 0,
     }
     try:
+        if not os.path.isdir(os.path.join(repo_dir, '.git')):
+            log_output = ''
+        else:
         # Get last 100 commits, include shortstat for commit size, and special delimiter
-        log_output = subprocess.check_output(
-            ['git', '--no-pager', 'log', '-n', str(GIT_LOG_LIMIT), '--format=@@@%ad|%s', '--date=iso', '--shortstat'],
-            cwd=repo_dir, env=os.environ, stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT_SECONDS
-        ).decode('utf-8', errors='ignore')
+            log_output = subprocess.check_output(
+                ['git', '--no-pager', 'log', '-n', str(GIT_LOG_LIMIT), '--format=@@@%ad|%s', '--date=iso', '--shortstat'],
+                cwd=repo_dir, env=os.environ, stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT_SECONDS
+            ).decode('utf-8', errors='ignore')
         
         if log_output:
             commits_data = [c for c in log_output.split('@@@') if c.strip()]
@@ -606,29 +704,12 @@ def analyze_repository(repo_dir: str) -> dict:
     except Exception as e:
         print(f"  ! Git log analysis failed: {e}")
 
-    def file_priority(file_info):
-        filepath, rel_path, language, size = file_info
-        name = os.path.basename(rel_path).lower()
-        priority = LANGUAGE_PRIORITY.get(language, 50)
-        if is_test_file(rel_path):
-            priority -= 8
-        if name.startswith('readme'):
-            priority += 20
-        if name in {'package.json', 'pyproject.toml', 'requirements.txt', 'go.mod', 'cargo.toml'}:
-            priority += 14
-
-        # Prefer meaningful medium-sized source files. Huge files are slower and
-        # more likely generated; tiny files rarely carry enough signal.
-        if size < 400:
-            size_score = size / 400
-        elif size <= 60_000:
-            size_score = 1
-        else:
-            size_score = max(0.2, 1 - ((size - 60_000) / MAX_FILE_BYTES))
-        return priority + (size_score * 25)
-
     # 3. Score the most representative files, not simply the largest files.
-    source_files = sorted(source_files, key=file_priority, reverse=True)[:MAX_FILES_TO_SCORE]
+    source_files = sorted(
+        source_files,
+        key=lambda file_info: _source_file_priority(file_info[1], file_info[2], file_info[3]),
+        reverse=True,
+    )[:MAX_FILES_TO_SCORE]
 
     def analyze_file_task(file_info):
         filepath, rel_path, language, size = file_info
@@ -685,6 +766,8 @@ def analyze_repository(repo_dir: str) -> dict:
 def get_repo_activity(repo_path: str) -> list:
     """Extract commit dates for the last 90 days using git log."""
     try:
+        if not os.path.isdir(os.path.join(repo_path, '.git')):
+            return [0] * 90
         # Get commit timestamps from last 90 days
         cmd = ["git", "--no-pager", "log", "--since=90.days.ago", "--format=%at"]
         result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True, check=True, timeout=GIT_TIMEOUT_SECONDS)
@@ -949,6 +1032,27 @@ def _engine_peer_urls() -> list:
 def _webhook_headers() -> dict:
     secret = os.getenv('WEBHOOK_SECRET')
     return {'x-webhook-secret': secret} if secret else {}
+
+
+def _source_file_priority(rel_path: str, language: str, size: int) -> float:
+    name = os.path.basename(rel_path).lower()
+    priority = LANGUAGE_PRIORITY.get(language, 50)
+    if is_test_file(rel_path):
+        priority -= 8
+    if name.startswith('readme'):
+        priority += 20
+    if name in {'package.json', 'pyproject.toml', 'requirements.txt', 'go.mod', 'cargo.toml'}:
+        priority += 14
+
+    # Prefer meaningful medium-sized source files. Huge files are slower and
+    # more likely generated; tiny files rarely carry enough signal.
+    if size < 400:
+        size_score = size / 400
+    elif size <= 60_000:
+        size_score = 1
+    else:
+        size_score = max(0.2, 1 - ((size - 60_000) / MAX_FILE_BYTES))
+    return priority + (size_score * 25)
 
 
 def _split_repositories(repositories: list, worker_count: int) -> list:

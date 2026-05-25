@@ -14,6 +14,7 @@ from typing import List, Optional
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
+import analyzer
 from analyzer import analyze_repository_batch, perform_full_analysis
 
 app = FastAPI(title="CodeDNA Analysis Engine", version="1.0.0")
@@ -215,5 +216,9 @@ async def health_check():
         "workers_active": ENGINE_WORKERS,
         "queue_limit": ENGINE_QUEUE_LIMIT,
         "jobs_in_flight": active_jobs,
+        "source_fetch_mode": analyzer.SOURCE_FETCH_MODE,
+        "distributed_batch_size": analyzer.DISTRIBUTED_BATCH_SIZE,
+        "api_file_fetch_workers": analyzer.API_FILE_FETCH_WORKERS,
+        "max_repo_workers": analyzer.MAX_REPO_WORKERS,
         "cores_available": os.cpu_count() or 4
     }
