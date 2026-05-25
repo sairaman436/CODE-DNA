@@ -1,5 +1,6 @@
 import asyncio
 import os
+import pickle
 import sys
 import unittest
 
@@ -42,6 +43,18 @@ class EngineProductionGuardTests(unittest.TestCase):
                 main.active_jobs = original_active
 
         asyncio.run(scenario())
+
+    def test_batch_analysis_worker_function_is_pickleable(self):
+        payload = {
+            "username": "alice",
+            "repositories": [],
+            "access_token": None,
+        }
+
+        pickle.dumps((main.run_batch_analysis_task, payload))
+        result = main.run_batch_analysis_task(payload)
+        self.assertEqual(result["repo_results"], [])
+        self.assertEqual(result["repos_analyzed"], 0)
 
 
 if __name__ == "__main__":

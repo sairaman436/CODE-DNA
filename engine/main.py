@@ -153,6 +153,14 @@ def run_analysis_task(request_data: dict):
             )
         except: pass
 
+
+def run_batch_analysis_task(request_data: dict):
+    return analyze_repository_batch(
+        request_data['username'],
+        request_data['repositories'],
+        request_data.get('access_token')
+    )
+
 @app.post("/analyze")
 async def start_analysis(request: AnalysisRequest, http_request: Request):
     """Accepts repositories and dispatches them to the Parallel Process Pool."""
@@ -194,11 +202,8 @@ async def analyze_batch(request: BatchAnalysisRequest, http_request: Request):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(
         executor,
-        lambda: analyze_repository_batch(
-            request_data['username'],
-            request_data['repositories'],
-            request_data.get('access_token')
-        )
+        run_batch_analysis_task,
+        request_data
     )
 
 @app.get("/health")
