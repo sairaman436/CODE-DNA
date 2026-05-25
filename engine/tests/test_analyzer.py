@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from analyzer import (  # noqa: E402
     _split_repositories,
+    _repository_work_batches,
     analyze_repositories_distributed,
     analyze_file_generic,
     analyze_python_ast,
@@ -251,6 +252,19 @@ class AnalyzerScoringTests(unittest.TestCase):
         self.assertEqual(chunks[0][0]["name"], "huge")
         self.assertEqual(chunks[1][0]["name"], "medium")
 
+    def test_repository_work_batches_create_small_cost_ordered_batches(self):
+        batches = _repository_work_batches([
+            {"name": "small", "size": 1},
+            {"name": "huge", "size": 100},
+            {"name": "medium", "size": 50},
+            {"name": "tiny", "size": 0},
+        ], batch_size=2)
+
+        self.assertEqual([[repo["name"] for repo in batch] for batch in batches], [
+            ["huge", "medium"],
+            ["small", "tiny"],
+        ])
+
     def test_distributed_analysis_uses_peer_batches_and_local_fallback(self):
         repos = [
             {"name": "a", "clone_url": "https://github.com/acme/a.git", "size": 1},
@@ -282,6 +296,40 @@ class AnalyzerScoringTests(unittest.TestCase):
 
         remote.assert_called_once()
         self.assertEqual(len(results), 1)
+
+    def test_distributed_analysis_reuses_fast_workers_for_pending_batches(self):
+        repos = [
+            {"name": "huge", "clone_url": "https://github.com/acme/huge.git", "size": 100},
+            {"name": "medium", "clone_url": "https://github.com/acme/medium.git", "size": 50},
+            {"name": "small", "clone_url": "https://github.com/acme/small.git", "size": 1},
+        ]
+        local_result = {"repo_results": [], "repos_analyzed": 0, "language_stats": {}}
+        remote_result = {
+            "repo_results": [
+                {
+                    "file_metrics": [],
+                    "language_line_counts": {"Python": 1},
+                    "test_file_count": 0,
+                    "total_files": 1,
+                    "total_assertions": 0,
+                    "activity": [0] * 90,
+                    "commit_metrics": {},
+                }
+            ],
+            "repos_analyzed": 1,
+            "language_stats": {"Python": 1},
+        }
+
+        with patch.dict(os.environ, {
+            "CODEDNA_ENGINE_PEER_URLS": "http://peer-one:8000",
+            "CODEDNA_ENGINE_SELF_URL": "http://self:8000",
+        }):
+            with patch("analyzer._analyze_remote_batch", return_value=remote_result) as remote:
+                with patch("analyzer.analyze_repository_batch", return_value=local_result) as local:
+                    results = analyze_repositories_distributed("alice", repos)
+
+        self.assertGreaterEqual(remote.call_count + local.call_count, 3)
+        self.assertEqual(len(results), remote.call_count)
 
     def test_developer_classification_boundaries(self):
         scores = {

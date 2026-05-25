@@ -11,6 +11,7 @@ import os
 import re
 import ast
 import math
+import time
 import shutil
 import tempfile
 import subprocess
@@ -109,7 +110,7 @@ NAMING_STANDARDS = {
 }
 
 CLONE_DEPTH = int(os.getenv('CODEDNA_CLONE_DEPTH', '20'))
-CLONE_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_CLONE_TIMEOUT_SECONDS', '90'))
+CLONE_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_CLONE_TIMEOUT_SECONDS', '45'))
 GIT_LOG_LIMIT = int(os.getenv('CODEDNA_GIT_LOG_LIMIT', '50'))
 GIT_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_GIT_TIMEOUT_SECONDS', '12'))
 MAX_REPOS_TO_ANALYZE = int(os.getenv('CODEDNA_MAX_REPOS', '0'))
@@ -121,7 +122,8 @@ MAX_FILE_BYTES = int(os.getenv('CODEDNA_MAX_FILE_BYTES', '200000'))
 PARTIAL_CLONE_FILTER = os.getenv('CODEDNA_PARTIAL_CLONE_FILTER', 'blob:limit=200k')
 PEER_BATCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_PEER_BATCH_TIMEOUT_SECONDS', '900'))
 SOURCE_FETCH_MODE = os.getenv('CODEDNA_SOURCE_FETCH_MODE', 'archive').lower()
-ARCHIVE_FETCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_ARCHIVE_FETCH_TIMEOUT_SECONDS', '90'))
+ARCHIVE_FETCH_TIMEOUT_SECONDS = int(os.getenv('CODEDNA_ARCHIVE_FETCH_TIMEOUT_SECONDS', '30'))
+DISTRIBUTED_BATCH_SIZE = max(1, int(os.getenv('CODEDNA_DISTRIBUTED_BATCH_SIZE', '1')))
 
 LANGUAGE_PRIORITY = {
     'Python': 110,
@@ -957,6 +959,14 @@ def _split_repositories(repositories: list, worker_count: int) -> list:
     return [chunk for chunk in chunks if chunk]
 
 
+def _repository_work_batches(repositories: list, batch_size: int = DISTRIBUTED_BATCH_SIZE) -> list:
+    sorted_repos = sorted(repositories, key=lambda repo: repo.get('size') or 0, reverse=True)
+    return [
+        sorted_repos[index:index + batch_size]
+        for index in range(0, len(sorted_repos), batch_size)
+    ]
+
+
 def _analyze_single_repo(username: str, index: int, repo: dict, access_token: str = None) -> dict | None:
     tmp_dir = tempfile.mkdtemp(prefix=f'codedna_{username}_{index}_')
     try:
@@ -977,11 +987,24 @@ def _analyze_single_repo(username: str, index: int, repo: dict, access_token: st
             return None
 
         print(f"  > Fetching {repo['name']} (Parallel)...", flush=True)
+        repo_started = time.time()
+        fetch_started = time.time()
         if not fetch_repo_source(clone_url, tmp_dir, token=access_token, default_branch=repo.get('default_branch')):
             return None
+        fetch_elapsed = round(time.time() - fetch_started, 1)
+        print(f"  > Fetched {repo['name']} in {fetch_elapsed}s", flush=True)
 
         print(f"  > Analyzing {repo['name']}...", flush=True)
-        return analyze_repository(tmp_dir)
+        analyze_started = time.time()
+        result = analyze_repository(tmp_dir)
+        analyze_elapsed = round(time.time() - analyze_started, 1)
+        total_elapsed = round(time.time() - repo_started, 1)
+        print(
+            f"  > Finished {repo['name']} in {total_elapsed}s "
+            f"(fetch {fetch_elapsed}s, analyze {analyze_elapsed}s)",
+            flush=True,
+        )
+        return result
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -990,6 +1013,7 @@ def analyze_repository_batch(username: str, repositories: list, access_token: st
     repo_results = []
     language_stats = Counter()
     total_repos = len(repositories)
+    batch_started = time.time()
 
     if progress_callback and total_repos == 0:
         progress_callback(90, "No repositories assigned to this engine")
@@ -1015,10 +1039,13 @@ def analyze_repository_batch(username: str, repositories: list, access_token: st
                 for lang, lines in result['language_line_counts'].items():
                     language_stats[lang] += lines
 
+    elapsed = round(time.time() - batch_started, 1)
+    print(f"  > Batch finished: {len(repo_results)}/{total_repos} repos analyzed in {elapsed}s", flush=True)
     return {
         'repo_results': repo_results,
         'repos_analyzed': len(repo_results),
         'language_stats': dict(language_stats),
+        'elapsed_seconds': elapsed,
     }
 
 
@@ -1044,35 +1071,74 @@ def analyze_repositories_distributed(username: str, repositories: list, progress
         return analyze_repository_batch(username, repositories, access_token, progress_callback)['repo_results']
 
     workers = ['local'] + peers
-    chunks = _split_repositories(repositories, len(workers))
+    chunks = _repository_work_batches(repositories)
     repo_results = []
+    pending_chunks = list(chunks)
+    completed_repos = 0
 
     if progress_callback:
-        progress_callback(12, f"Distributing {len(repositories)} repositories across {len(chunks)} engine batch(es)")
+        progress_callback(
+            12,
+            f"Distributing {len(repositories)} repositories as {len(chunks)} dynamic work batch(es) across {len(workers)} engine(s)"
+        )
 
     def run_chunk(worker, chunk):
+        names = ', '.join(repo.get('name', 'unknown') for repo in chunk)
+        print(f"  > Engine {worker} started dynamic batch: {names}", flush=True)
+        started = time.time()
         if worker == 'local':
-            return analyze_repository_batch(username, chunk, access_token)
-        try:
-            return _analyze_remote_batch(worker, username, chunk, access_token)
-        except Exception as error:
-            print(f"  ! Peer engine failed ({worker}): {error}. Falling back locally.", flush=True)
-            return analyze_repository_batch(username, chunk, access_token)
+            result = analyze_repository_batch(username, chunk, access_token)
+        else:
+            try:
+                result = _analyze_remote_batch(worker, username, chunk, access_token)
+            except Exception as error:
+                print(f"  ! Peer engine failed ({worker}): {error}. Falling back locally.", flush=True)
+                result = analyze_repository_batch(username, chunk, access_token)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(chunks)) as executor:
-        futures = []
-        for index, chunk in enumerate(chunks):
-            worker = workers[index % len(workers)]
-            futures.append(executor.submit(run_chunk, worker, chunk))
+        elapsed = round(time.time() - started, 1)
+        print(f"  > Engine {worker} completed dynamic batch ({names}) in {elapsed}s", flush=True)
+        return {
+            'worker': worker,
+            'chunk': chunk,
+            'result': result,
+            'elapsed_seconds': elapsed,
+        }
 
-        completed = 0
-        for future in concurrent.futures.as_completed(futures):
-            completed += 1
-            batch = future.result()
-            repo_results.extend(batch.get('repo_results', []))
-            if progress_callback:
-                progress = 12 + int((completed / max(len(futures), 1)) * 78)
-                progress_callback(progress, f"Completed engine batch {completed}/{len(futures)}")
+    def next_chunk():
+        return pending_chunks.pop(0) if pending_chunks else None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(workers), len(chunks))) as executor:
+        future_to_worker = {}
+        for worker in workers:
+            chunk = next_chunk()
+            if not chunk:
+                break
+            future = executor.submit(run_chunk, worker, chunk)
+            future_to_worker[future] = worker
+
+        while future_to_worker:
+            done, _ = concurrent.futures.wait(
+                future_to_worker,
+                return_when=concurrent.futures.FIRST_COMPLETED
+            )
+            for future in done:
+                worker = future_to_worker.pop(future)
+                batch = future.result()
+                result = batch.get('result', {})
+                chunk = batch.get('chunk', [])
+                completed_repos += len(chunk)
+                repo_results.extend(result.get('repo_results', []))
+
+                if progress_callback:
+                    progress = 12 + int((completed_repos / max(len(repositories), 1)) * 78)
+                    progress_callback(
+                        min(progress, 90),
+                        f"Completed {completed_repos}/{len(repositories)} repositories across dynamic engine batches"
+                    )
+
+                chunk = next_chunk()
+                if chunk:
+                    future_to_worker[executor.submit(run_chunk, worker, chunk)] = worker
 
     return repo_results
 
