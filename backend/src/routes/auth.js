@@ -207,25 +207,7 @@ router.post('/login', async (req, res) => {
       data: { failed_attempts: 0, lockout_until: null }
     });
 
-    // Bypass OTP for ADMINs
-    if (user.role === 'ADMIN') {
-      // No log for master admin as requested
-      return res.json({ 
-        success: true, 
-        bypassOtp: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.display_name,
-          codedna_username: user.codedna_username,
-          role: user.role,
-          status: user.status,
-          github_linked: !!user.github_id
-        }
-      });
-    }
-
-    // Generate OTP for regular users
+    // Generate OTP for every password login, including staff/admin accounts.
     const code = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 

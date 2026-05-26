@@ -12,13 +12,14 @@ Added executable regression coverage for the backend API layer and Python analys
 
 Command: `npm test`
 
-Result: 28 passing tests.
+Result: 30 passing tests.
 
 Files:
 
 - `backend/tests/helpers.js`
 - `backend/tests/auth.test.js`
 - `backend/tests/github.test.js`
+- `backend/tests/settings.test.js`
 - `backend/tests/username.test.js`
 - `backend/tests/webhook.test.js`
 
@@ -26,7 +27,9 @@ Covered cases:
 
 - Auth registration required fields, GitHub email ownership rejection, OTP invalidation, GitHub user linking, mail-safe registration path.
 - Login banned-user blocking, failed-attempt incrementing, security lockout after repeated failures.
+- Admin password logins require OTP instead of bypassing two-step verification.
 - OTP verification consumes the OTP, marks the user verified, returns a safe user payload without password leakage.
+- Settings password change verifies the current password, stores a fresh hash, resets lockout state, invalidates pending OTPs, and logs the change.
 - GitHub repository discovery includes every non-empty owner repository by default; optional env flags can exclude forks, archived repos, or oversized repos for constrained deployments.
 - GitHub fetch uses token-authenticated endpoint correctly and returns every eligible repository.
 - GitHub repository discovery keeps paging until GitHub is exhausted by default.

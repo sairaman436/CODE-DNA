@@ -151,6 +151,43 @@ test('POST /api/auth/login blocks banned users and locks out repeated failures',
   assert.equal(banned.data.banned, true);
 });
 
+test('POST /api/auth/login requires OTP for admin password logins', async () => {
+  const calls = [];
+  const user = {
+    id: 'admin-1',
+    email: 'admin@example.com',
+    password: await bcrypt.hash('AdminPass123!', 4),
+    failed_attempts: 0,
+    status: 'ACTIVE',
+    role: 'ADMIN',
+  };
+
+  const prisma = {
+    user: {
+      findFirst: async () => user,
+      update: async () => user,
+    },
+    otpCode: {
+      updateMany: async (args) => calls.push(['otpCode.updateMany', args]),
+      create: async (args) => calls.push(['otpCode.create', args]),
+    },
+  };
+  const app = createJsonApp('src/routes/auth.js', '/api/auth', {
+    'src/lib/prisma.js': prisma,
+    'src/lib/mailer.js': { sendMail: async () => {} },
+  });
+
+  const response = await request(app, 'POST', '/api/auth/login', {
+    body: { email: 'admin@example.com', password: 'AdminPass123!' },
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.data.success, true);
+  assert.equal(response.data.bypassOtp, undefined);
+  assert.ok(calls.some(([name]) => name === 'otpCode.updateMany'));
+  assert.ok(calls.some(([name]) => name === 'otpCode.create'));
+});
+
 test('POST /api/auth/verify consumes current OTP and returns safe user payload', async () => {
   const calls = [];
   const prisma = {

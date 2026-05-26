@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 
 const router = express.Router();
@@ -93,6 +94,68 @@ router.put('/profile', verifyOwnership, async (req, res) => {
 });
 
 // POST /api/settings/reanalyze — Trigger fresh analysis
+// PUT /api/settings/password - Change account password after verifying the current password
+router.put('/password', verifyOwnership, async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: 'Current password and new password are required.' });
+    }
+
+    if (new_password.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters long.' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.authenticatedUser.id } });
+    if (!user || !user.password) {
+      return res.status(400).json({ error: 'This account does not have a password login configured.' });
+    }
+
+    const matches = await bcrypt.compare(current_password, user.password);
+    if (!matches) {
+      return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+
+    const samePassword = await bcrypt.compare(new_password, user.password);
+    if (samePassword) {
+      return res.status(400).json({ error: 'New password must be different from the current password.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        failed_attempts: 0,
+        lockout_until: null,
+      }
+    });
+
+    if (user.email) {
+      await prisma.otpCode.updateMany({
+        where: { email: user.email, used: false },
+        data: { used: true }
+      });
+    }
+
+    if (user.role !== 'ADMIN') {
+      await prisma.activityLog.create({
+        data: {
+          user_id: user.id,
+          action: 'PASSWORD_CHANGE',
+          details: 'User changed account password'
+        }
+      });
+    }
+
+    return res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Password update error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.post('/reanalyze', verifyOwnership, async (req, res) => {
   try {
     const { username, github_id } = req.body;

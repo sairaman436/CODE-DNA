@@ -197,6 +197,14 @@ Code DNA is public and free, but analysis is expensive. Non-admin users must pas
 
 The analyzing page shows the missing gateway steps and lets users verify again after following/starring. Staff, admins, and the configured creator account bypass the gate and analysis limits.
 
+## Account Security
+
+- Email/password accounts use OTP verification after password login.
+- Staff and admin accounts also require OTP after password login.
+- Users can change their Code DNA username through `/api/username/claim`; username changes are limited to once every 30 days.
+- Users can change their password through `/api/settings/password`; the backend verifies the current password, stores a new hash, clears lockout state, and invalidates pending OTP codes.
+- GitHub OAuth accounts should keep GitHub 2FA enabled because GitHub remains the identity provider for OAuth login.
+
 ## Production Deployment
 
 Recommended production shape:
