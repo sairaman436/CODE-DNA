@@ -32,6 +32,39 @@ export default function LandingPage() {
 }
 
 function PublicLanding() {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [newsletterMessage, setNewsletterMessage] = useState("");
+
+  async function handleNewsletterSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setNewsletterStatus("loading");
+    setNewsletterMessage("");
+
+    try {
+      const res = await fetch(`${apiUrl}/api/newsletter/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newsletterEmail }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setNewsletterStatus("error");
+        setNewsletterMessage(data.error || "Could not join the sequence.");
+        return;
+      }
+
+      setNewsletterEmail("");
+      setNewsletterStatus("success");
+      setNewsletterMessage(data.message || "You are on the sequence.");
+    } catch {
+      setNewsletterStatus("error");
+      setNewsletterMessage("Mail link is offline. Try again in a moment.");
+    }
+  }
+
   return (
     <div className="min-h-screen text-zinc-100 font-sans selection:bg-white/10 relative overflow-x-hidden">
       <Navbar />
@@ -341,16 +374,36 @@ function PublicLanding() {
               <div className="md:col-span-4">
                 <h4 className="text-zinc-100 font-bold text-[13px] uppercase tracking-widest mb-8">Stay Updated</h4>
                 <p className="text-zinc-500 text-[14px] mb-6">Get notified about new engine updates and features.</p>
-                <div className="relative max-w-sm group">
+                <form onSubmit={handleNewsletterSubmit} className="space-y-3 max-w-sm">
+                <div className="relative group">
                   <input 
                     type="email" 
+                    value={newsletterEmail}
+                    onChange={(e) => {
+                      setNewsletterEmail(e.target.value);
+                      if (newsletterStatus !== "loading") {
+                        setNewsletterStatus("idle");
+                        setNewsletterMessage("");
+                      }
+                    }}
                     placeholder="you@email.com" 
+                    required
                     className="w-full h-12 bg-white/[0.03] border border-white/10 rounded-2xl px-5 text-sm focus:outline-none focus:border-white/50 transition-all placeholder:text-zinc-700 pr-36"
                   />
-                  <button className="absolute right-1.5 top-1.5 bottom-1.5 px-5 bg-white text-black text-[11px] font-bold rounded-xl hover:bg-zinc-200 transition-colors active:scale-95 whitespace-nowrap">
-                    Join Sequence
+                  <button
+                    type="submit"
+                    disabled={newsletterStatus === "loading"}
+                    className="absolute right-1.5 top-1.5 bottom-1.5 px-5 bg-white text-black text-[11px] font-bold rounded-xl hover:bg-zinc-200 disabled:opacity-60 disabled:cursor-not-allowed transition-colors active:scale-95 whitespace-nowrap"
+                  >
+                    {newsletterStatus === "loading" ? "Joining..." : "Join Sequence"}
                   </button>
                 </div>
+                {newsletterMessage && (
+                  <p className={`text-[12px] font-semibold ${newsletterStatus === "success" ? "text-emerald-400" : "text-red-400"}`}>
+                    {newsletterMessage}
+                  </p>
+                )}
+                </form>
               </div>
             </div>
 

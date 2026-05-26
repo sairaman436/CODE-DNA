@@ -78,6 +78,10 @@ NEXTAUTH_SECRET=change-this-long-random-secret
 GITHUB_TOKEN=github_pat_or_token
 GITHUB_ID=github_oauth_client_id
 GITHUB_SECRET=github_oauth_client_secret
+GMAIL_USER=your-gmail-address@gmail.com
+GMAIL_APP_PASSWORD=your-gmail-app-password
+NEWSLETTER_TO_EMAIL=your-gmail-address@gmail.com
+CODEDNA_PUBLIC_SITE_URL=https://your-domain.com
 ```
 
 The single-server script automatically wires:
@@ -118,6 +122,10 @@ GITHUB_TOKEN=github_pat_or_token
 GITHUB_ID=github_oauth_client_id
 GITHUB_SECRET=github_oauth_client_secret
 NEXTAUTH_SECRET=change-this-long-random-secret
+GMAIL_USER=your-gmail-address@gmail.com
+GMAIL_APP_PASSWORD=your-gmail-app-password
+NEWSLETTER_TO_EMAIL=your-gmail-address@gmail.com
+CODEDNA_PUBLIC_SITE_URL=https://your-domain.com
 ANALYSIS_SERVICE_URLS=http://your-python-server-ip:8000,http://your-python-server-ip:8001,http://your-python-server-ip:8002
 CODEDNA_CORS_ORIGINS=https://your-domain.com
 CODEDNA_ANALYSIS_GATEWAY_ENABLED=1
@@ -189,6 +197,7 @@ https://your-domain.com:3000/api/auth/callback/github
 
 - Use strong random values for `WEBHOOK_SECRET` and `NEXTAUTH_SECRET`.
 - Keep `WEBHOOK_SECRET` identical in NodeJS and Python servers.
+- Gmail requires an app password for SMTP. Enable 2-step verification on the Gmail account, create an app password, and put it in `GMAIL_APP_PASSWORD`.
 - The SQLite database file lives in `backend/prisma/prod.db` when using `DATABASE_URL=file:./prod.db`.
 - Back up `backend/prisma/prod.db` regularly.
 - For high public usage, move from SQLite to Postgres later. SQLite is fine for first deployment, but Postgres is safer for many concurrent users.

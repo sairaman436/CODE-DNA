@@ -66,6 +66,7 @@ const otpRouter = require('./routes/otp');
 const authRouter = require('./routes/auth');
 const adminRouter = require('./routes/admin');
 const usernameRouter = require('./routes/username');
+const newsletterRouter = require('./routes/newsletter');
 
 app.use('/api/analyze', analyzeRouter);
 app.use('/api/webhook', webhookRouter);
@@ -80,6 +81,7 @@ app.use('/api/auth/otp', otpRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/username', discoveryLimiter, usernameRouter);
+app.use('/api/newsletter', newsletterRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
