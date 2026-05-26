@@ -32,6 +32,20 @@ Both layouts keep everything on your own Pterodactyl machine. Use the single-ser
 
 ## Upload Guide
 
+If you want one simple upload folder, generate it with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deployment/pterodactyl/prepare-deploy-folder.ps1
+```
+
+That creates:
+
+```text
+deployment/pterodactyl/CODE-DNA-PTERODACTYL/
+```
+
+Upload that whole generated folder to Pterodactyl.
+
 Before uploading to Pterodactyl, read:
 
 ```text
