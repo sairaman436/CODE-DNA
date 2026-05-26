@@ -1,0 +1,78 @@
+services:
+  - type: web
+    name: codedna-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci && npx prisma generate && npx prisma db push
+    startCommand: node src/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: ANALYSIS_SERVICE_URLS
+        sync: false
+      - key: CODEDNA_CORS_ORIGINS
+        sync: false
+      - key: CODEDNA_PUBLIC_SITE_URL
+        sync: false
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: NEWSLETTER_TO_EMAIL
+        sync: false
+      - key: CODEDNA_ANALYSIS_GATEWAY_ENABLED
+        value: "1"
+      - key: CODEDNA_GATEWAY_GITHUB_OWNER
+        value: sairaman436
+      - key: CODEDNA_GATEWAY_GITHUB_REPO
+        value: CODE-DNA
+
+  - type: web
+    name: codedna-engine
+    runtime: python
+    rootDir: engine
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: CODEDNA_BACKEND_URL
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: CODEDNA_SOURCE_FETCH_MODE
+        value: api
+      - key: CODEDNA_DISTRIBUTED_BATCH_SIZE
+        value: "0"
+      - key: CODEDNA_MAX_REPO_WORKERS
+        value: "2"
+      - key: CODEDNA_FILE_ANALYSIS_WORKERS
+        value: "4"
+      - key: CODEDNA_API_FILE_FETCH_WORKERS
+        value: "8"
+      - key: CODEDNA_FAST_FAIL_GITHUB_API_STATUSES
+        value: 403,404,451
+
+  - type: web
+    name: codedna-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start -- --hostname 0.0.0.0 --port $PORT
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXTAUTH_URL
+        sync: false
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: GITHUB_ID
+        sync: false
+      - key: GITHUB_SECRET
+        sync: false

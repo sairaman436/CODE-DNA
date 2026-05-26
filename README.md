@@ -66,7 +66,7 @@ Database + Profile UI
 - Backend: Node.js, Express, Prisma
 - Engine: Python, FastAPI, AST parsing, tree-sitter when available
 - Auth: NextAuth with GitHub OAuth
-- Database: Prisma-supported SQL database
+- Database: PostgreSQL through Prisma
 - Runtime: Multi-engine local worker pool with production-style guardrails
 
 ## Engine Highlights
