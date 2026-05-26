@@ -82,11 +82,31 @@ Copy-Filtered -Source (Join-Path $repoRoot "backend") -Destination (Join-Path $t
 Copy-Filtered -Source (Join-Path $repoRoot "frontend") -Destination (Join-Path $targetFull "frontend")
 Copy-Filtered -Source (Join-Path $repoRoot "engine") -Destination (Join-Path $targetFull "engine")
 Copy-Filtered -Source (Join-Path $scriptDir "single-server") -Destination (Join-Path $targetFull "deployment\pterodactyl\single-server")
+Copy-Item -LiteralPath (Join-Path $scriptDir "single-server\.env.example") -Destination (Join-Path $targetFull ".env.example") -Force
+Copy-Item -LiteralPath (Join-Path $scriptDir "single-server\PRE_DEPLOY_CHECKLIST.md") -Destination (Join-Path $targetFull "PRE_DEPLOY_CHECKLIST.md") -Force
 Copy-Item -LiteralPath (Join-Path $scriptDir "README.md") -Destination (Join-Path $targetFull "deployment\pterodactyl\README.md") -Force
 Copy-Item -LiteralPath (Join-Path $scriptDir "UPLOAD_MANIFEST.md") -Destination (Join-Path $targetFull "deployment\pterodactyl\UPLOAD_MANIFEST.md") -Force
 Copy-Item -LiteralPath (Join-Path $scriptDir ".deployignore") -Destination (Join-Path $targetFull "deployment\pterodactyl\.deployignore") -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "README.md") -Destination (Join-Path $targetFull "README.md") -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot "TEST_REPORT.md") -Destination (Join-Path $targetFull "TEST_REPORT.md") -Force
+
+@'
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export CODEDNA_ROOT_DIR="${ROOT_DIR}"
+exec bash "${ROOT_DIR}/deployment/pterodactyl/single-server/start.sh"
+'@ | Set-Content -LiteralPath (Join-Path $targetFull "start.sh") -Encoding UTF8
+
+@'
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export CODEDNA_ROOT_DIR="${ROOT_DIR}"
+exec bash "${ROOT_DIR}/deployment/pterodactyl/single-server/install.sh"
+'@ | Set-Content -LiteralPath (Join-Path $targetFull "install.sh") -Encoding UTF8
 
 $bundleReadme = @'
 # CodeDNA Pterodactyl Single-Folder Bundle
@@ -96,7 +116,7 @@ Upload this whole folder to your Pterodactyl server.
 Startup command:
 
 ```bash
-bash deployment/pterodactyl/single-server/start.sh
+bash start.sh
 ```
 
 The startup command installs and builds on first run, then starts everything.
@@ -104,7 +124,7 @@ The startup command installs and builds on first run, then starts everything.
 Set environment variables from:
 
 ```text
-deployment/pterodactyl/single-server/.env.example
+.env.example
 ```
 '@
 

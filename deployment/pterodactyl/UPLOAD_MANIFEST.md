@@ -19,9 +19,10 @@ start.sh
 The important production startup files are:
 
 ```text
-deployment/pterodactyl/single-server/install.sh
-deployment/pterodactyl/single-server/start.sh
-deployment/pterodactyl/single-server/.env.example
+start.sh
+install.sh
+.env.example
+PRE_DEPLOY_CHECKLIST.md
 ```
 
 ## Do Not Upload These
@@ -46,7 +47,7 @@ Do not upload real secrets in files. Put secrets into Pterodactyl environment va
 Startup command:
 
 ```bash
-bash deployment/pterodactyl/single-server/start.sh
+bash start.sh
 ```
 
 The startup command installs and builds on first run, then starts everything. If you upload new code later and need to reinstall dependencies/rebuild, set `CODEDNA_FORCE_INSTALL=1` for one restart.

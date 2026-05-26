@@ -44,7 +44,17 @@ That creates:
 deployment/pterodactyl/CODE-DNA-PTERODACTYL/
 ```
 
-Upload that whole generated folder to Pterodactyl.
+Upload that whole generated folder to Pterodactyl. The generated folder is flattened for the panel, so the startup file is directly at:
+
+```text
+CODE-DNA-PTERODACTYL/start.sh
+```
+
+For the generated folder, use this Pterodactyl startup command:
+
+```bash
+bash start.sh
+```
 
 Before uploading to Pterodactyl, read:
 

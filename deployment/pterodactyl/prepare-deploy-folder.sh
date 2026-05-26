@@ -39,12 +39,34 @@ copy_filtered "${REPO_ROOT}/backend" "${TARGET}/backend"
 copy_filtered "${REPO_ROOT}/frontend" "${TARGET}/frontend"
 copy_filtered "${REPO_ROOT}/engine" "${TARGET}/engine"
 copy_filtered "${SCRIPT_DIR}/single-server" "${TARGET}/deployment/pterodactyl/single-server"
+cp "${SCRIPT_DIR}/single-server/.env.example" "${TARGET}/.env.example"
+cp "${SCRIPT_DIR}/single-server/PRE_DEPLOY_CHECKLIST.md" "${TARGET}/PRE_DEPLOY_CHECKLIST.md"
 
 cp "${SCRIPT_DIR}/README.md" "${TARGET}/deployment/pterodactyl/README.md"
 cp "${SCRIPT_DIR}/UPLOAD_MANIFEST.md" "${TARGET}/deployment/pterodactyl/UPLOAD_MANIFEST.md"
 cp "${SCRIPT_DIR}/.deployignore" "${TARGET}/deployment/pterodactyl/.deployignore"
 cp "${REPO_ROOT}/README.md" "${TARGET}/README.md"
 cp "${REPO_ROOT}/TEST_REPORT.md" "${TARGET}/TEST_REPORT.md"
+
+cat > "${TARGET}/start.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export CODEDNA_ROOT_DIR="${ROOT_DIR}"
+exec bash "${ROOT_DIR}/deployment/pterodactyl/single-server/start.sh"
+EOF
+
+cat > "${TARGET}/install.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export CODEDNA_ROOT_DIR="${ROOT_DIR}"
+exec bash "${ROOT_DIR}/deployment/pterodactyl/single-server/install.sh"
+EOF
+
+chmod +x "${TARGET}/start.sh" "${TARGET}/install.sh"
 
 cat > "${TARGET}/UPLOAD_THIS_FOLDER.md" <<'EOF'
 # CodeDNA Pterodactyl Single-Folder Bundle
@@ -54,7 +76,7 @@ Upload this whole folder to your Pterodactyl server.
 Startup command:
 
 ```bash
-bash deployment/pterodactyl/single-server/start.sh
+bash start.sh
 ```
 
 The startup command installs and builds on first run, then starts everything.
@@ -62,7 +84,7 @@ The startup command installs and builds on first run, then starts everything.
 Set environment variables from:
 
 ```text
-deployment/pterodactyl/single-server/.env.example
+.env.example
 ```
 EOF
 
