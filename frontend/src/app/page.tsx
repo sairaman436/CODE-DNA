@@ -17,6 +17,7 @@ import { Navbar } from "@/components/Navbar";
 import { RadarChart } from "@/components/RadarChart";
 import { SplitTextReveal } from "@/components/animations/SplitTextReveal";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { useToast } from "@/components/Toast";
 
 export default function LandingPage() {
   const { data: session, status } = useSession();
@@ -454,6 +455,7 @@ function FeatureCard({ icon, title, description, delay }: any) {
    USER DASHBOARD — For signed-in users
    ======================================================================== */
 function UserDashboard({ session }: { session: any }) {
+  const { addToast } = useToast();
   const router = useRouter();
   const username = session?.codedna_username || session?.githubLogin || session?.user?.name;
   const avatar = session?.user?.image || `https://avatar.vercel.sh/${username}`;
@@ -532,7 +534,7 @@ function UserDashboard({ session }: { session: any }) {
       const targetGithubId = session?.githubId || data?.user?.github_id;
 
       if (!targetGithubUsername || !targetGithubId) {
-        alert("Your account is not linked to GitHub yet. Please link your GitHub account in settings or log in with GitHub to analyze your repositories!");
+        addToast("Link your GitHub account in settings or sign in with GitHub to analyze repositories.", "error");
         return;
       }
 
@@ -556,7 +558,7 @@ function UserDashboard({ session }: { session: any }) {
         if (res.status === 403 || res.status === 429) {
           router.push(`/analyzing/${targetGithubUsername}`);
         } else {
-          alert(result.message || result.error || 'Failed to start analysis');
+          addToast(result.message || result.error || 'Failed to start analysis', "error");
         }
         return;
       }
@@ -564,7 +566,7 @@ function UserDashboard({ session }: { session: any }) {
         setAnalyzingJobId(result.jobId);
       }
     } catch (err) {
-      // Silent analyze error
+      addToast("Could not start analysis. Try again in a moment.", "error");
     }
   };
 

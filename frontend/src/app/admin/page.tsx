@@ -17,10 +17,21 @@ import { SilkBackground } from "@/components/SilkBackground";
 import { DynamicBackground } from "@/components/DynamicBackground";
 import { RoleBadge } from "@/components/RoleBadge";
 import Footer from "@/components/Footer";
+import { useToast } from "@/components/Toast";
+
+type PendingAdminAction = {
+  type: "revoke" | "restore" | "wipe";
+  id: string;
+  name: string;
+  title: string;
+  message: string;
+  confirmLabel: string;
+};
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { addToast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,6 +42,7 @@ export default function AdminDashboard() {
   const [unlockError, setUnlockError] = useState("");
   const [editingUser, setEditingUser] = useState<any>(null);
   const [observingUser, setObservingUser] = useState<any>(null);
+  const [pendingAction, setPendingAction] = useState<PendingAdminAction | null>(null);
   const [editFormData, setEditFormData] = useState({
     display_name: "",
     role: "USER",
@@ -61,58 +73,53 @@ export default function AdminDashboard() {
     setObservingUser(user);
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to REVOKE the identity of ${name}? This action is irreversible.`)) return;
-    setLoading(true);
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const res = await fetch(`${apiUrl}/api/admin/users/${id}`, {
-        method: "DELETE",
-        headers: { 
-          "Content-Type": "application/json",
-          "x-user-id": (session?.user as any)?.id || "" 
-        },
-      });
-
-      if (res.ok) {
-        setUsers(users.filter(u => u.id !== id));
-      }
-    } catch (err) {
-      // Silent error
-    } finally {
-      setLoading(false);
-    }
-  };
-  const handleUnban = async (id: string, name: string) => {
-    if (!confirm(`Restore full community access for ${name}? All their data and DNA will remain intact.`)) return;
-    setLoading(true);
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const res = await fetch(`${apiUrl}/api/admin/users/${id}/restore`, {
-        method: "PATCH",
-        headers: { 
-          "Content-Type": "application/json",
-          "x-user-id": (session?.user as any)?.id || "" 
-        },
-      });
-
-      if (res.ok) {
-        await fetchAdminData();
-      }
-    } catch (err) {
-      // Silent error
-    } finally {
-      setLoading(false);
-    }
+  const requestDelete = (id: string, name: string) => {
+    setPendingAction({
+      type: "revoke",
+      id,
+      name,
+      title: "Revoke Identity",
+      message: `Revoke the identity of ${name}? This removes community access but keeps the record recoverable.`,
+      confirmLabel: "Revoke",
+    });
   };
 
-  const handleWipe = async (id: string, name: string) => {
-    if (!confirm(`PERMANENTLY DELETE ${name}? This will wipe all their DNA data and they will have to start from scratch if they return.`)) return;
+  const requestUnban = (id: string, name: string) => {
+    setPendingAction({
+      type: "restore",
+      id,
+      name,
+      title: "Restore Identity",
+      message: `Restore full community access for ${name}? Their data and DNA will remain intact.`,
+      confirmLabel: "Restore",
+    });
+  };
+
+  const requestWipe = (id: string, name: string) => {
+    setPendingAction({
+      type: "wipe",
+      id,
+      name,
+      title: "Wipe Record",
+      message: `Permanently delete ${name}? This wipes all DNA data and they will have to start from scratch if they return.`,
+      confirmLabel: "Wipe",
+    });
+  };
+
+  const executePendingAction = async () => {
+    if (!pendingAction) return;
     setLoading(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const res = await fetch(`${apiUrl}/api/admin/users/${id}/wipe`, {
-        method: "DELETE",
+      const endpoint = pendingAction.type === "restore"
+        ? `${apiUrl}/api/admin/users/${pendingAction.id}/restore`
+        : pendingAction.type === "wipe"
+          ? `${apiUrl}/api/admin/users/${pendingAction.id}/wipe`
+          : `${apiUrl}/api/admin/users/${pendingAction.id}`;
+      const method = pendingAction.type === "restore" ? "PATCH" : "DELETE";
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { 
           "Content-Type": "application/json",
           "x-user-id": (session?.user as any)?.id || "" 
@@ -120,10 +127,19 @@ export default function AdminDashboard() {
       });
 
       if (res.ok) {
-        await fetchAdminData();
+        if (pendingAction.type === "revoke") {
+          setUsers(users.filter(u => u.id !== pendingAction.id));
+        } else {
+          await fetchAdminData();
+        }
+        addToast(`${pendingAction.title} completed for ${pendingAction.name}.`, "success");
+        setPendingAction(null);
+      } else {
+        const error = await res.json();
+        addToast(error.error || `${pendingAction.title} failed.`, "error");
       }
     } catch (err) {
-      // Silent error
+      addToast(`${pendingAction.title} failed due to a network error.`, "error");
     } finally {
       setLoading(false);
     }
@@ -387,13 +403,13 @@ export default function AdminDashboard() {
                                       icon={<RefreshCcw className="w-4 h-4" />} 
                                       label="Restore Identity" 
                                       color="emerald" 
-                                      onClick={() => handleUnban(u.id, u.display_name || u.email)}
+                                      onClick={() => requestUnban(u.id, u.display_name || u.email)}
                                     />
                                     <AdminAction 
                                       icon={<Trash2 className="w-4 h-4" />} 
                                       label="Wipe Record" 
                                       color="rose" 
-                                      onClick={() => handleWipe(u.id, u.display_name || u.email)}
+                                      onClick={() => requestWipe(u.id, u.display_name || u.email)}
                                     />
                                   </>
                                 ) : (
@@ -401,7 +417,7 @@ export default function AdminDashboard() {
                                     icon={<Trash2 className="w-4 h-4" />} 
                                     label="Revoke" 
                                     color="rose" 
-                                    onClick={() => handleDelete(u.id, u.display_name || u.email)}
+                                    onClick={() => requestDelete(u.id, u.display_name || u.email)}
                                     disabled={u.role === 'ADMIN'}
                                   />
                                 )}
@@ -521,6 +537,57 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Admin Action Confirmation Overlay */}
+          <AnimatePresence>
+            {pendingAction && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => !loading && setPendingAction(null)}
+                  className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92, y: 18 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.92, y: 18 }}
+                  className="relative z-10 w-full max-w-md bg-[#0c0c0c] border border-white/10 rounded-[32px] p-8 shadow-2xl overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
+                  <div className="flex items-start gap-4 mb-7">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+                      <ShieldAlert className="w-6 h-6 text-rose-500" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black uppercase tracking-tight text-white">{pendingAction.title}</h3>
+                      <p className="mt-2 text-[13px] leading-relaxed text-zinc-400">{pendingAction.message}</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setPendingAction(null)}
+                      className="h-11 px-5 rounded-xl bg-white/[0.03] border border-white/10 text-[11px] font-black uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/[0.06] disabled:opacity-50 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={executePendingAction}
+                      className="h-11 px-5 rounded-xl bg-rose-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-rose-400 disabled:opacity-60 transition-all flex items-center gap-2"
+                    >
+                      {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      {pendingAction.confirmLabel}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
             )}
           </AnimatePresence>
 

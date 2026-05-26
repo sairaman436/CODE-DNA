@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { useToast } from "./Toast";
 
 interface User {
   id: string;
@@ -18,6 +19,7 @@ interface User {
 
 export function AdminControls({ targetUser, onUpdate }: { targetUser: User, onUpdate?: () => void }) {
   const { data: session } = useSession();
+  const { addToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [editData, setEditData] = useState({
@@ -41,7 +43,7 @@ export function AdminControls({ targetUser, onUpdate }: { targetUser: User, onUp
 
   const handleUpdate = async () => {
     if (!targetUser.id) {
-      alert("Error: Target user ID is missing. Try refreshing the page.");
+      addToast("Target user ID is missing. Try refreshing the page.", "error");
       return;
     }
 
@@ -65,13 +67,14 @@ export function AdminControls({ targetUser, onUpdate }: { targetUser: User, onUp
 
       if (res.ok) {
         setIsEditing(false);
+        addToast("User profile updated.", "success");
         if (onUpdate) onUpdate();
       } else {
         const error = await res.json();
-        alert(`Update failed: ${error.error || "Unknown error"}`);
+        addToast(`Update failed: ${error.error || "Unknown error"}`, "error");
       }
     } catch (err) {
-      alert("Network error occurred while updating user.");
+      addToast("Network error occurred while updating user.", "error");
     } finally {
       setLoading(false);
     }
