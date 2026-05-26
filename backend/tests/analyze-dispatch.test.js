@@ -113,6 +113,16 @@ test('checkMemoryRateLimit blocks repeated analysis attempts in a window', () =>
   }
 });
 
+test('isPrivilegedAnalysisUser bypasses analysis limits for staff and admins', () => {
+  const route = loadAnalyzeRoute();
+
+  assert.equal(route.isPrivilegedAnalysisUser({ role: 'ADMIN' }, 'alice'), true);
+  assert.equal(route.isPrivilegedAnalysisUser({ role: 'STAFF' }, 'alice'), true);
+  assert.equal(route.isPrivilegedAnalysisUser({ role: 'USER' }, 'sairaman436'), true);
+  assert.equal(route.isPrivilegedAnalysisUser({ role: 'USER', email: 'sairamanladi2007@gmail.com' }, 'alice'), true);
+  assert.equal(route.isPrivilegedAnalysisUser({ role: 'USER' }, 'alice'), false);
+});
+
 function restoreEnv(key, value) {
   if (value === undefined) {
     delete process.env[key];

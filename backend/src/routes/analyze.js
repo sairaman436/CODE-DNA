@@ -36,6 +36,14 @@ function checkMemoryRateLimit(key, now = Date.now()) {
   return { limited: false, retryAfterSeconds: 0 };
 }
 
+function isPrivilegedAnalysisUser(user, githubUsername) {
+  const role = user?.role;
+  return role === 'ADMIN' ||
+    role === 'STAFF' ||
+    user?.email === 'sairamanladi2007@gmail.com' ||
+    githubUsername?.toLowerCase() === 'sairaman436';
+}
+
 function engineHeaders() {
   const headers = { 'Content-Type': 'application/json' };
   if (process.env.WEBHOOK_SECRET) {
@@ -148,13 +156,16 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: username and github_id. Please link your GitHub account first.' });
     }
 
-    const memoryLimit = checkMemoryRateLimit(clientRateKey(req, finalGithubUsername));
-    if (memoryLimit.limited) {
-      res.set('Retry-After', String(memoryLimit.retryAfterSeconds));
-      return res.status(429).json({
-        error: 'RATE_LIMIT_EXCEEDED',
-        message: `Too many analysis attempts from this network. Please try again in ${Math.ceil(memoryLimit.retryAfterSeconds / 60)} minutes.`,
-      });
+    const isPrivilegedBeforeUserWrite = isPrivilegedAnalysisUser(user, finalGithubUsername);
+    if (!isPrivilegedBeforeUserWrite) {
+      const memoryLimit = checkMemoryRateLimit(clientRateKey(req, finalGithubUsername));
+      if (memoryLimit.limited) {
+        res.set('Retry-After', String(memoryLimit.retryAfterSeconds));
+        return res.status(429).json({
+          error: 'RATE_LIMIT_EXCEEDED',
+          message: `Too many analysis attempts from this network. Please try again in ${Math.ceil(memoryLimit.retryAfterSeconds / 60)} minutes.`,
+        });
+      }
     }
 
     const { access_token } = req.body;
@@ -187,12 +198,12 @@ router.post('/', async (req, res) => {
     }
 
     // Gateway & Rate Limiting Enforcement
-    const isAdmin = user.role === 'ADMIN' || user.email === 'sairamanladi2007@gmail.com' || finalGithubUsername.toLowerCase() === 'sairaman436';
+    const isPrivileged = isPrivilegedAnalysisUser(user, finalGithubUsername);
     const isAnalyzingOwnRepos = finalGithubUsername.toLowerCase() === user.github_username?.toLowerCase() ||
                                 finalGithubUsername.toLowerCase() === user.username?.toLowerCase() ||
                                 finalGithubUsername.toLowerCase() === user.codedna_username?.toLowerCase();
 
-    if (isAnalyzingOwnRepos && !isAdmin) {
+    if (isAnalyzingOwnRepos && !isPrivileged) {
       // 1. Rate Limiting Check: 4 analyses in 2 hours
       const twoHoursAgo = new Date(Date.now() - USER_RATE_WINDOW_MS);
       const recentJobsCount = await prisma.analysisJob.count({
@@ -300,4 +311,5 @@ module.exports.dispatchToEngine = dispatchToEngine;
 module.exports.dispatchToEnginePool = dispatchToEnginePool;
 module.exports.getEnginePool = getEnginePool;
 module.exports.checkMemoryRateLimit = checkMemoryRateLimit;
+module.exports.isPrivilegedAnalysisUser = isPrivilegedAnalysisUser;
 module.exports._rateBuckets = rateBuckets;

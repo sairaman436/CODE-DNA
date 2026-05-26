@@ -191,7 +191,7 @@ Code DNA is public and free, but analysis is expensive. Non-admin users must pas
 - Star the configured Code DNA repository.
 - Stay inside public request and per-user analysis limits.
 
-The analyzing page shows the missing gateway steps and lets users verify again after following/starring. Admins and the configured creator account bypass the gate.
+The analyzing page shows the missing gateway steps and lets users verify again after following/starring. Staff, admins, and the configured creator account bypass the gate and analysis limits.
 
 ## Verification
 

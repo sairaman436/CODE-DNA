@@ -12,7 +12,7 @@ Added executable regression coverage for the backend API layer and Python analys
 
 Command: `npm test`
 
-Result: 27 passing tests.
+Result: 28 passing tests.
 
 Files:
 
@@ -42,6 +42,7 @@ Covered cases:
 - Backend dispatches analysis jobs across a comma-separated `ANALYSIS_SERVICE_URLS` engine pool with round-robin selection and failover.
 - Analysis gateway requires non-admin users to follow the configured GitHub owner and star the configured repository before expensive engine work starts.
 - Public in-memory request limiting blocks repeated analysis attempts from the same user/IP window.
+- Staff, admins, the creator account, and the master admin email bypass analysis gateway and rate limits.
 
 ### Engine
 
