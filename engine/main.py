@@ -20,7 +20,7 @@ from analyzer import analyze_repository_batch, perform_full_analysis
 app = FastAPI(title="CodeDNA Analysis Engine", version="1.0.0")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
-NODE_BACKEND_URL = "http://localhost:5000"
+NODE_BACKEND_URL = os.getenv("CODEDNA_BACKEND_URL") or os.getenv("NODE_BACKEND_URL", "http://localhost:5000")
 
 # ─── Industrial Scalability: Parallel Processing Pool ───
 # Keep analysis jobs isolated without process-spawn overhead. Repository

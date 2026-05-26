@@ -7,6 +7,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 const rateLimit = require('express-rate-limit');
+const allowedOrigins = (process.env.CODEDNA_CORS_ORIGINS || process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:3001')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -26,7 +30,24 @@ const discoveryLimiter = rateLimit({
 // Middleware
 app.use(limiter); // Apply rate limiting to all requests
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    if (process.env.CODEDNA_ALLOW_VERCEL_PREVIEWS === '1') {
+      try {
+        const hostname = new URL(origin).hostname;
+        if (hostname.endsWith('.vercel.app')) {
+          return callback(null, true);
+        }
+      } catch {
+        // Fall through to the normal CORS rejection.
+      }
+    }
+
+    return callback(new Error(`CORS blocked origin: ${origin}`));
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));

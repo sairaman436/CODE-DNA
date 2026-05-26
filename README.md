@@ -141,6 +141,8 @@ Backend:
 DATABASE_URL=...
 WEBHOOK_SECRET=...
 GITHUB_TOKEN=...
+CODEDNA_CORS_ORIGINS=http://localhost:3000,https://your-codedna-app.vercel.app
+CODEDNA_ALLOW_VERCEL_PREVIEWS=0
 ANALYSIS_SERVICE_URLS=http://localhost:8000,http://localhost:8001,http://localhost:8002
 CODEDNA_ANALYSIS_GATEWAY_ENABLED=1
 CODEDNA_GATEWAY_GITHUB_OWNER=sairaman436
@@ -163,6 +165,8 @@ GITHUB_SECRET=...
 Engine:
 
 ```env
+CODEDNA_BACKEND_URL=http://localhost:5000
+WEBHOOK_SECRET=...
 CODEDNA_SOURCE_FETCH_MODE=api
 CODEDNA_DISTRIBUTED_BATCH_SIZE=0
 CODEDNA_MAX_REPO_WORKERS=2
@@ -192,6 +196,71 @@ Code DNA is public and free, but analysis is expensive. Non-admin users must pas
 - Stay inside public request and per-user analysis limits.
 
 The analyzing page shows the missing gateway steps and lets users verify again after following/starring. Staff, admins, and the configured creator account bypass the gate and analysis limits.
+
+## Production Deployment
+
+Recommended production shape:
+
+```text
+Vercel Next.js frontend
+  -> HTTPS Node backend
+  -> HTTPS Python engine pool
+  -> Managed Postgres database
+```
+
+Deploy the frontend on Vercel, but keep the backend and analysis engines on always-on infrastructure. The engine performs long-running GitHub API and code-analysis work, so it should not run as a Vercel serverless function.
+
+### Vercel Frontend
+
+In Vercel, create a project from this repository and set the root directory to `frontend`.
+
+Set environment variables:
+
+```env
+NEXT_PUBLIC_API_URL=https://your-backend.example.com
+NEXTAUTH_URL=https://your-codedna-app.vercel.app
+NEXTAUTH_SECRET=...
+GITHUB_ID=...
+GITHUB_SECRET=...
+```
+
+Then update the GitHub OAuth app callback URL to match the deployed frontend, for example:
+
+```text
+https://your-codedna-app.vercel.app/api/auth/callback/github
+```
+
+### Backend Service
+
+Deploy `backend` to an always-on Node host such as Render, Railway, Fly.io, a VPS, or a container service.
+
+Set environment variables:
+
+```env
+PORT=5000
+DATABASE_URL=...
+WEBHOOK_SECRET=...
+GITHUB_TOKEN=...
+CODEDNA_CORS_ORIGINS=https://your-codedna-app.vercel.app
+ANALYSIS_SERVICE_URLS=https://engine-1.example.com,https://engine-2.example.com,https://engine-3.example.com
+```
+
+Use a managed Postgres database in production. Do not use the local Prisma dev database for public traffic.
+
+### Engine Pool
+
+Deploy one or more `engine` instances as always-on Python services.
+
+Each engine should have:
+
+```env
+CODEDNA_BACKEND_URL=https://your-backend.example.com
+WEBHOOK_SECRET=...
+CODEDNA_ENGINE_SELF_URL=https://engine-1.example.com
+CODEDNA_ENGINE_PEER_URLS=https://engine-1.example.com,https://engine-2.example.com,https://engine-3.example.com
+```
+
+Use the same `WEBHOOK_SECRET` in backend and engine so only trusted services can submit analysis progress and results.
 
 ## Verification
 
