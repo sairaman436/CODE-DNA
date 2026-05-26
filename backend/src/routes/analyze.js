@@ -280,7 +280,7 @@ router.post('/', async (req, res) => {
         where: { id: job.id },
         data: { current_step: 'Failed to fetch repositories', status: 'failed', error_message: githubErr.message }
       });
-      return res.status(502).json({ error: 'Failed to fetch GitHub repositories', jobId: job.id });
+      return res.status(502).json({ error: `Failed to fetch GitHub repositories: ${githubErr.message}`, jobId: job.id });
     }
  
     // 4. Fire-and-forget HTTP request to the Python Engine pool
