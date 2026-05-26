@@ -65,6 +65,7 @@ Start Command: uvicorn main:app --host 0.0.0.0 --port $PORT
 Environment variables:
 
 ```env
+PYTHON_VERSION=3.11.11
 CODEDNA_BACKEND_URL=https://codedna-backend.onrender.com
 WEBHOOK_SECRET=<same value as backend>
 CODEDNA_SOURCE_FETCH_MODE=api

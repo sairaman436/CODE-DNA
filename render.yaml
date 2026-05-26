@@ -40,6 +40,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
       - key: CODEDNA_BACKEND_URL
         sync: false
       - key: WEBHOOK_SECRET
