@@ -43,16 +43,24 @@ https://your-domain.com/api/auth/callback/github
 
 ## Startup
 
-Install:
-
-```bash
-bash deployment/pterodactyl/single-server/install.sh
-```
-
-Start:
+Use one startup command:
 
 ```bash
 bash deployment/pterodactyl/single-server/start.sh
+```
+
+The startup script installs dependencies and builds the frontend on first run. It writes `.codedna-installed` after a successful install, then skips install on later restarts.
+
+To force reinstall after uploading new code, set:
+
+```env
+CODEDNA_FORCE_INSTALL=1
+```
+
+After the reinstall succeeds, set it back to:
+
+```env
+CODEDNA_FORCE_INSTALL=0
 ```
 
 ## After Start

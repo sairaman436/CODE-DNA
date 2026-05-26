@@ -97,17 +97,14 @@ Set the startup command:
 bash deployment/pterodactyl/single-server/start.sh
 ```
 
-Recommended install command:
-
-```bash
-bash deployment/pterodactyl/single-server/install.sh
-```
+The startup script installs dependencies and builds the frontend on first run, then starts the frontend, backend, and engine pool. Later restarts skip install unless `CODEDNA_FORCE_INSTALL=1`.
 
 Environment variables:
 
 ```env
 NODE_ENV=production
 PYTHONUNBUFFERED=1
+CODEDNA_FORCE_INSTALL=0
 FRONTEND_PORT=3000
 BACKEND_PORT=5000
 ENGINE_HOST=0.0.0.0

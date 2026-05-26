@@ -43,17 +43,13 @@ Do not upload real secrets in files. Put secrets into Pterodactyl environment va
 
 ## Single-Server Pterodactyl Command
 
-Install command:
-
-```bash
-bash deployment/pterodactyl/single-server/install.sh
-```
-
 Startup command:
 
 ```bash
 bash deployment/pterodactyl/single-server/start.sh
 ```
+
+The startup command installs and builds on first run, then starts everything. If you upload new code later and need to reinstall dependencies/rebuild, set `CODEDNA_FORCE_INSTALL=1` for one restart.
 
 ## Required Environment Variables
 

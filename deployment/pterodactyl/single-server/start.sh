@@ -29,8 +29,37 @@ warn_missing_env() {
 require_command node
 require_command npm
 require_command python
+if ! python -m pip --version >/dev/null 2>&1; then
+  echo "Missing required Python package manager: pip"
+  echo "Use a Pterodactyl egg/container that includes NodeJS, npm, Python, and pip."
+  exit 1
+fi
 
 warn_missing_env WEBHOOK_SECRET NEXTAUTH_SECRET GITHUB_TOKEN GITHUB_ID GITHUB_SECRET GMAIL_USER GMAIL_APP_PASSWORD NEWSLETTER_TO_EMAIL
+
+INSTALL_MARKER="${ROOT_DIR}/.codedna-installed"
+if [[ "${CODEDNA_FORCE_INSTALL:-0}" == "1" || ! -f "${INSTALL_MARKER}" ]]; then
+  echo "First startup detected. Installing CodeDNA dependencies and building frontend..."
+
+  cd "${ROOT_DIR}/backend"
+  npm ci
+  npx prisma generate
+  npx prisma db push
+
+  cd "${ROOT_DIR}/frontend"
+  npm ci
+  npm run build
+
+  cd "${ROOT_DIR}/engine"
+  python -m pip install --upgrade pip
+  python -m pip install -r requirements.txt
+  python -m py_compile main.py analyzer.py
+
+  date -u +"%Y-%m-%dT%H:%M:%SZ" > "${INSTALL_MARKER}"
+  echo "Install complete. Future starts will skip install unless CODEDNA_FORCE_INSTALL=1."
+else
+  echo "Install marker found at ${INSTALL_MARKER}; skipping dependency install."
+fi
 
 IFS=',' read -ra PORTS <<< "${ENGINE_PORTS}"
 for port in "${PORTS[@]}"; do

@@ -93,17 +93,13 @@ $bundleReadme = @'
 
 Upload this whole folder to your Pterodactyl server.
 
-Install command:
-
-```bash
-bash deployment/pterodactyl/single-server/install.sh
-```
-
 Startup command:
 
 ```bash
 bash deployment/pterodactyl/single-server/start.sh
 ```
+
+The startup command installs and builds on first run, then starts everything.
 
 Set environment variables from:
 
