@@ -142,6 +142,13 @@ DATABASE_URL=...
 WEBHOOK_SECRET=...
 GITHUB_TOKEN=...
 ANALYSIS_SERVICE_URLS=http://localhost:8000,http://localhost:8001,http://localhost:8002
+CODEDNA_ANALYSIS_GATEWAY_ENABLED=1
+CODEDNA_GATEWAY_GITHUB_OWNER=sairaman436
+CODEDNA_GATEWAY_GITHUB_REPO=CODE-DNA
+CODEDNA_PUBLIC_ANALYSIS_RATE_MAX=8
+CODEDNA_PUBLIC_ANALYSIS_RATE_WINDOW_MS=900000
+CODEDNA_USER_ANALYSIS_RATE_MAX=4
+CODEDNA_USER_ANALYSIS_RATE_WINDOW_MS=7200000
 ```
 
 Frontend:
@@ -175,6 +182,16 @@ CODEDNA_MAX_REPO_SIZE_KB=0
 ```
 
 `CODEDNA_MAX_REPO_SIZE_KB=0` means no size cap.
+
+## Public Gateway
+
+Code DNA is public and free, but analysis is expensive. Non-admin users must pass a lightweight trust gate before the engine starts:
+
+- Follow the configured GitHub creator account.
+- Star the configured Code DNA repository.
+- Stay inside public request and per-user analysis limits.
+
+The analyzing page shows the missing gateway steps and lets users verify again after following/starring. Admins and the configured creator account bypass the gate.
 
 ## Verification
 

@@ -6,7 +6,10 @@ const { loadRouteWithMocks } = require('./helpers');
 function loadAnalyzeRoute() {
   return loadRouteWithMocks('src/routes/analyze.js', {
     'src/lib/prisma.js': {},
-    'src/services/github.js': { fetchAndFilterRepos: async () => [] },
+    'src/services/github.js': {
+      fetchAndFilterRepos: async () => [],
+      checkGatewayRequirements: async () => ({ followed: true, starred: true }),
+    },
   });
 }
 
@@ -85,6 +88,29 @@ test('dispatchToEnginePool fails over when one engine rejects the job', async (t
     'http://busy-engine:8000',
     'http://ready-engine:8000',
   ]);
+});
+
+test('checkMemoryRateLimit blocks repeated analysis attempts in a window', () => {
+  const previousMax = process.env.CODEDNA_PUBLIC_ANALYSIS_RATE_MAX;
+  const previousWindow = process.env.CODEDNA_PUBLIC_ANALYSIS_RATE_WINDOW_MS;
+
+  try {
+    process.env.CODEDNA_PUBLIC_ANALYSIS_RATE_MAX = '2';
+    process.env.CODEDNA_PUBLIC_ANALYSIS_RATE_WINDOW_MS = '60000';
+
+    const route = loadAnalyzeRoute();
+    route._rateBuckets.clear();
+
+    assert.equal(route.checkMemoryRateLimit('alice:127.0.0.1', 1000).limited, false);
+    assert.equal(route.checkMemoryRateLimit('alice:127.0.0.1', 2000).limited, false);
+    const blocked = route.checkMemoryRateLimit('alice:127.0.0.1', 3000);
+
+    assert.equal(blocked.limited, true);
+    assert.equal(blocked.retryAfterSeconds, 58);
+  } finally {
+    restoreEnv('CODEDNA_PUBLIC_ANALYSIS_RATE_MAX', previousMax);
+    restoreEnv('CODEDNA_PUBLIC_ANALYSIS_RATE_WINDOW_MS', previousWindow);
+  }
 });
 
 function restoreEnv(key, value) {

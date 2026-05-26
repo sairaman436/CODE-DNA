@@ -4,6 +4,8 @@ const GITHUB_MAX_REPO_PAGES = Number(process.env.GITHUB_MAX_REPO_PAGES || 0);
 const CODEDNA_MAX_REPO_SIZE_KB = Number(process.env.CODEDNA_MAX_REPO_SIZE_KB || 0);
 const CODEDNA_INCLUDE_FORKS = process.env.CODEDNA_INCLUDE_FORKS !== '0';
 const CODEDNA_INCLUDE_ARCHIVED = process.env.CODEDNA_INCLUDE_ARCHIVED !== '0';
+const GATEWAY_GITHUB_OWNER = process.env.CODEDNA_GATEWAY_GITHUB_OWNER || 'sairaman436';
+const GATEWAY_GITHUB_REPO = process.env.CODEDNA_GATEWAY_GITHUB_REPO || 'CODE-DNA';
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = GITHUB_FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -100,15 +102,15 @@ async function checkGatewayRequirements(username, accessToken) {
   let starred = false;
 
   // Bypass checks for target creator
-  if (username.toLowerCase() === 'sairaman436') {
+  if (username.toLowerCase() === GATEWAY_GITHUB_OWNER.toLowerCase()) {
     return { followed: true, starred: true };
   }
 
   // 1. Check Follow status
   try {
     const followUrl = accessToken
-      ? `https://api.github.com/user/following/sairaman436`
-      : `https://api.github.com/users/${username}/following/sairaman436`;
+      ? `https://api.github.com/user/following/${GATEWAY_GITHUB_OWNER}`
+      : `https://api.github.com/users/${username}/following/${GATEWAY_GITHUB_OWNER}`;
 
     const response = await fetchWithTimeout(followUrl, {
       headers: {
@@ -128,7 +130,7 @@ async function checkGatewayRequirements(username, accessToken) {
   // 2. Check Star status
   try {
     if (accessToken) {
-      const starUrl = `https://api.github.com/user/starred/sairaman436/CODE-DNA`;
+      const starUrl = `https://api.github.com/user/starred/${GATEWAY_GITHUB_OWNER}/${GATEWAY_GITHUB_REPO}`;
       const response = await fetchWithTimeout(starUrl, {
         headers: {
           'Accept': 'application/vnd.github.v3+json',
@@ -165,7 +167,8 @@ async function checkGatewayRequirements(username, accessToken) {
         if (repos.length === 0) {
           hasMore = false;
         } else {
-          const found = repos.some(r => r.full_name?.toLowerCase() === 'sairaman436/code-dna');
+          const requiredFullName = `${GATEWAY_GITHUB_OWNER}/${GATEWAY_GITHUB_REPO}`.toLowerCase();
+          const found = repos.some(r => r.full_name?.toLowerCase() === requiredFullName);
           if (found) {
             starred = true;
             break;
@@ -183,4 +186,3 @@ async function checkGatewayRequirements(username, accessToken) {
 }
 
 module.exports = { fetchAndFilterRepos, fetchWithTimeout, isEligibleRepo, checkGatewayRequirements };
-

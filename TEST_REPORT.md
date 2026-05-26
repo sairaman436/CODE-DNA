@@ -12,7 +12,7 @@ Added executable regression coverage for the backend API layer and Python analys
 
 Command: `npm test`
 
-Result: 20 passing tests.
+Result: 27 passing tests.
 
 Files:
 
@@ -40,6 +40,8 @@ Covered cases:
 - Webhook results reject malformed score contracts.
 - GitHub API timeout handling aborts stalled requests.
 - Backend dispatches analysis jobs across a comma-separated `ANALYSIS_SERVICE_URLS` engine pool with round-robin selection and failover.
+- Analysis gateway requires non-admin users to follow the configured GitHub owner and star the configured repository before expensive engine work starts.
+- Public in-memory request limiting blocks repeated analysis attempts from the same user/IP window.
 
 ### Engine
 
@@ -116,6 +118,13 @@ Covered cases:
 
 - `WEBHOOK_SECRET`: optional shared secret enforced by backend webhook routes and sent by the engine. Configure the same value in backend and engine environments.
 - `ANALYSIS_SERVICE_URLS`: comma-separated engine pool, e.g. `http://localhost:8000,http://localhost:8001,http://localhost:8002`.
+- `CODEDNA_ANALYSIS_GATEWAY_ENABLED`: enables the star/follow analysis gate, default enabled.
+- `CODEDNA_GATEWAY_GITHUB_OWNER`: GitHub account users must follow, default `sairaman436`.
+- `CODEDNA_GATEWAY_GITHUB_REPO`: repository users must star, default `CODE-DNA`.
+- `CODEDNA_PUBLIC_ANALYSIS_RATE_MAX`: max public attempts per user/IP window, default `8`.
+- `CODEDNA_PUBLIC_ANALYSIS_RATE_WINDOW_MS`: public rate-limit window, default `900000`.
+- `CODEDNA_USER_ANALYSIS_RATE_MAX`: max saved analysis jobs per user window, default `4`.
+- `CODEDNA_USER_ANALYSIS_RATE_WINDOW_MS`: saved analysis job rate-limit window, default `7200000`.
 - `CODEDNA_ENGINE_PEER_URLS`: comma-separated peer engine pool used by a coordinator engine to split one user's repos across multiple engines.
 - `CODEDNA_ENGINE_SELF_URL`: current engine URL, used to avoid dispatching a remote batch back to itself.
 - `CODEDNA_DISTRIBUTED_BATCH_SIZE`: repositories per dynamic distributed work batch, default `0` for automatic per-user sizing.

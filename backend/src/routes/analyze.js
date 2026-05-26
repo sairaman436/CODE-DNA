@@ -4,7 +4,37 @@ const { fetchAndFilterRepos, checkGatewayRequirements } = require('../services/g
 
 const router = express.Router();
 const ENGINE_REQUEST_TIMEOUT_MS = Number(process.env.ENGINE_REQUEST_TIMEOUT_MS || 5000);
+const ANALYSIS_GATEWAY_ENABLED = process.env.CODEDNA_ANALYSIS_GATEWAY_ENABLED !== '0';
+const PUBLIC_RATE_WINDOW_MS = Number(process.env.CODEDNA_PUBLIC_ANALYSIS_RATE_WINDOW_MS || 15 * 60 * 1000);
+const PUBLIC_RATE_MAX = Number(process.env.CODEDNA_PUBLIC_ANALYSIS_RATE_MAX || 8);
+const USER_RATE_WINDOW_MS = Number(process.env.CODEDNA_USER_ANALYSIS_RATE_WINDOW_MS || 2 * 60 * 60 * 1000);
+const USER_RATE_MAX = Number(process.env.CODEDNA_USER_ANALYSIS_RATE_MAX || 4);
+const rateBuckets = new Map();
 let nextEngineIndex = 0;
+
+function clientRateKey(req, githubUsername) {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = Array.isArray(forwarded)
+    ? forwarded[0]
+    : (forwarded || req.ip || req.socket?.remoteAddress || 'unknown');
+  return `${githubUsername || 'anonymous'}:${String(ip).split(',')[0].trim()}`;
+}
+
+function checkMemoryRateLimit(key, now = Date.now()) {
+  const bucket = rateBuckets.get(key) || [];
+  const fresh = bucket.filter((timestamp) => now - timestamp < PUBLIC_RATE_WINDOW_MS);
+  if (fresh.length >= PUBLIC_RATE_MAX) {
+    const retryAt = fresh[0] + PUBLIC_RATE_WINDOW_MS;
+    rateBuckets.set(key, fresh);
+    return {
+      limited: true,
+      retryAfterSeconds: Math.max(1, Math.ceil((retryAt - now) / 1000)),
+    };
+  }
+  fresh.push(now);
+  rateBuckets.set(key, fresh);
+  return { limited: false, retryAfterSeconds: 0 };
+}
 
 function engineHeaders() {
   const headers = { 'Content-Type': 'application/json' };
@@ -118,6 +148,15 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: username and github_id. Please link your GitHub account first.' });
     }
 
+    const memoryLimit = checkMemoryRateLimit(clientRateKey(req, finalGithubUsername));
+    if (memoryLimit.limited) {
+      res.set('Retry-After', String(memoryLimit.retryAfterSeconds));
+      return res.status(429).json({
+        error: 'RATE_LIMIT_EXCEEDED',
+        message: `Too many analysis attempts from this network. Please try again in ${Math.ceil(memoryLimit.retryAfterSeconds / 60)} minutes.`,
+      });
+    }
+
     const { access_token } = req.body;
     const tokenToUse = access_token || (user ? user.github_token : null) || process.env.GITHUB_TOKEN;
 
@@ -155,7 +194,7 @@ router.post('/', async (req, res) => {
 
     if (isAnalyzingOwnRepos && !isAdmin) {
       // 1. Rate Limiting Check: 4 analyses in 2 hours
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const twoHoursAgo = new Date(Date.now() - USER_RATE_WINDOW_MS);
       const recentJobsCount = await prisma.analysisJob.count({
         where: {
           user_id: user.id,
@@ -163,7 +202,7 @@ router.post('/', async (req, res) => {
         }
       });
 
-      if (recentJobsCount >= 4) {
+      if (recentJobsCount >= USER_RATE_MAX) {
         const oldestJob = await prisma.analysisJob.findFirst({
           where: {
             user_id: user.id,
@@ -172,32 +211,34 @@ router.post('/', async (req, res) => {
           orderBy: { created_at: 'asc' }
         });
 
-        let remainingMinutes = 120;
+        let remainingMinutes = Math.ceil(USER_RATE_WINDOW_MS / (60 * 1000));
         if (oldestJob && oldestJob.created_at) {
-          const diffMs = (oldestJob.created_at.getTime() + 2 * 60 * 60 * 1000) - Date.now();
+          const diffMs = (oldestJob.created_at.getTime() + USER_RATE_WINDOW_MS) - Date.now();
           remainingMinutes = Math.max(1, Math.ceil(diffMs / (60 * 1000)));
         }
 
         return res.status(429).json({
           error: 'RATE_LIMIT_EXCEEDED',
-          message: `Rate limit reached. You can only analyze your repositories 4 times every 2 hours. Please try again in ${remainingMinutes} minutes.`
+          message: `Rate limit reached. You can only analyze your repositories ${USER_RATE_MAX} times every ${Math.ceil(USER_RATE_WINDOW_MS / (60 * 60 * 1000))} hours. Please try again in ${remainingMinutes} minutes.`
         });
       }
 
       // 2. Gateway Check: Star and Follow
-      const gatewayResult = await checkGatewayRequirements(finalGithubUsername, tokenToUse);
-      
-      if (gatewayResult.error) {
-        return res.status(400).json({ error: 'GATEWAY_ERROR', message: gatewayResult.error });
-      }
- 
-      if (!gatewayResult.starred || !gatewayResult.followed) {
-        return res.status(403).json({
-          error: 'GATEWAY_REQUIRED',
-          message: 'To analyze your repositories, you must star the CODE-DNA repository and follow the creator on GitHub.',
-          starred: gatewayResult.starred,
-          followed: gatewayResult.followed
-        });
+      if (ANALYSIS_GATEWAY_ENABLED) {
+        const gatewayResult = await checkGatewayRequirements(finalGithubUsername, tokenToUse);
+
+        if (gatewayResult.error) {
+          return res.status(400).json({ error: 'GATEWAY_ERROR', message: gatewayResult.error });
+        }
+
+        if (!gatewayResult.starred || !gatewayResult.followed) {
+          return res.status(403).json({
+            error: 'GATEWAY_REQUIRED',
+            message: 'To analyze your repositories, you must star the CODE-DNA repository and follow the creator on GitHub.',
+            starred: gatewayResult.starred,
+            followed: gatewayResult.followed
+          });
+        }
       }
     }
  
@@ -258,3 +299,5 @@ module.exports = router;
 module.exports.dispatchToEngine = dispatchToEngine;
 module.exports.dispatchToEnginePool = dispatchToEnginePool;
 module.exports.getEnginePool = getEnginePool;
+module.exports.checkMemoryRateLimit = checkMemoryRateLimit;
+module.exports._rateBuckets = rateBuckets;

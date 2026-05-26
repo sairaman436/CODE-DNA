@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { fetchAndFilterRepos, fetchWithTimeout } = require('../src/services/github');
+const { checkGatewayRequirements, fetchAndFilterRepos, fetchWithTimeout } = require('../src/services/github');
 
 test('fetchAndFilterRepos includes every non-empty repo by default', async (t) => {
   const originalFetch = global.fetch;
@@ -173,6 +173,46 @@ test('fetchWithTimeout aborts stalled GitHub requests', async (t) => {
     () => fetchWithTimeout('https://api.github.com/stall', {}, 1),
     /GitHub API timeout after 1ms/
   );
+});
+
+test('checkGatewayRequirements verifies follow and star with an access token', async (t) => {
+  const originalFetch = global.fetch;
+  const calls = [];
+  t.after(() => {
+    global.fetch = originalFetch;
+  });
+
+  global.fetch = async (url, options) => {
+    calls.push({ url, authorization: options.headers.Authorization });
+    return { status: 204, ok: true, json: async () => ({}) };
+  };
+
+  const result = await checkGatewayRequirements('alice', 'secret-token');
+
+  assert.deepEqual(result, { followed: true, starred: true });
+  assert.deepEqual(calls.map((call) => call.url), [
+    'https://api.github.com/user/following/sairaman436',
+    'https://api.github.com/user/starred/sairaman436/CODE-DNA',
+  ]);
+  assert.ok(calls.every((call) => call.authorization === 'token secret-token'));
+});
+
+test('checkGatewayRequirements reports missing follow and star', async (t) => {
+  const originalFetch = global.fetch;
+  t.after(() => {
+    global.fetch = originalFetch;
+  });
+
+  global.fetch = async (url) => {
+    if (url.includes('/following/')) {
+      return { status: 404, ok: false, json: async () => ({}) };
+    }
+    return { status: 200, ok: true, json: async () => [] };
+  };
+
+  const result = await checkGatewayRequirements('alice');
+
+  assert.deepEqual(result, { followed: false, starred: false });
 });
 
 function repo(overrides = {}) {
