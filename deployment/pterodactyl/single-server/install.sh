@@ -20,6 +20,11 @@ if ! command -v python >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! python -m pip --version >/dev/null 2>&1; then
+  echo "pip is required for Python dependency installation."
+  exit 1
+fi
+
 cd "${ROOT_DIR}/backend"
 npm ci
 npx prisma generate

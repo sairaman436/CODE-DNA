@@ -10,6 +10,28 @@ PUBLIC_FRONTEND_URL="${PUBLIC_FRONTEND_URL:-http://localhost:${FRONTEND_PORT}}"
 PUBLIC_BACKEND_URL="${PUBLIC_BACKEND_URL:-http://localhost:${BACKEND_PORT}}"
 LOCAL_ENGINE_URLS=""
 
+require_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Missing required command: $1"
+    echo "Use a Pterodactyl egg/container that includes NodeJS, npm, Python, and pip."
+    exit 1
+  fi
+}
+
+warn_missing_env() {
+  for key in "$@"; do
+    if [[ -z "${!key:-}" ]]; then
+      echo "Warning: ${key} is not set."
+    fi
+  done
+}
+
+require_command node
+require_command npm
+require_command python
+
+warn_missing_env WEBHOOK_SECRET NEXTAUTH_SECRET GITHUB_TOKEN GITHUB_ID GITHUB_SECRET GMAIL_USER GMAIL_APP_PASSWORD NEWSLETTER_TO_EMAIL
+
 IFS=',' read -ra PORTS <<< "${ENGINE_PORTS}"
 for port in "${PORTS[@]}"; do
   clean_port="$(echo "${port}" | xargs)"

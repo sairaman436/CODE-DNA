@@ -30,6 +30,28 @@ Pterodactyl Python server
 
 Both layouts keep everything on your own Pterodactyl machine. Use the single-server layout first if your egg supports both runtimes.
 
+## Upload Guide
+
+Before uploading to Pterodactyl, read:
+
+```text
+deployment/pterodactyl/UPLOAD_MANIFEST.md
+deployment/pterodactyl/.deployignore
+```
+
+In short, upload the app code:
+
+```text
+backend/
+frontend/
+engine/
+deployment/pterodactyl/
+README.md
+TEST_REPORT.md
+```
+
+Do not upload local secrets, `node_modules`, `.next`, Python cache files, or local SQLite dev databases.
+
 ## Required Ports
 
 Ask Pterodactyl for these allocations:
@@ -48,6 +70,12 @@ If your panel gives only one public port per server, expose the frontend publicl
 ## Single Server
 
 Use this when your Pterodactyl server can run both NodeJS and Python.
+
+Before starting, check:
+
+```text
+deployment/pterodactyl/single-server/PRE_DEPLOY_CHECKLIST.md
+```
 
 Set the startup command:
 
