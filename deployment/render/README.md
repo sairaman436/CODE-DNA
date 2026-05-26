@@ -32,6 +32,8 @@ Build Command: npm ci && npx prisma generate && npx prisma db push
 Start Command: node src/index.js
 ```
 
+If you use `render.yaml`/Blueprints, the backend build command also runs `npm run db:seed` after the database schema is pushed.
+
 Environment variables:
 
 ```env
@@ -47,9 +49,13 @@ CODEDNA_GATEWAY_GITHUB_REPO=CODE-DNA
 RESEND_API_KEY=<Resend API key>
 MAIL_FROM=Code DNA <onboarding@resend.dev>
 NEWSLETTER_TO_EMAIL=<owner inbox>
+MASTER_ADMIN_EMAIL=<owner admin email>
+MASTER_ADMIN_PASSWORD=<strong private admin password>
 ```
 
 Note: Render free web services can block SMTP ports, so production mail should use `RESEND_API_KEY`. Gmail SMTP remains available only as a local/development fallback with `GMAIL_USER` and `GMAIL_APP_PASSWORD`.
+
+Master admin login is two-step: the email/password must match the seeded admin, then the backend sends an OTP to `MASTER_ADMIN_EMAIL`.
 
 ## 3. Engine
 

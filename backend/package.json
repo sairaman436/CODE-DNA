@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "db:studio": "prisma studio",
+    "db:seed": "node scripts/seed-admin.js",
     "test": "node --test"
   },
   "keywords": [],

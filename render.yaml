@@ -3,7 +3,7 @@ services:
     name: codedna-backend
     runtime: node
     rootDir: backend
-    buildCommand: npm ci && npx prisma generate && npx prisma db push
+    buildCommand: npm ci && npx prisma generate && npx prisma db push && npm run db:seed
     startCommand: node src/index.js
     envVars:
       - key: NODE_ENV
@@ -29,6 +29,10 @@ services:
       - key: GMAIL_APP_PASSWORD
         sync: false
       - key: NEWSLETTER_TO_EMAIL
+        sync: false
+      - key: MASTER_ADMIN_EMAIL
+        sync: false
+      - key: MASTER_ADMIN_PASSWORD
         sync: false
       - key: CODEDNA_ANALYSIS_GATEWAY_ENABLED
         value: "1"
