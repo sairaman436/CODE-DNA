@@ -57,6 +57,9 @@ router.post('/send', async (req, res) => {
       });
     } catch (emailErr) {
       console.error('Email send failed:', emailErr.message);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(503).json({ error: 'Email delivery failed. Check backend mail provider configuration.' });
+      }
       // Still return success — in dev mode the OTP is logged
       console.log(`[DEV] OTP for ${email}: ${code}`);
     }

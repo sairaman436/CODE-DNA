@@ -119,6 +119,10 @@ router.post('/register', async (req, res) => {
         html: `<h1>Welcome to Code DNA</h1><p>Your verification code is: <b>${code}</b></p>`
       });
     } catch (e) {
+      console.error('Registration OTP email failed:', e.message);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(503).json({ error: 'Email delivery failed. Check backend mail provider configuration.' });
+      }
       console.log('\n' + '='.repeat(50));
       console.log(`🔑 DEVELOPMENT OTP for ${email}: ${code}`);
       console.log('='.repeat(50) + '\n');
@@ -228,6 +232,10 @@ router.post('/login', async (req, res) => {
         html: `<h1>Security Check</h1><p>Your login code is: <b>${code}</b></p>`
       });
     } catch (e) {
+      console.error('Login OTP email failed:', e.message);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(503).json({ error: 'Email delivery failed. Check backend mail provider configuration.' });
+      }
       console.log(`[DEV] Login OTP for ${email}: ${code}`);
     }
 

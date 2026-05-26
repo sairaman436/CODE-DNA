@@ -72,3 +72,37 @@ test('normalizeRecipients accepts arrays and comma separated strings', () => {
     'b@example.com',
   ]);
 });
+
+test('Resend delivery defaults to onboarding sender when MAIL_FROM is missing', async (t) => {
+  const originalEnv = { ...process.env };
+  const originalFetch = global.fetch;
+  let body;
+
+  t.after(() => {
+    process.env = originalEnv;
+    global.fetch = originalFetch;
+    delete require.cache[require.resolve(path.join(backendRoot, 'src/lib/mailer.js'))];
+  });
+
+  delete process.env.MAIL_FROM;
+  process.env.RESEND_API_KEY = 're_test_key';
+  global.fetch = async (url, options) => {
+    body = JSON.parse(options.body);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+      text: async () => '',
+    };
+  };
+
+  const mailer = loadMailer();
+  await mailer.sendMail({
+    from: 'Code DNA <noreply@codedna.dev>',
+    to: 'admin@example.com',
+    subject: 'OTP',
+    html: '<p>123456</p>',
+  });
+
+  assert.equal(body.from, 'Code DNA <onboarding@resend.dev>');
+});

@@ -27,6 +27,10 @@ function getDefaultFrom() {
   return 'Code DNA <onboarding@resend.dev>';
 }
 
+function getApiDefaultFrom() {
+  return process.env.MAIL_FROM || 'Code DNA <onboarding@resend.dev>';
+}
+
 function createSmtpTransporter() {
   return nodemailer.createTransport({
     service: 'gmail',
@@ -43,7 +47,7 @@ async function sendWithResend(payload) {
   }
 
   const body = {
-    from: process.env.MAIL_FROM || payload.from || getDefaultFrom(),
+    from: getApiDefaultFrom(),
     to: normalizeRecipients(payload.to),
     subject: payload.subject,
     html: payload.html,
