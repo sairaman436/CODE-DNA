@@ -1,8 +1,20 @@
 # CodeDNA Pterodactyl Deployment
 
-This folder is for running CodeDNA on a Pterodactyl node with NodeJS and Python eggs.
+This folder is for running CodeDNA on a Pterodactyl node.
 
-Recommended layout:
+Best layout if your Pterodactyl egg/container has both NodeJS and Python:
+
+```text
+One Pterodactyl server
+  - Next.js frontend on port 3000
+  - Express backend on port 5000
+  - FastAPI engine on port 8000
+  - FastAPI engine on port 8001
+  - FastAPI engine on port 8002
+  - Prisma SQLite database
+```
+
+Fallback layout if your panel only gives separate NodeJS and Python eggs:
 
 ```text
 Pterodactyl NodeJS server
@@ -16,18 +28,16 @@ Pterodactyl Python server
   - FastAPI engine on port 8002
 ```
 
-This keeps everything on your own Pterodactyl machine, but still separates the Node and Python runtimes.
+Both layouts keep everything on your own Pterodactyl machine. Use the single-server layout first if your egg supports both runtimes.
 
 ## Required Ports
 
 Ask Pterodactyl for these allocations:
 
 ```text
-NodeJS server:
+Single server:
   3000 - frontend
   5000 - backend
-
-Python server:
   8000 - engine 1
   8001 - engine 2
   8002 - engine 3
@@ -35,9 +45,52 @@ Python server:
 
 If your panel gives only one public port per server, expose the frontend publicly and put the backend/engine behind a reverse proxy such as Nginx or Cloudflare Tunnel.
 
+## Single Server
+
+Use this when your Pterodactyl server can run both NodeJS and Python.
+
+Set the startup command:
+
+```bash
+bash deployment/pterodactyl/single-server/start.sh
+```
+
+Recommended install command:
+
+```bash
+bash deployment/pterodactyl/single-server/install.sh
+```
+
+Environment variables:
+
+```env
+NODE_ENV=production
+PYTHONUNBUFFERED=1
+FRONTEND_PORT=3000
+BACKEND_PORT=5000
+ENGINE_HOST=0.0.0.0
+ENGINE_PORTS=8000,8001,8002
+PUBLIC_FRONTEND_URL=https://your-domain.com
+PUBLIC_BACKEND_URL=https://api.your-domain.com
+DATABASE_URL=file:./prod.db
+WEBHOOK_SECRET=change-this-long-random-secret
+NEXTAUTH_SECRET=change-this-long-random-secret
+GITHUB_TOKEN=github_pat_or_token
+GITHUB_ID=github_oauth_client_id
+GITHUB_SECRET=github_oauth_client_secret
+```
+
+The single-server script automatically wires:
+
+```env
+ANALYSIS_SERVICE_URLS=http://127.0.0.1:8000,http://127.0.0.1:8001,http://127.0.0.1:8002
+CODEDNA_BACKEND_URL=http://127.0.0.1:5000
+CODEDNA_ENGINE_PEER_URLS=http://127.0.0.1:8000,http://127.0.0.1:8001,http://127.0.0.1:8002
+```
+
 ## NodeJS Server
 
-Use a NodeJS egg for the frontend and backend.
+Use this fallback only if you need separate NodeJS and Python Pterodactyl servers. The NodeJS server runs the frontend and backend.
 
 Set the startup command:
 
