@@ -97,14 +97,9 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`✅ CodeDNA Backend running on http://localhost:${PORT}`);
   console.log(`   Routes: /api/analyze, /api/profile, /api/status, /api/compare, /api/match, /api/settings, /api/webhook`);
-  
   // Automatically run the master admin seed script on startup
-  const { exec } = require('child_process');
-  exec('npm run db:seed', (err, stdout, stderr) => {
-    if (err) {
-      console.error('Failed to seed master admin:', err.message);
-      return;
-    }
-    console.log('Master Admin Seed output:', stdout);
+  const seedAdmin = require('../scripts/seed-admin.js');
+  seedAdmin().catch(err => {
+    console.error('Failed to seed master admin:', err.message);
   });
 });

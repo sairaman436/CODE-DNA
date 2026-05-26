@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
-async function main() {
+module.exports = async function seedAdmin() {
   const isProduction = process.env.NODE_ENV === 'production';
   const adminEmail = process.env.MASTER_ADMIN_EMAIL || 'sairamanladi2007@gmail.com';
   const adminPassword = process.env.MASTER_ADMIN_PASSWORD || 'sairamanladi2007@gmail.com';
@@ -43,11 +43,13 @@ async function main() {
   console.log('=========================================');
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  module.exports()
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
