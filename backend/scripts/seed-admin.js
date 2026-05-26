@@ -5,8 +5,8 @@ const prisma = new PrismaClient();
 
 async function main() {
   const isProduction = process.env.NODE_ENV === 'production';
-  const adminEmail = process.env.MASTER_ADMIN_EMAIL || (!isProduction ? 'sairamanladi2007@gmail.com' : '');
-  const adminPassword = process.env.MASTER_ADMIN_PASSWORD || (!isProduction ? 'sairamanladi2007@gmail.com' : '');
+  const adminEmail = process.env.MASTER_ADMIN_EMAIL || 'sairamanladi2007@gmail.com';
+  const adminPassword = process.env.MASTER_ADMIN_PASSWORD || 'sairamanladi2007@gmail.com';
 
   if (!adminEmail || !adminPassword) {
     console.log('MASTER_ADMIN_EMAIL or MASTER_ADMIN_PASSWORD missing; skipping master admin seed.');
