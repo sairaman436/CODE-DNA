@@ -97,6 +97,8 @@ NEXTAUTH_URL=https://codedna-frontend.onrender.com
 NEXTAUTH_SECRET=<long random secret>
 GITHUB_ID=<GitHub OAuth client id>
 GITHUB_SECRET=<GitHub OAuth client secret>
+GITHUB_CLIENT_ID=<same value as GITHUB_ID>
+GITHUB_CLIENT_SECRET=<same value as GITHUB_SECRET>
 ```
 
 ## 5. GitHub OAuth

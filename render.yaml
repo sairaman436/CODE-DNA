@@ -78,3 +78,7 @@ services:
         sync: false
       - key: GITHUB_SECRET
         sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
