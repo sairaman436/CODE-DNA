@@ -20,6 +20,10 @@ services:
         sync: false
       - key: CODEDNA_PUBLIC_SITE_URL
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
       - key: GMAIL_USER
         sync: false
       - key: GMAIL_APP_PASSWORD

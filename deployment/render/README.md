@@ -44,12 +44,12 @@ CODEDNA_PUBLIC_SITE_URL=https://codedna-frontend.onrender.com
 CODEDNA_ANALYSIS_GATEWAY_ENABLED=1
 CODEDNA_GATEWAY_GITHUB_OWNER=sairaman436
 CODEDNA_GATEWAY_GITHUB_REPO=CODE-DNA
-GMAIL_USER=<mail account>
-GMAIL_APP_PASSWORD=<mail app password>
+RESEND_API_KEY=<Resend API key>
+MAIL_FROM=Code DNA <onboarding@resend.dev>
 NEWSLETTER_TO_EMAIL=<owner inbox>
 ```
 
-Note: Render free web services can block SMTP ports. If Gmail SMTP fails on Render free, switch mail to an API provider such as Resend or SendGrid.
+Note: Render free web services can block SMTP ports, so production mail should use `RESEND_API_KEY`. Gmail SMTP remains available only as a local/development fallback with `GMAIL_USER` and `GMAIL_APP_PASSWORD`.
 
 ## 3. Engine
 
@@ -66,7 +66,7 @@ Environment variables:
 
 ```env
 PYTHON_VERSION=3.11.11
-CODEDNA_BACKEND_URL=https://codedna-backend.onrender.com
+CODEDNA_BACKEND_URL=https://codedna-backend-rojy.onrender.com
 WEBHOOK_SECRET=<same value as backend>
 CODEDNA_SOURCE_FETCH_MODE=api
 CODEDNA_DISTRIBUTED_BATCH_SIZE=0
@@ -92,7 +92,7 @@ Start Command: npm run start -- --hostname 0.0.0.0 --port $PORT
 Environment variables:
 
 ```env
-NEXT_PUBLIC_API_URL=https://codedna-backend.onrender.com
+NEXT_PUBLIC_API_URL=https://codedna-backend-rojy.onrender.com
 NEXTAUTH_URL=https://codedna-frontend.onrender.com
 NEXTAUTH_SECRET=<long random secret>
 GITHUB_ID=<GitHub OAuth client id>

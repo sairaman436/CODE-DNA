@@ -1,19 +1,9 @@
 const express = require('express');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
 const prisma = require('../lib/prisma');
+const transporter = require('../lib/mailer');
 
 const router = express.Router();
-
-// Configure no-reply email transporter
-// Uses Gmail SMTP — set GMAIL_USER and GMAIL_APP_PASSWORD in .env
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER || 'noreply@codedna.dev',
-    pass: process.env.GMAIL_APP_PASSWORD || '',
-  },
-});
 
 // POST /api/auth/otp/send — Generate and email OTP
 router.post('/send', async (req, res) => {

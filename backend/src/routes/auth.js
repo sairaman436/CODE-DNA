@@ -1,7 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const nodemailer = require('nodemailer');
 const prisma = require('../lib/prisma');
 const transporter = require('../lib/mailer');
 
