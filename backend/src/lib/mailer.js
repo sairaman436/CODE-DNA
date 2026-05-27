@@ -40,9 +40,7 @@ function getSmtpTransporter() {
       auth: {
         user: process.env.GMAIL_USER || 'sairamanladi2007@gmail.com',
         pass: process.env.GMAIL_APP_PASSWORD || 'ogxxzcnlehyfwofa',
-      },
-      pool: true, // Use pooled connections for speed
-      maxConnections: 5,
+      }
     });
   }
   return globalTransporter;
