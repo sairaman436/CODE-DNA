@@ -31,19 +31,14 @@ function getApiDefaultFrom() {
   return process.env.MAIL_FROM || 'Code DNA <sairamanladi2007@gmail.com>';
 }
 
-let globalTransporter = null;
-
-function getSmtpTransporter() {
-  if (!globalTransporter) {
-    globalTransporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER || 'sairamanladi2007@gmail.com',
-        pass: process.env.GMAIL_APP_PASSWORD || 'ogxxzcnlehyfwofa',
-      }
-    });
-  }
-  return globalTransporter;
+function createSmtpTransporter() {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER || 'sairamanladi2007@gmail.com',
+      pass: process.env.GMAIL_APP_PASSWORD || 'ogxxzcnlehyfwofa',
+    },
+  });
 }
 
 async function sendWithResend(payload) {
@@ -82,7 +77,7 @@ async function sendWithResend(payload) {
 
 async function sendMail(payload) {
   // Always use the SMTP transporter (Gmail) as requested by the user
-  const transporter = getSmtpTransporter();
+  const transporter = createSmtpTransporter();
   return transporter.sendMail({
     ...payload,
     from: payload.from || getDefaultFrom(),
