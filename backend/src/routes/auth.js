@@ -6,6 +6,12 @@ const transporter = require('../lib/mailer');
 
 const router = express.Router();
 
+// Render Free Tier Keep-Alive Ping
+// This keeps the CPU awake while async emails are sent in the background
+router.get('/ping', (req, res) => {
+  res.json({ success: true, timestamp: Date.now() });
+});
+
 /**
  * POST /api/auth/register
  * Initial registration step: captures user data and sends OTP
@@ -111,16 +117,15 @@ router.post('/register', async (req, res) => {
     });
 
     // Send Email
-    try {
-      await transporter.sendMail({
-        from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
-        to: email,
-        subject: `${code} — Verify your Code DNA account`,
-        html: `<h1>Welcome to Code DNA</h1><p>Your verification code is: <b>${code}</b></p>`
-      });
-    } catch (e) {
+    // Fire and forget email delivery to keep UI lightning fast
+    transporter.sendMail({
+      from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
+      to: email,
+      subject: `${code} — Verify your Code DNA account`,
+      html: `<h1>Welcome to Code DNA</h1><p>Your verification code is: <b>${code}</b></p>`
+    }).catch((e) => {
       console.error('Registration OTP email failed:', e.message);
-    }
+    });
 
     console.log(`\n=========================================`);
     console.log(`🔑 DEV/RENDER LOG OTP for ${email}: ${code}`);
@@ -222,16 +227,15 @@ router.post('/login', async (req, res) => {
       data: { email, code, expires_at: expiresAt }
     });
 
-    try {
-      await transporter.sendMail({
-        from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
-        to: email,
-        subject: `${code} — Code DNA Login Verification`,
-        html: `<h1>Security Check</h1><p>Your login code is: <b>${code}</b></p>`
-      });
-    } catch (e) {
+    // Fire and forget email delivery to keep UI lightning fast
+    transporter.sendMail({
+      from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
+      to: email,
+      subject: `${code} — Code DNA Login Verification`,
+      html: `<h1>Security Check</h1><p>Your login code is: <b>${code}</b></p>`
+    }).catch((e) => {
       console.error('Login OTP email failed:', e.message);
-    }
+    });
 
     console.log(`\n=========================================`);
     console.log(`🔑 DEV/RENDER LOG OTP for ${email}: ${code}`);

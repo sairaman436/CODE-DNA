@@ -119,6 +119,19 @@ function LoginContent() {
     }
   }, [searchParams]);
 
+  // Keep-alive ping for Render Free Tier
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (step === "otp") {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      // Ping the backend every 4 seconds to keep the CPU awake for background emails
+      interval = setInterval(() => {
+        fetch(`${apiUrl}/api/auth/ping`).catch(() => {});
+      }, 4000);
+    }
+    return () => clearInterval(interval);
+  }, [step]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError("");
