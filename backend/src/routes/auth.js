@@ -6,6 +6,10 @@ const transporter = require('../lib/mailer');
 
 const router = express.Router();
 
+// Keep-alive ping — frontend hits this every 4s while on OTP screen
+// to prevent Render free tier from freezing the CPU mid-email
+router.get('/ping', (req, res) => res.json({ ok: true }));
+
 /**
  * POST /api/auth/register
  * Initial registration step: captures user data and sends OTP
@@ -110,23 +114,19 @@ router.post('/register', async (req, res) => {
       data: { email, code, expires_at: expiresAt }
     });
 
-    // Send Email
-    try {
-      await transporter.sendMail({
-        from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
-        to: email,
-        subject: `${code} — Verify your Code DNA account`,
-        html: `<h1>Welcome to Code DNA</h1><p>Your verification code is: <b>${code}</b></p>`
-      });
-    } catch (e) {
+    // Send Email — fire and forget so the UI responds instantly
+    // The keep-alive ping from the frontend keeps Render's CPU alive
+    transporter.sendMail({
+      from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
+      to: email,
+      subject: `${code} — Verify your Code DNA account`,
+      html: `<h1>Welcome to Code DNA</h1><p>Your verification code is: <b>${code}</b></p>`
+    }).then(() => {
+      console.log(`✅ Registration OTP email sent to ${email}`);
+    }).catch((e) => {
       console.error('Registration OTP email failed:', e.message);
-      if (process.env.NODE_ENV === 'production') {
-        return res.status(503).json({ error: 'Email delivery failed. Check backend mail provider configuration.' });
-      }
-      console.log('\n' + '='.repeat(50));
-      console.log(`🔑 DEVELOPMENT OTP for ${email}: ${code}`);
-      console.log('='.repeat(50) + '\n');
-    }
+    });
+    console.log(`🔑 OTP for ${email}: ${code}`);
 
     // Log registration
     if (user.role !== 'ADMIN') {
@@ -224,20 +224,18 @@ router.post('/login', async (req, res) => {
       data: { email, code, expires_at: expiresAt }
     });
 
-    try {
-      await transporter.sendMail({
-        from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
-        to: email,
-        subject: `${code} — Code DNA Login Verification`,
-        html: `<h1>Security Check</h1><p>Your login code is: <b>${code}</b></p>`
-      });
-    } catch (e) {
+    // Send Email — fire and forget so the UI responds instantly
+    transporter.sendMail({
+      from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
+      to: email,
+      subject: `${code} — Code DNA Login Verification`,
+      html: `<h1>Security Check</h1><p>Your login code is: <b>${code}</b></p>`
+    }).then(() => {
+      console.log(`✅ Login OTP email sent to ${email}`);
+    }).catch((e) => {
       console.error('Login OTP email failed:', e.message);
-      if (process.env.NODE_ENV === 'production') {
-        return res.status(503).json({ error: 'Email delivery failed. Check backend mail provider configuration.' });
-      }
-      console.log(`[DEV] Login OTP for ${email}: ${code}`);
-    }
+    });
+    console.log(`🔑 OTP for ${email}: ${code}`);
 
     res.json({ success: true, message: 'OTP sent' });
   } catch (err) {
