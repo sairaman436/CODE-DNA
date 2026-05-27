@@ -250,25 +250,16 @@ router.post('/verify', async (req, res) => {
   try {
     const { email, code } = req.body;
 
-    let otp = null;
-
-    // MASTER OTP BYPASS FOR TESTING ON RENDER
-    if (code === "123456") {
-      otp = { id: 'master-bypass', used: false };
-    } else {
-      otp = await prisma.otpCode.findFirst({
-        where: { email, code, used: false, expires_at: { gte: new Date() } },
-        orderBy: { created_at: 'desc' }
-      });
-    }
+    const otp = await prisma.otpCode.findFirst({
+      where: { email, code, used: false, expires_at: { gte: new Date() } },
+      orderBy: { created_at: 'desc' }
+    });
 
     if (!otp) {
       return res.status(401).json({ error: 'Invalid or expired code' });
     }
 
-    if (otp.id !== 'master-bypass') {
-      await prisma.otpCode.update({ where: { id: otp.id }, data: { used: true } });
-    }
+    await prisma.otpCode.update({ where: { id: otp.id }, data: { used: true } });
 
     const user = await prisma.user.update({
       where: { email },
