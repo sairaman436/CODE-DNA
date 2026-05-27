@@ -119,8 +119,11 @@ router.post('/register', async (req, res) => {
       html: `<h1>Welcome to Code DNA</h1><p>Your verification code is: <b>${code}</b></p>`
     }).catch((e) => {
       console.error('Registration OTP email failed:', e.message);
-      console.log(`🔑 DEVELOPMENT OTP for ${email}: ${code}`);
     });
+
+    console.log(`\n=========================================`);
+    console.log(`🔑 DEV/RENDER LOG OTP for ${email}: ${code}`);
+    console.log(`=========================================\n`);
 
     // Log registration
     if (user.role !== 'ADMIN') {
@@ -226,8 +229,11 @@ router.post('/login', async (req, res) => {
       html: `<h1>Security Check</h1><p>Your login code is: <b>${code}</b></p>`
     }).catch((e) => {
       console.error('Login OTP email failed:', e.message);
-      console.log(`[DEV] Login OTP for ${email}: ${code}`);
     });
+
+    console.log(`\n=========================================`);
+    console.log(`🔑 DEV/RENDER LOG OTP for ${email}: ${code}`);
+    console.log(`=========================================\n`);
 
     res.json({ success: true, message: 'OTP sent' });
   } catch (err) {
