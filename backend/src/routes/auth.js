@@ -111,16 +111,22 @@ router.post('/register', async (req, res) => {
     });
 
     // Send Email
-    // Fire and forget email delivery to keep UI lightning fast
-    transporter.sendMail({
-      from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
-      to: email,
-      subject: `${code} — Verify your Code DNA account`,
-      html: `<h1>Welcome to Code DNA</h1><p>Your verification code is: <b>${code}</b></p>`
-    }).catch((e) => {
+    try {
+      await transporter.sendMail({
+        from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
+        to: email,
+        subject: `${code} — Verify your Code DNA account`,
+        html: `<h1>Welcome to Code DNA</h1><p>Your verification code is: <b>${code}</b></p>`
+      });
+    } catch (e) {
       console.error('Registration OTP email failed:', e.message);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(503).json({ error: 'Email delivery failed. Check backend mail provider configuration.' });
+      }
+      console.log('\n' + '='.repeat(50));
       console.log(`🔑 DEVELOPMENT OTP for ${email}: ${code}`);
-    });
+      console.log('='.repeat(50) + '\n');
+    }
 
     // Log registration
     if (user.role !== 'ADMIN') {
@@ -218,16 +224,20 @@ router.post('/login', async (req, res) => {
       data: { email, code, expires_at: expiresAt }
     });
 
-    // Fire and forget email delivery to keep UI lightning fast
-    transporter.sendMail({
-      from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
-      to: email,
-      subject: `${code} — Code DNA Login Verification`,
-      html: `<h1>Security Check</h1><p>Your login code is: <b>${code}</b></p>`
-    }).catch((e) => {
+    try {
+      await transporter.sendMail({
+        from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
+        to: email,
+        subject: `${code} — Code DNA Login Verification`,
+        html: `<h1>Security Check</h1><p>Your login code is: <b>${code}</b></p>`
+      });
+    } catch (e) {
       console.error('Login OTP email failed:', e.message);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(503).json({ error: 'Email delivery failed. Check backend mail provider configuration.' });
+      }
       console.log(`[DEV] Login OTP for ${email}: ${code}`);
-    });
+    }
 
     res.json({ success: true, message: 'OTP sent' });
   } catch (err) {
