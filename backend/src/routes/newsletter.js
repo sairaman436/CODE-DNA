@@ -1,5 +1,5 @@
 const express = require('express');
-const transporter = require('../lib/mailer');
+const { sendMail } = require('../lib/mailer');
 
 const router = express.Router();
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -26,7 +26,7 @@ router.post('/subscribe', async (req, res) => {
     const siteUrl = process.env.CODEDNA_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://codedna.dev';
     const safeEmail = escapeHtml(email);
 
-    await transporter.sendMail({
+    await sendMail({
       from: `"Code DNA" <${fromEmail}>`,
       to: notifyEmail,
       replyTo: email,
@@ -42,7 +42,7 @@ router.post('/subscribe', async (req, res) => {
       text: `New Code DNA sequence signup: ${email}\nSource: ${siteUrl}`,
     });
 
-    await transporter.sendMail({
+    await sendMail({
       from: `"Code DNA" <${fromEmail}>`,
       to: email,
       subject: 'You joined the Code DNA sequence',

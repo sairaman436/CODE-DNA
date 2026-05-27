@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
-const transporter = require('../lib/mailer');
+const { sendMail } = require('../lib/mailer');
 
 const router = express.Router();
 
@@ -34,7 +34,7 @@ router.post('/send', async (req, res) => {
 
     // Send email
     try {
-      await transporter.sendMail({
+      await sendMail({
         from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
         to: email,
         subject: `${code} — Your Code DNA verification code`,

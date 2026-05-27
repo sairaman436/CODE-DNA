@@ -112,7 +112,7 @@ router.patch('/users/:id', isAdmin, async (req, res) => {
 router.delete('/users/:id', isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const transporter = require('../lib/mailer');
+    const { sendMail } = require('../lib/mailer');
     const targetUser = await prisma.user.findUnique({ where: { id } });
     
     if (!targetUser) {
@@ -141,7 +141,7 @@ router.delete('/users/:id', isAdmin, async (req, res) => {
 
     // Send Notification Email
     try {
-      await transporter.sendMail({
+      await sendMail({
         from: `"Code DNA Moderation" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
         to: targetUser.email,
         subject: "Identity Revocation Notice — Code DNA",

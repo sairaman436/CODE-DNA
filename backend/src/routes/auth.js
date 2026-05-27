@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
-const transporter = require('../lib/mailer');
+const { sendMail } = require('../lib/mailer');
 
 const router = express.Router();
 
@@ -114,18 +114,17 @@ router.post('/register', async (req, res) => {
       data: { email, code, expires_at: expiresAt }
     });
 
-    // Send Email — fire and forget so the UI responds instantly
-    // The keep-alive ping from the frontend keeps Render's CPU alive
-    transporter.sendMail({
-      from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
-      to: email,
-      subject: `${code} — Verify your Code DNA account`,
-      html: `<h1>Welcome to Code DNA</h1><p>Your verification code is: <b>${code}</b></p>`
-    }).then(() => {
+    // Send Email via Resend HTTP API (fast, <1 second)
+    try {
+      await sendMail({
+        to: email,
+        subject: `${code} — Verify your Code DNA account`,
+        html: `<h1>Welcome to Code DNA</h1><p>Your verification code is: <b>${code}</b></p>`
+      });
       console.log(`✅ Registration OTP email sent to ${email}`);
-    }).catch((e) => {
+    } catch (e) {
       console.error('Registration OTP email failed:', e.message);
-    });
+    }
     console.log(`🔑 OTP for ${email}: ${code}`);
 
     // Log registration
@@ -224,17 +223,17 @@ router.post('/login', async (req, res) => {
       data: { email, code, expires_at: expiresAt }
     });
 
-    // Send Email — fire and forget so the UI responds instantly
-    transporter.sendMail({
-      from: `"Code DNA" <${process.env.GMAIL_USER || 'noreply@codedna.dev'}>`,
-      to: email,
-      subject: `${code} — Code DNA Login Verification`,
-      html: `<h1>Security Check</h1><p>Your login code is: <b>${code}</b></p>`
-    }).then(() => {
+    // Send Email via Resend HTTP API (fast, <1 second)
+    try {
+      await sendMail({
+        to: email,
+        subject: `${code} — Code DNA Login Verification`,
+        html: `<h1>Security Check</h1><p>Your login code is: <b>${code}</b></p>`
+      });
       console.log(`✅ Login OTP email sent to ${email}`);
-    }).catch((e) => {
+    } catch (e) {
       console.error('Login OTP email failed:', e.message);
-    });
+    }
     console.log(`🔑 OTP for ${email}: ${code}`);
 
     res.json({ success: true, message: 'OTP sent' });

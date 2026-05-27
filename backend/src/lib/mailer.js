@@ -28,7 +28,9 @@ function getDefaultFrom() {
 }
 
 function getApiDefaultFrom() {
-  return process.env.MAIL_FROM || 'Code DNA <sairamanladi2007@gmail.com>';
+  // Resend free tier requires sending from their onboarding address
+  // unless you verify your own domain
+  return process.env.MAIL_FROM || 'Code DNA <onboarding@resend.dev>';
 }
 
 function createSmtpTransporter() {
@@ -42,12 +44,8 @@ function createSmtpTransporter() {
 }
 
 async function sendWithResend(payload) {
-  if (typeof fetch !== 'function') {
-    throw new Error('Resend email delivery requires Node 18+ fetch support.');
-  }
-
   const body = {
-    from: getApiDefaultFrom(),
+    from: payload.from || getApiDefaultFrom(),
     to: normalizeRecipients(payload.to),
     subject: payload.subject,
     html: payload.html,
@@ -76,7 +74,14 @@ async function sendWithResend(payload) {
 }
 
 async function sendMail(payload) {
-  // Always use the SMTP transporter (Gmail) as requested by the user
+  // Use Resend HTTP API (works on Render free tier, no SMTP ports needed)
+  if (process.env.RESEND_API_KEY) {
+    console.log('📧 Sending email via Resend API...');
+    return sendWithResend(payload);
+  }
+
+  // Fallback to Gmail SMTP for local development
+  console.log('📧 Sending email via Gmail SMTP (fallback)...');
   const transporter = createSmtpTransporter();
   return transporter.sendMail({
     ...payload,
