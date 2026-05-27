@@ -38,6 +38,7 @@ function LoginContent() {
     name: "",
     email: searchParams.get("email") || "",
     password: "",
+    confirmPassword: "",
     phone: "",
     countryCode: "+91",
   });
@@ -47,6 +48,7 @@ function LoginContent() {
   const [error, setError] = useState("");
   const [verifiedUser, setVerifiedUser] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [timer, setTimer] = useState(120);
   const [isExpired, setIsExpired] = useState(false);
@@ -97,7 +99,7 @@ function LoginContent() {
       { text: "WEAK", color: "bg-amber-500/50 w-2/4", textClass: "text-amber-500" },
       { text: "MEDIUM", color: "bg-yellow-500/60 w-3/4", textClass: "text-yellow-500" },
       { text: "STRONG", color: "bg-emerald-500/70 w-full", textClass: "text-emerald-500" },
-      { text: "SECURE SEQUENCE", color: "bg-emerald-400 w-full shadow-[0_0_10px_rgba(16,185,129,0.4)]", textClass: "text-emerald-400" },
+      { text: "VERY STRONG", color: "bg-emerald-400 w-full shadow-[0_0_10px_rgba(16,185,129,0.4)]", textClass: "text-emerald-400" },
     ];
     return config[score];
   };
@@ -123,6 +125,11 @@ function LoginContent() {
   };
 
   const handleAction = async () => {
+    if (mode === "signup" && formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    
     setLoading(true);
     setError("");
     try {
@@ -240,10 +247,10 @@ function LoginContent() {
               
               <div className="text-center mb-10">
                 <h1 className="text-4xl font-black tracking-tight text-zinc-100 mb-2 uppercase">
-                  {mode === "login" ? "Security Portal" : "Genesis Init"}
+                  {mode === "login" ? "Log In" : "Sign Up"}
                 </h1>
                 <p className="text-[12px] text-zinc-500 font-bold uppercase tracking-[0.2em]">
-                  {mode === "login" ? "Authorized Access Only" : "Create your technical identity"}
+                  {mode === "login" ? "Welcome Back" : "Create your account"}
                 </p>
                 {mode === "signup" && (
                   <div className="mt-4 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl text-zinc-400 text-[11px] font-medium leading-relaxed uppercase tracking-wider">
@@ -271,7 +278,7 @@ function LoginContent() {
                   <Input
                     name="email"
                     type="email"
-                    placeholder="EMAIL SEQUENCE"
+                    placeholder="EMAIL ADDRESS"
                     value={formData.email}
                     onChange={handleInputChange}
                     className="bg-white/[0.02] border-white/[0.08] h-12 pl-12 rounded-xl text-[13px] font-bold uppercase tracking-widest focus:ring-emerald-500/20"
@@ -283,7 +290,7 @@ function LoginContent() {
                   <Input
                     name="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="ENCRYPTION KEY"
+                    placeholder="PASSWORD"
                     value={formData.password}
                     onChange={handleInputChange}
                     className="bg-white/[0.02] border-white/[0.08] h-12 pl-12 pr-12 rounded-xl text-[13px] font-bold uppercase tracking-widest focus:ring-emerald-500/20"
@@ -298,7 +305,7 @@ function LoginContent() {
                 </div>
 
                 {mode === "signup" && formData.password && (
-                  <div className="mt-2 px-1">
+                  <div className="mt-2 px-1 mb-4">
                     <div className="flex justify-between items-center mb-1 text-[9px] font-black tracking-widest uppercase">
                       <span className="text-zinc-600">Password Strength:</span>
                       <span className={getPasswordStrength(formData.password).textClass}>
@@ -310,6 +317,27 @@ function LoginContent() {
                         className={`h-full rounded-full transition-all duration-300 ${getPasswordStrength(formData.password).color}`}
                       />
                     </div>
+                  </div>
+                )}
+
+                {mode === "signup" && (
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-4 w-4 h-4 text-zinc-600" />
+                    <Input
+                      name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="CONFIRM PASSWORD"
+                      value={formData.confirmPassword}
+                      onChange={handleInputChange}
+                      className="bg-white/[0.02] border-white/[0.08] h-12 pl-12 pr-12 rounded-xl text-[13px] font-bold uppercase tracking-widest focus:ring-emerald-500/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-4 top-3.5 text-zinc-500 hover:text-emerald-400 transition-colors z-20"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
                 )}
 
@@ -328,7 +356,7 @@ function LoginContent() {
                       <Phone className="absolute left-4 top-4 w-4 h-4 text-zinc-600" />
                       <Input
                         name="phone"
-                        placeholder="PHONE SEQUENCE"
+                        placeholder="PHONE NUMBER"
                         value={formData.phone}
                         onChange={handleInputChange}
                         className="bg-white/[0.02] border-white/[0.08] h-12 pl-12 rounded-xl text-[13px] font-bold uppercase tracking-widest focus:ring-emerald-500/20"
@@ -345,7 +373,7 @@ function LoginContent() {
                 disabled={loading}
                 className="w-full h-14 mt-10 bg-zinc-100 text-black hover:bg-white rounded-2xl font-black uppercase tracking-[0.3em] text-[13px] shadow-2xl transition-all active:scale-95"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : mode === "login" ? "Verify Identity" : "Initialize Account"}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : mode === "login" ? "Log In" : "Create Account"}
               </Button>
 
               <div className="mt-4">
@@ -353,7 +381,7 @@ function LoginContent() {
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-white/[0.08]"></div>
                   </div>
-                  <span className="relative px-4 text-[10px] font-bold text-zinc-600 bg-[#050505] uppercase tracking-widest">Or Secure Gateway</span>
+                  <span className="relative px-4 text-[10px] font-bold text-zinc-600 bg-[#050505] uppercase tracking-widest">Or Continue With</span>
                 </div>
                 <Button
                   onClick={() => signIn("github", { callbackUrl: "/" })}
@@ -371,7 +399,7 @@ function LoginContent() {
                   onClick={() => setMode(mode === "login" ? "signup" : "login")}
                   className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-emerald-400 transition-colors"
                 >
-                  {mode === "login" ? "Establish New Identity" : "Return to Security Portal"}
+                  {mode === "login" ? "Create an account" : "Back to login"}
                 </button>
               </div>
             </motion.div>
@@ -397,7 +425,7 @@ function LoginContent() {
                 <div className="flex items-center justify-center gap-2 mb-8 px-4 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-full w-fit mx-auto">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">
-                    SESSION SECURE FOR: <span className="text-emerald-400 font-mono text-[11px]">{formatTime(timer)}</span>
+                    CODE EXPIRES IN: <span className="text-emerald-400 font-mono text-[11px]">{formatTime(timer)}</span>
                   </span>
                 </div>
               ) : (
@@ -463,7 +491,7 @@ function LoginContent() {
                   disabled={loading}
                   className="w-full h-14 bg-emerald-500 text-black hover:bg-emerald-400 rounded-2xl font-black uppercase tracking-[0.3em] text-[13px] shadow-2xl transition-all"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify & Decrypt"}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify & Log In"}
                 </Button>
               )}
 
