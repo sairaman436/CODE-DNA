@@ -895,7 +895,8 @@ def analyze_repository(repo_dir: str, clone_url: str = None, token: str = None, 
                     valid_commits += 1
                     
                 if valid_commits > 0:
-                    commit_metrics['total_commits'] = valid_commits
+                    api_total = _fetch_total_commits_via_api(clone_url, token=token)
+                    commit_metrics['total_commits'] = api_total if api_total > 0 else valid_commits
                     commit_metrics['avg_message_length'] = total_len / valid_commits
                     if hours: commit_metrics['most_active_hour'] = Counter(hours).most_common(1)[0][0]
                     commit_metrics['fix_to_feature_ratio'] = fixes / valid_commits
