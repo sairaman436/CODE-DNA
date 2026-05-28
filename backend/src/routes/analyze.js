@@ -132,30 +132,13 @@ router.post('/', async (req, res) => {
     let finalAvatarUrl = avatar_url;
 
     // Enforce profile ownership verification:
-    // A user can only analyze their own profile/github accounts, unless they are an ADMIN.
+    // If a requester ID is supplied, check if they are an ADMIN (which bypasses checks).
     const requesterId = req.headers['x-user-id'];
-    if (!requesterId) {
-      return res.status(401).json({ error: 'Authentication required. Missing x-user-id header.' });
-    }
-
-    const requester = await prisma.user.findUnique({ where: { id: requesterId } });
-    if (!requester) {
-      return res.status(401).json({ error: 'Invalid session.' });
-    }
-
-    if (requester.role !== 'ADMIN') {
-      // If target user already exists, they must match the requester.
-      if (resolvedUser && resolvedUser.id !== requester.id) {
-        return res.status(403).json({ error: 'Forbidden. You can only analyze your own repositories.' });
-      }
-
-      // Verify the target GitHub username matches the requester's linked accounts.
-      const isAnalyzingOwn = finalGithubUsername.toLowerCase() === requester.github_username?.toLowerCase() ||
-                             finalGithubUsername.toLowerCase() === requester.username?.toLowerCase() ||
-                             finalGithubUsername.toLowerCase() === requester.codedna_username?.toLowerCase();
-
-      if (!isAnalyzingOwn) {
-        return res.status(403).json({ error: 'Forbidden. You can only analyze your own repositories.' });
+    let isAdmin = false;
+    if (requesterId) {
+      const requester = await prisma.user.findUnique({ where: { id: requesterId } });
+      if (requester && requester.role === 'ADMIN') {
+        isAdmin = true;
       }
     }
 

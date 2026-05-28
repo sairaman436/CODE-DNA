@@ -13,24 +13,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'GitHub username is required.' }, { status: 400 });
     }
 
-    if (!session) {
-      return NextResponse.json({ error: 'Authentication required. Please sign in to analyze your repositories.' }, { status: 401 });
-    }
-
-    const isAdmin = session.role === 'ADMIN';
-    if (!isAdmin) {
-      const allowedUsernames = [
-        session.githubLogin?.toLowerCase(),
-        session.codedna_username?.toLowerCase(),
-        session.user?.name?.toLowerCase()
-      ].filter(Boolean);
-
-      if (!allowedUsernames.includes(targetUsername.toLowerCase())) {
-        return NextResponse.json({ error: 'Forbidden. You can only analyze your own repositories.' }, { status: 403 });
-      }
-    }
-
-    const isSelf = targetUsername.toLowerCase() === (session?.githubLogin || session?.user?.name || session?.codedna_username)?.toLowerCase();
+    const isAdmin = session?.role === 'ADMIN';
+    const isSelf = session ? (targetUsername.toLowerCase() === (session?.githubLogin || session?.user?.name || session?.codedna_username)?.toLowerCase()) : false;
     const githubId = isSelf ? session?.githubId?.toString() : undefined;
     const displayName = isSelf ? session?.user?.name : targetUsername;
     const avatarUrl = isSelf ? session?.user?.image : null;
