@@ -703,7 +703,16 @@ def analyze_repository(repo_dir: str, clone_url: str = None, token: str = None, 
     }
     try:
         if os.path.isdir(os.path.join(repo_dir, '.git')):
-            # Get last 100 commits, include shortstat for commit size, and special delimiter
+            # Get exact total commits in the repository (extremely fast)
+            try:
+                actual_count = int(subprocess.check_output(
+                    ['git', 'rev-list', '--count', 'HEAD'],
+                    cwd=repo_dir, env=os.environ, stderr=subprocess.DEVNULL, timeout=5
+                ).decode('utf-8').strip())
+            except Exception:
+                actual_count = 0
+
+            # Get last commits, include shortstat for commit size, and special delimiter
             log_output = subprocess.check_output(
                 ['git', '--no-pager', 'log', '-n', str(GIT_LOG_LIMIT), '--format=@@@%ad|%s', '--date=iso', '--shortstat'],
                 cwd=repo_dir, env=os.environ, stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT_SECONDS
@@ -745,7 +754,7 @@ def analyze_repository(repo_dir: str, clone_url: str = None, token: str = None, 
                     valid_commits += 1
                 
                 if valid_commits > 0:
-                    commit_metrics['total_commits'] = valid_commits
+                    commit_metrics['total_commits'] = actual_count if actual_count > 0 else valid_commits
                     commit_metrics['avg_message_length'] = total_len / valid_commits
                     if hours: commit_metrics['most_active_hour'] = Counter(hours).most_common(1)[0][0]
                     commit_metrics['fix_to_feature_ratio'] = fixes / valid_commits
