@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 // Normalized shape used everywhere in this page
 interface NormalizedDev {
   name: string;
+  username: string;
   archetype: string;
   readability: number;
   complexity: number;
@@ -22,6 +23,7 @@ interface NormalizedDev {
 const FEATURED_DEVS: NormalizedDev[] = [
   { 
     name: "Sairaman", 
+    username: "sairaman-2662",
     archetype: "The Architect", 
     readability: 92, 
     complexity: 45,
@@ -37,6 +39,7 @@ const FEATURED_DEVS: NormalizedDev[] = [
   },
   { 
     name: "alex-chen", 
+    username: "alex-chen",
     archetype: "The Hacker", 
     readability: 65, 
     complexity: 95,
@@ -52,6 +55,7 @@ const FEATURED_DEVS: NormalizedDev[] = [
   },
   { 
     name: "sarah-dev", 
+    username: "sarah-dev",
     archetype: "The Perfectionist", 
     readability: 98, 
     complexity: 30,
@@ -67,6 +71,7 @@ const FEATURED_DEVS: NormalizedDev[] = [
   },
   { 
     name: "maya-code", 
+    username: "maya-code",
     archetype: "The Polyglot", 
     readability: 82, 
     complexity: 70,
@@ -102,7 +107,8 @@ const ACTIVITY_ITEMS = [
 /** Normalize API leaderboard entries into the shape this page expects */
 function normalizeDevs(raw: any[]): NormalizedDev[] {
   return raw.map(d => ({
-    name: d.username || d.display_name || d.name || "Unknown",
+    name: d.display_name || d.username || d.name || "Unknown",
+    username: d.codedna_username || d.github_username || d.username || d.name || "unknown",
     archetype: d.developer_type || d.archetype || "Unknown",
     readability: d.readability_score ?? d.readability ?? 0,
     complexity: d.complexity_score ?? d.complexity ?? 0,
@@ -112,9 +118,9 @@ function normalizeDevs(raw: any[]): NormalizedDev[] {
     radar: d.radar || [
       { axis: "Readability", value: d.readability_score ?? 80 },
       { axis: "Complexity", value: d.complexity_score ?? 60 },
-      { axis: "Refactoring", value: 70 },
-      { axis: "Testing", value: 50 },
-      { axis: "Docs", value: 40 }
+      { axis: "Refactoring", value: d.refactor_tendency_score ?? 70 },
+      { axis: "Testing", value: d.test_mindset_score ?? 50 },
+      { axis: "Docs", value: d.documentation_score ?? 40 }
     ]
   }));
 }
@@ -126,11 +132,12 @@ export default function DiscoverPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [liveActivity, setLiveActivity] = useState(ACTIVITY_ITEMS);
 
-  const [developers, setDevelopers] = useState<NormalizedDev[]>(FEATURED_DEVS);
+  const [developers, setDevelopers] = useState<NormalizedDev[]>([]);
   const [loading, setLoading] = useState(true);
 
   const filteredDevs = developers.filter(d =>
     d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    d.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
     d.archetype.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -155,7 +162,8 @@ export default function DiscoverPage() {
           setLiveActivity(actItems);
         }
       } catch (err) {
-        // Silent error
+        // Fallback to featured devs if offline or empty
+        setDevelopers(FEATURED_DEVS);
       } finally {
         setLoading(false);
       }
@@ -235,12 +243,37 @@ export default function DiscoverPage() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredDevs.map((dev, i) => (
-              <DeveloperCard key={dev.name} dev={dev} index={i} />
-            ))}
+            {loading ? (
+              [...Array(6)].map((_, i) => (
+                <div key={i} className="p-7 rounded-[32px] bg-white/[0.02] border border-white/[0.05] animate-pulse h-[340px] flex flex-col justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-white/5" />
+                    <div className="space-y-2">
+                      <div className="w-24 h-4 bg-white/5 rounded" />
+                      <div className="w-16 h-3 bg-white/5 rounded" />
+                      <div className="w-20 h-3.5 bg-white/5 rounded" />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between"><div className="w-10 h-2 bg-white/5 rounded" /><div className="w-6 h-2 bg-white/5 rounded" /></div>
+                    <div className="h-1 bg-white/5 rounded" />
+                    <div className="flex justify-between"><div className="w-10 h-2 bg-white/5 rounded" /><div className="w-6 h-2 bg-white/5 rounded" /></div>
+                    <div className="h-1 bg-white/5 rounded" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between"><div className="w-20 h-2 bg-white/5 rounded" /><div className="w-12 h-2 bg-white/5 rounded" /></div>
+                    <div className="h-2 bg-white/5 rounded-full" />
+                  </div>
+                </div>
+              ))
+            ) : (
+              filteredDevs.map((dev, i) => (
+                <DeveloperCard key={dev.username} dev={dev} index={i} />
+              ))
+            )}
           </div>
 
-          {filteredDevs.length === 0 && (
+          {!loading && filteredDevs.length === 0 && (
             <div className="text-center py-20 text-zinc-600 text-sm bg-white/[0.02] rounded-[32px] border border-dashed border-white/10">
               No developers match &quot;{searchQuery}&quot;.
             </div>
@@ -297,7 +330,7 @@ function DeveloperCard({ dev, index }: { dev: NormalizedDev; index: number }) {
       transition={{ duration: 0.5, delay: index * 0.1 }}
       className="group relative"
     >
-      <Link href={`/u/${dev.name}`}>
+      <Link href={`/u/${dev.username}`}>
         <div className="relative z-10 p-7 rounded-[32px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl hover:border-white/20 hover:bg-white/[0.06] transition-all h-full flex flex-col group/card">
           {/* Glass Highlight */}
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity" />
@@ -312,7 +345,8 @@ function DeveloperCard({ dev, index }: { dev: NormalizedDev; index: number }) {
               </div>
             )}
             <div>
-              <h4 className="text-[15px] font-bold text-zinc-100 group-hover:text-white transition-colors">{dev.name}</h4>
+              <h4 className="text-[15px] font-bold text-zinc-100 group-hover:text-white transition-colors leading-tight">{dev.name}</h4>
+              <span className="text-[11px] font-mono text-zinc-500 block mb-1">@{dev.username}</span>
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
                 <span className="text-[10px] uppercase tracking-widest font-black text-zinc-500">{dev.archetype}</span>
