@@ -79,6 +79,7 @@ router.get('/:username', async (req, res) => {
         id: user.id,
         username: user.username,
         codedna_username: user.codedna_username,
+        github_username: user.github_username,
         display_name: user.display_name,
         avatar_url: user.avatar_url,
         last_analyzed_at: user.last_analyzed_at,

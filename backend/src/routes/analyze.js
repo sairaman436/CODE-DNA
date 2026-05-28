@@ -135,10 +135,18 @@ router.post('/', async (req, res) => {
     // If a requester ID is supplied, check if they are an ADMIN (which bypasses checks).
     const requesterId = req.headers['x-user-id'];
     let isAdmin = false;
+    let requester = null;
     if (requesterId) {
-      const requester = await prisma.user.findUnique({ where: { id: requesterId } });
+      requester = await prisma.user.findUnique({ where: { id: requesterId } });
       if (requester && requester.role === 'ADMIN') {
         isAdmin = true;
+      }
+    }
+
+    // IF the target profile already exists in the database, ONLY the owner (or an ADMIN) can re-analyze it!
+    if (resolvedUser && !isAdmin) {
+      if (!requester || resolvedUser.id !== requester.id) {
+        return res.status(403).json({ error: 'Forbidden. Only the profile owner can re-analyze this profile.' });
       }
     }
 

@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { motion } from "framer-motion";
 import { 
   Share2, Scale, Zap, 
@@ -20,6 +20,7 @@ interface ProfileData {
   user: { 
     username: string; 
     codedna_username?: string | null;
+    github_username?: string | null;
     display_name: string | null; 
     avatar_url: string | null; 
     last_analyzed_at: string | null;
@@ -87,6 +88,24 @@ export default function ProfilePage() {
   };
 
   const handleReanalyzeClick = () => {
+    if (!session) {
+      addToast("Please sign in with GitHub to verify ownership and re-analyze.", "info");
+      signIn("github");
+      return;
+    }
+
+    const isOwner = (session.githubLogin?.toLowerCase() === username.toLowerCase()) ||
+                    (session.user?.name?.toLowerCase() === username.toLowerCase()) ||
+                    (session.codedna_username?.toLowerCase() === username.toLowerCase()) ||
+                    (profileData?.user?.github_username && session.githubLogin && profileData.user.github_username.toLowerCase() === session.githubLogin.toLowerCase());
+                    
+    const isAdmin = session.role === 'ADMIN';
+
+    if (!isOwner && !isAdmin) {
+      addToast("Only the profile owner can re-analyze this profile.", "error");
+      return;
+    }
+
     router.push(`/analyzing/${username}`);
   };
 
