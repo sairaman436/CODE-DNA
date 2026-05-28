@@ -41,27 +41,87 @@ except Exception as e:
 # ──────────────────────────────────────────
 LANG_EXTENSIONS = {
     # Core Languages
-    '.py': 'Python', '.js': 'JavaScript', '.ts': 'TypeScript', '.tsx': 'TypeScript',
-    '.jsx': 'JavaScript', '.go': 'Go', '.java': 'Java', '.rb': 'Ruby',
-    '.rs': 'Rust', '.cpp': 'C++', '.c': 'C', '.cs': 'C#', '.php': 'PHP',
-    '.swift': 'Swift', '.kt': 'Kotlin', '.scala': 'Scala', '.dart': 'Dart',
-    '.lua': 'Lua', '.r': 'R', '.R': 'R',
-    
-    # Web & Style Languages
-    '.html': 'HTML', '.htm': 'HTML', '.css': 'CSS', '.scss': 'SCSS', '.sass': 'Sass', 
-    '.less': 'Less', '.vue': 'Vue', '.svelte': 'Svelte',
-    
-    # Scripts & Shells
-    '.sh': 'Shell', '.bash': 'Shell', '.zsh': 'Shell', '.bat': 'Batch', '.ps1': 'PowerShell',
+    '.py': 'Python', '.pyw': 'Python', '.ipynb': 'Python',
+    '.js': 'JavaScript', '.jsx': 'JavaScript', '.mjs': 'JavaScript', '.cjs': 'JavaScript',
+    '.ts': 'TypeScript', '.tsx': 'TypeScript', '.mts': 'TypeScript', '.cts': 'TypeScript',
+    '.go': 'Go',
+    '.java': 'Java', '.jsp': 'Java',
+    '.kt': 'Kotlin', '.kts': 'Kotlin',
+    '.scala': 'Scala', '.sc': 'Scala',
+    '.rs': 'Rust',
+    '.swift': 'Swift',
+    '.rb': 'Ruby', '.erb': 'Ruby', '.gemspec': 'Ruby',
+    '.php': 'PHP', '.phtml': 'PHP', '.php3': 'PHP', '.php4': 'PHP', '.php5': 'PHP', '.phps': 'PHP',
+    '.cpp': 'C++', '.cc': 'C++', '.cxx': 'C++', '.h++': 'C++', '.hh': 'C++',
+    '.c': 'C',
+    '.cs': 'C#', '.csx': 'C#',
+    '.dart': 'Dart',
+    '.lua': 'Lua',
     
     # Systems & Functional
-    '.h': 'C/C++ Header', '.hpp': 'C/C++ Header', '.m': 'Objective-C', '.mm': 'Objective-C++',
-    '.pl': 'Perl', '.pm': 'Perl', '.hs': 'Haskell', '.ml': 'OCaml', '.ex': 'Elixir', '.exs': 'Elixir',
-    '.erl': 'Erlang', '.clj': 'Clojure', '.cljs': 'Clojure', '.lisp': 'Lisp', '.lsp': 'Lisp',
+    '.h': 'C/C++ Header', '.hpp': 'C/C++ Header',
+    '.m': 'Objective-C', '.mm': 'Objective-C++',
+    '.pl': 'Perl', '.pm': 'Perl', '.t': 'Perl',
+    '.hs': 'Haskell', '.lhs': 'Haskell',
+    '.erl': 'Erlang', '.hrl': 'Erlang',
+    '.ex': 'Elixir', '.exs': 'Elixir',
+    '.ml': 'OCaml', '.mli': 'OCaml',
+    '.clj': 'Clojure', '.cljs': 'Clojure', '.cljc': 'Clojure', '.edn': 'Clojure',
+    '.lisp': 'Lisp', '.lsp': 'Lisp', '.cl': 'Lisp',
+    '.scm': 'Scheme', '.ss': 'Scheme',
+    '.rkt': 'Racket',
+    '.fs': 'F#', '.fsi': 'F#', '.fsx': 'F#',
+    '.elm': 'Elm',
+    '.purs': 'PureScript',
+    
+    # New & Emerging Languages
+    '.zig': 'Zig',
+    '.nim': 'Nim',
+    '.cr': 'Crystal',
+    '.sol': 'Solidity',
+    '.vy': 'Vyper',
+    '.v': 'Verilog', '.ve': 'Verilog', # Also V language
+    '.sv': 'SystemVerilog', '.svh': 'SystemVerilog',
+    '.vhd': 'VHDL', '.vhdl': 'VHDL',
+    '.jl': 'Julia',
+    '.ino': 'Arduino',
+    
+    # Classic & Scientific
+    '.r': 'R', '.R': 'R',
+    '.f': 'Fortran', '.f90': 'Fortran', '.f95': 'Fortran', '.for': 'Fortran', '.f03': 'Fortran', '.f08': 'Fortran',
+    '.pas': 'Pascal', '.pp': 'Pascal', '.inc': 'Pascal',
+    '.cob': 'COBOL', '.cbl': 'COBOL', '.cpy': 'COBOL',
+    '.adb': 'Ada', '.ads': 'Ada',
+    '.asm': 'Assembly', '.s': 'Assembly', '.nasm': 'Assembly',
+    '.groovy': 'Groovy', '.gvy': 'Groovy', '.gy': 'Groovy',
+    '.st': 'Smalltalk',
+    '.d': 'D',
+    
+    # Web, Layout & Style
+    '.html': 'HTML', '.htm': 'HTML', '.xhtml': 'HTML', '.ejs': 'HTML', '.hbs': 'HTML', '.handlebars': 'HTML',
+    '.css': 'CSS', '.scss': 'SCSS', '.sass': 'SCass', '.less': 'Less', '.styl': 'Stylus',
+    '.vue': 'Vue', '.svelte': 'Svelte',
+    '.coffee': 'CoffeeScript', '.litcoffee': 'CoffeeScript',
+    '.as': 'ActionScript',
+    '.cfm': 'ColdFusion', '.cfc': 'ColdFusion',
+    
+    # Scripts & Shells
+    '.sh': 'Shell', '.bash': 'Shell', '.zsh': 'Shell', '.fish': 'Shell', '.ksh': 'Shell',
+    '.bat': 'Batch', '.cmd': 'Batch',
+    '.ps1': 'PowerShell', '.psm1': 'PowerShell', '.psd1': 'PowerShell',
+    '.awk': 'Awk',
     
     # Data & Configuration
-    '.sql': 'SQL', '.yaml': 'YAML', '.yml': 'YAML', '.json': 'JSON', '.toml': 'TOML', 
-    '.xml': 'XML', '.md': 'Markdown', '.markdown': 'Markdown'
+    '.sql': 'SQL',
+    '.yaml': 'YAML', '.yml': 'YAML',
+    '.json': 'JSON', '.json5': 'JSON', '.jsonc': 'JSON',
+    '.toml': 'TOML',
+    '.xml': 'XML', '.xsd': 'XML', '.xsl': 'XML', '.xslt': 'XML',
+    '.md': 'Markdown', '.markdown': 'Markdown',
+    '.tex': 'LaTeX', '.ltx': 'LaTeX', '.sty': 'LaTeX', '.cls': 'LaTeX',
+    '.graphql': 'GraphQL', '.gql': 'GraphQL',
+    '.proto': 'Protocol Buffers',
+    '.wat': 'WebAssembly', '.wast': 'WebAssembly'
 }
 
 # File patterns to skip (Rule 10: generated/boilerplate)
@@ -185,8 +245,25 @@ def should_skip_file(filepath: str) -> bool:
 
 
 def detect_language(filepath: str) -> str | None:
-    """Detect programming language from file extension."""
-    ext = Path(filepath).suffix.lower()
+    """Detect programming language from file extension or exact filename."""
+    path = Path(filepath)
+    name = path.name.lower()
+    
+    # Exact filename checks
+    if name == 'dockerfile':
+        return 'Docker'
+    if name == 'makefile':
+        return 'Makefile'
+    if name == 'jenkinsfile':
+        return 'Jenkins Pipeline'
+    if name == 'vagrantfile':
+        return 'Ruby'
+    if name == 'gemfile':
+        return 'Ruby'
+    if name == 'rakefile':
+        return 'Ruby'
+        
+    ext = path.suffix.lower()
     return LANG_EXTENSIONS.get(ext)
 
 
