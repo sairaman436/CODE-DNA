@@ -1,4 +1,4 @@
-import { Shield, ShieldCheck, Users, Award, Star, Zap, Terminal, Code, Cpu, Activity, Lightbulb, Compass, Medal, Sparkles, BookOpen, Bug, Rocket, Globe } from "lucide-react";
+import { Shield, ShieldCheck, Users, Award, Star, Zap, Terminal, Cpu, Activity, Lightbulb, Compass, Medal, Sparkles, BookOpen, Bug, Rocket, Globe } from "lucide-react";
 
 export function ProfileBadgeCluster({ profile, isAnalyzed, overallScore }: { profile: any, isAnalyzed: boolean, overallScore: number }) {
   // 1. Position / Role Badge

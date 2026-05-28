@@ -54,7 +54,7 @@ export const authOptions: NextAuthOptions = {
             // Deny login and redirect with an error.
             return `/login?error=GithubEmailMismatch`;
           }
-        } catch (e) {
+        } catch {
           // If the backend is down, allow it to fall through
         }
       }
@@ -89,7 +89,7 @@ export const authOptions: NextAuthOptions = {
               token.avatarUrl = githubData.user.avatar_url || token.avatarUrl;
             }
           }
-        } catch (e) {
+        } catch {
         }
 
         if (!token.codedna_username) {
@@ -104,7 +104,7 @@ export const authOptions: NextAuthOptions = {
               token.name = data.user.display_name || token.name;
               token.avatarUrl = data.user.avatar_url || token.avatarUrl;
             }
-          } catch (e) {
+          } catch {
           }
         }
 

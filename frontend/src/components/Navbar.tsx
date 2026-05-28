@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
 export function Navbar() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -24,7 +24,6 @@ export function Navbar() {
   if (isAuthPage) return null;
 
   const username = session?.codedna_username || session?.githubLogin || session?.user?.name;
-  const avatar = session?.user?.image || `https://avatar.vercel.sh/${username}`;
 
   return (
     <motion.nav 
