@@ -380,6 +380,11 @@ export default function AnalyzingPage() {
           </>
         )}
 
+        <div className="w-full h-px bg-white/[0.04] my-6" />
+        <p className="text-[10px] text-zinc-500 max-w-sm mx-auto leading-normal mb-6">
+          Note: Make sure the GitHub account is yours only, because our community checks the gateway, which may not allow you to analyze other users' repositories.
+        </p>
+
         {/* Rotating Facts */}
         <div className="h-12 relative w-full">
           <AnimatePresence mode="wait">

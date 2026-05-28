@@ -111,6 +111,20 @@ function LoginContent() {
               </div>
             </div>
 
+            <div className="p-4 bg-white/[0.02] border border-white/[0.06] rounded-2xl">
+              <div className="flex gap-2.5 items-start">
+                <Shield className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h4 className="text-[11px] font-black uppercase tracking-widest text-zinc-200">
+                    Identity Verification
+                  </h4>
+                  <p className="text-[10px] text-zinc-500 leading-normal">
+                    Make sure the GitHub account is yours only, because our community checks the gateway, which may not allow you to analyze other users' repositories.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <Button
               type="submit"
               disabled={loading}
