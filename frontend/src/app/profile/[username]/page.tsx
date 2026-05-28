@@ -88,24 +88,6 @@ export default function ProfilePage() {
   };
 
   const handleReanalyzeClick = () => {
-    if (!session) {
-      addToast("Please sign in with GitHub to verify ownership and re-analyze.", "info");
-      signIn("github");
-      return;
-    }
-
-    const isOwner = (session.githubLogin?.toLowerCase() === username.toLowerCase()) ||
-                    (session.user?.name?.toLowerCase() === username.toLowerCase()) ||
-                    (session.codedna_username?.toLowerCase() === username.toLowerCase()) ||
-                    (profileData?.user?.github_username && session.githubLogin && profileData.user.github_username.toLowerCase() === session.githubLogin.toLowerCase());
-                    
-    const isAdmin = session.role === 'ADMIN';
-
-    if (!isOwner && !isAdmin) {
-      addToast("Only the profile owner can re-analyze this profile.", "error");
-      return;
-    }
-
     router.push(`/analyzing/${username}`);
   };
 
@@ -611,7 +593,15 @@ export default function ProfilePage() {
     fetchProfile();
   }, [username]);
 
-  const isOwner = session?.user?.name === username;
+  const [isOwner, setIsOwner] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("codedna_username");
+      if (stored && stored.toLowerCase() === username.toLowerCase()) {
+        setIsOwner(true);
+      }
+    }
+  }, [username]);
   const avatar = profileData?.user?.avatar_url || `https://github.com/${profileData?.user?.username}.png`;
   const displayName = profileData?.user?.display_name || username;
 
@@ -765,7 +755,9 @@ export default function ProfilePage() {
             <div className="flex flex-wrap gap-3">
               <HeaderAction icon={<Share2 />} label="Share DNA card" onClick={handleShare} />
               <HeaderAction icon={<Scale />} label="Compare" onClick={handleCompareClick} />
-              <HeaderAction icon={<Zap />} label="Re-analyze" onClick={handleReanalyzeClick} />
+              {(isOwner || session?.role === 'ADMIN') && (
+                <HeaderAction icon={<Zap />} label="Re-analyze" onClick={handleReanalyzeClick} />
+              )}
             </div>
           </div>
 
