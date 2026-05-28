@@ -116,8 +116,18 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'GitHub username is required.' });
     }
 
-    let finalGithubUsername = username;
-    let finalGithubId = github_id;
+    // First check if the username is a local Code DNA profile name, and resolve it to their GitHub username if linked
+    const resolvedUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: username },
+          { codedna_username: username }
+        ]
+      }
+    });
+
+    let finalGithubUsername = (resolvedUser && resolvedUser.github_username) ? resolvedUser.github_username : username;
+    let finalGithubId = github_id || (resolvedUser && resolvedUser.github_id) || null;
     let finalDisplayName = display_name;
     let finalAvatarUrl = avatar_url;
 

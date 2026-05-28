@@ -631,6 +631,28 @@ def clone_repo(clone_url: str, target_dir: str, token: str = None, default_branc
     except Exception as e:
         print(f"  ! Failed to clone {_redact_token(clone_url, token)}: {_redact_token(str(e), token)}", flush=True)
         return False
+def _fetch_total_commits_via_api(clone_url: str, token: str = None) -> int:
+    """Fetch total commits for the repository directly from the GitHub API using Link header."""
+    try:
+        parts = _github_repo_parts(clone_url)
+        if not parts:
+            return 0
+        owner, repo = parts
+        headers = _github_headers(token)
+        url = f"https://api.github.com/repos/{owner}/{repo}/commits?per_page=1"
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            link_header = response.headers.get('Link')
+            if link_header:
+                match = re.search(r'page=(\d+)>; rel="last"', link_header)
+                if match:
+                    return int(match.group(1))
+            data = response.json()
+            if isinstance(data, list):
+                return len(data)
+    except Exception as e:
+        print(f"  ! Failed to fetch total commits from API for {clone_url}: {e}", flush=True)
+    return 0
 
 
 def _fetch_commits_via_api(clone_url: str, token: str = None, default_branch: str = None) -> list:
@@ -711,6 +733,13 @@ def analyze_repository(repo_dir: str, clone_url: str = None, token: str = None, 
                 ).decode('utf-8').strip())
             except Exception:
                 actual_count = 0
+
+            # If clone is shallow (depth < actual total commits), we might get a truncated count.
+            # Try to get the real count from the API if possible.
+            if clone_url:
+                api_total = _fetch_total_commits_via_api(clone_url, token=token)
+                if api_total > actual_count:
+                    actual_count = api_total
 
             # Get last commits, include shortstat for commit size, and special delimiter
             log_output = subprocess.check_output(

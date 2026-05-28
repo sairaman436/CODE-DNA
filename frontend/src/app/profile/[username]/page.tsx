@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
@@ -72,6 +72,23 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const router = useRouter();
+
+  const handleShare = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href);
+      addToast("Profile link copied to clipboard!", "success");
+    }
+  };
+
+  const handleCompareClick = () => {
+    router.push(`/compare?user1=${username}`);
+  };
+
+  const handleReanalyzeClick = () => {
+    router.push(`/analyzing/${username}`);
+  };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}/profile/${username}`);
@@ -727,9 +744,9 @@ export default function ProfilePage() {
             </div>
             
             <div className="flex flex-wrap gap-3">
-              <HeaderAction icon={<Share2 />} label="Share DNA card" />
-              <HeaderAction icon={<Scale />} label="Compare" />
-              <HeaderAction icon={<Zap />} label="Re-analyze" />
+              <HeaderAction icon={<Share2 />} label="Share DNA card" onClick={handleShare} />
+              <HeaderAction icon={<Scale />} label="Compare" onClick={handleCompareClick} />
+              <HeaderAction icon={<Zap />} label="Re-analyze" onClick={handleReanalyzeClick} />
             </div>
           </div>
 
@@ -943,9 +960,12 @@ export default function ProfilePage() {
   );
 }
 
-function HeaderAction({ icon, label }: { icon: any; label: string }) {
+function HeaderAction({ icon, label, onClick }: { icon: any; label: string; onClick?: () => void }) {
   return (
-    <button className="h-20 w-24 bg-white/[0.02] border border-white/[0.04] rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white/[0.04] hover:border-white/[0.08] transition-all group">
+    <button 
+      onClick={onClick}
+      className="h-20 w-24 bg-white/[0.02] border border-white/[0.04] rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white/[0.04] hover:border-white/[0.08] transition-all group"
+    >
       <div className="text-zinc-600 group-hover:text-zinc-300 transition-colors scale-75">
         {icon}
       </div>

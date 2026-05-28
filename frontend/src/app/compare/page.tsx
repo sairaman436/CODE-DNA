@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RadarData } from "@/components/RadarChart";
 import { OverlappingRadarChart } from "@/components/OverlappingRadarChart";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,39 @@ export default function ComparePage() {
   const [result, setResult] = useState<CompareResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const u1 = params.get("user1") || "";
+      const u2 = params.get("user2") || "";
+      if (u1) setDev1(u1);
+      if (u2) setDev2(u2);
+
+      if (u1.trim() && u2.trim()) {
+        setLoading(true);
+        setError(null);
+        setResult(null);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        fetch(`${apiUrl}/api/compare/${u1.trim()}/${u2.trim()}`)
+          .then(async (res) => {
+            if (!res.ok) {
+              const data = await res.json();
+              setError(data.error || 'Comparison failed');
+              return;
+            }
+            const data = await res.json();
+            setResult(data);
+          })
+          .catch(() => {
+            setError('Could not connect to the backend.');
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      }
+    }
+  }, []);
 
   async function handleCompare() {
     if (!dev1.trim() || !dev2.trim()) return;
