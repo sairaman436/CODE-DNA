@@ -45,6 +45,7 @@ interface ProfileData {
     avg_commit_size?: number;
     naming_style?: string;
     avg_fn_length?: number;
+    total_commits?: number;
   } | null;
   repos_analyzed: number;
   total_files_analyzed: number;
@@ -667,7 +668,7 @@ export default function ProfilePage() {
   }
 
   const totalLines = profileData.languages.reduce((sum, l) => sum + l.total_lines, 0);
-  const totalCommits = profileData.languages.reduce((sum, l) => sum + l.total_commits, 0);
+  const totalCommits = profileData.commit_patterns?.total_commits ?? profileData.languages.reduce((sum, l) => sum + l.total_commits, 0);
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-zinc-300 font-sans selection:bg-white/20 pb-20">

@@ -113,6 +113,7 @@ router.post('/results', async (req, res) => {
           emoji_usage_pct: results.commit_patterns.emoji_usage_pct,
           naming_style: results.commit_patterns.naming_style,
           avg_fn_length: results.commit_patterns.avg_fn_length,
+          total_commits: results.commit_patterns.total_commits,
         }
       });
     }

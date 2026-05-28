@@ -112,9 +112,11 @@ router.get('/:username', async (req, res) => {
       commit_patterns: fp && fp.commit_patterns.length > 0 ? fp.commit_patterns[0] : null,
       repos_analyzed: fp ? (fp.repos_analyzed || Math.max(fp.language_stats.length, 1)) : 0,
       total_files_analyzed: fp ? (fp.total_files_analyzed || 0) : 0,
-      total_commits: fp ? fp.language_stats.reduce((sum, ls) => sum + (ls.total_commits || 0), 0) : 0,
+      total_commits: fp && fp.commit_patterns.length > 0 && fp.commit_patterns[0].total_commits != null
+        ? fp.commit_patterns[0].total_commits
+        : (fp ? fp.language_stats.reduce((sum, ls) => sum + (ls.total_commits || 0), 0) : 0),
       avg_commits_per_week: fp && fp.commit_patterns.length > 0
-        ? Math.round((fp.language_stats.reduce((sum, ls) => sum + (ls.total_commits || 0), 0)) / Math.max(1, Math.ceil((Date.now() - new Date(fp.created_at || Date.now()).getTime()) / (7 * 24 * 60 * 60 * 1000))))
+        ? Math.round(((fp.commit_patterns[0].total_commits != null ? fp.commit_patterns[0].total_commits : fp.language_stats.reduce((sum, ls) => sum + (ls.total_commits || 0), 0))) / Math.max(1, Math.ceil((Date.now() - new Date(fp.created_at || Date.now()).getTime()) / (7 * 24 * 60 * 60 * 1000))))
         : 0,
       top_patterns: fp && fp.strengths ? JSON.parse(fp.strengths).slice(0, 4) : [],
       coding_since: user.created_at ? new Date(user.created_at).getFullYear().toString() : 'Unknown',

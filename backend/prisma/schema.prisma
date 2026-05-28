@@ -117,6 +117,7 @@ model CommitPattern {
   emoji_usage_pct      Float?
   avg_fn_length        Int?
   naming_style         String?
+  total_commits        Int?
   fingerprint          Fingerprint? @relation(fields: [fingerprint_id], references: [id], onDelete: Cascade)
 
   @@map("commit_patterns")
