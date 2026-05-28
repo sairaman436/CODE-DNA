@@ -262,7 +262,7 @@ function DeveloperCard({ dev, index }: { dev: NormalizedDev; index: number }) {
       transition={{ duration: 0.5, delay: index * 0.1 }}
       className="group relative"
     >
-      <Link href={`/profile/${dev.username}`}>
+      <Link href={`/u/${dev.username}`}>
         <div className="relative z-10 p-7 rounded-[32px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl hover:border-white/20 hover:bg-white/[0.06] transition-all h-full flex flex-col group/card">
           {/* Glass Highlight */}
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity" />

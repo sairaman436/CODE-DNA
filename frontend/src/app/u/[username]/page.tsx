@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Share2, ExternalLink, Check, Dna, Fingerprint, AlertCircle } from "lucide-react";
+import { Share2, ExternalLink, Check, Dna, Fingerprint, AlertCircle, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -66,9 +66,7 @@ export default function PublicProfilePage() {
   const router = useRouter();
   const username = params.username as string;
 
-  useEffect(() => {
-    router.replace(`/profile/${username}`);
-  }, [username, router]);
+
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -358,6 +356,10 @@ export default function PublicProfilePage() {
                   <Button onClick={handleCopyLink} variant="outline" className={`flex-1 h-12 rounded-2xl border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:text-zinc-100 hover:bg-white/5 text-[11px] font-black uppercase tracking-widest transition-all ${copied ? accent.text : ''}`}>
                     {copied ? <Check className="w-3.5 h-3.5 mr-2 text-emerald-500" /> : <Share2 className="w-3.5 h-3.5 mr-2" />}
                     {copied ? "Copied" : "Share"}
+                  </Button>
+                  <Button onClick={() => router.push(`/compare?user1=${username}`)} variant="outline" className="flex-1 h-12 rounded-2xl border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:text-zinc-100 hover:bg-white/5 text-[11px] font-black uppercase tracking-widest transition-all">
+                    <Scale className="w-3.5 h-3.5 mr-2" />
+                    Compare
                   </Button>
                   <Button asChild variant="outline" className="h-12 w-12 rounded-2xl border-white/[0.08] bg-white/[0.03] p-0 flex items-center justify-center hover:bg-white hover:text-black transition-all">
                     <Link href={`https://github.com/${profile.user.username}`} target="_blank">

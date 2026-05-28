@@ -78,7 +78,7 @@ export default function ProfilePage() {
 
   const handleShare = () => {
     if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(`${window.location.origin}/u/${username}`);
       addToast("Profile link copied to clipboard!", "success");
     }
   };
@@ -92,7 +92,7 @@ export default function ProfilePage() {
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/profile/${username}`);
+    navigator.clipboard.writeText(`${window.location.origin}/u/${username}`);
     addToast("Link copied to clipboard!", "success");
   };
 

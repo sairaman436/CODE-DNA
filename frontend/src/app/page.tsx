@@ -201,7 +201,7 @@ function PublicLanding() {
                 </motion.div>
               </Link>
               
-              <Link href="/profile/sample_dev">
+              <Link href="/u/sample_dev">
                 <motion.button 
                   whileHover={{ x: 5 }}
                   className="group flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors font-medium text-sm"
