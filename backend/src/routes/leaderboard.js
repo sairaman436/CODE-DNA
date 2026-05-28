@@ -86,11 +86,19 @@ function formatLanguages(stats) {
 router.get('/', async (req, res) => {
   try {
     const fingerprints = await prisma.fingerprint.findMany({
+      where: {
+        user: {
+          github_username: {
+            not: null,
+            not: ''
+          }
+        }
+      },
       orderBy: { created_at: 'desc' },
       take: 200,
       include: {
         user: {
-          select: { username: true, codedna_username: true, display_name: true, avatar_url: true }
+          select: { username: true, github_username: true, codedna_username: true, display_name: true, avatar_url: true }
         },
         language_stats: true
       }
@@ -145,14 +153,21 @@ router.get('/:axis', async (req, res) => {
       return res.status(400).json({ error: `Invalid axis. Valid: ${Object.keys(VALID_AXES).join(', ')}` });
     }
 
-    // Get latest fingerprint per user, sorted by the axis score
     const fingerprints = await prisma.fingerprint.findMany({
-      where: { [dbField]: { not: null } },
+      where: {
+        [dbField]: { not: null },
+        user: {
+          github_username: {
+            not: null,
+            not: ''
+          }
+        }
+      },
       orderBy: { [dbField]: 'desc' },
       take: 100,
       include: {
         user: {
-          select: { username: true, codedna_username: true, display_name: true, avatar_url: true }
+          select: { username: true, github_username: true, codedna_username: true, display_name: true, avatar_url: true }
         }
       }
     });

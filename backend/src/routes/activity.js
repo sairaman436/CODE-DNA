@@ -7,12 +7,21 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const recentFingerprints = await prisma.fingerprint.findMany({
+      where: {
+        user: {
+          github_username: {
+            not: null,
+            not: ''
+          }
+        }
+      },
       take: 10,
       orderBy: { created_at: 'desc' },
       include: {
         user: {
           select: {
             username: true,
+            github_username: true,
             display_name: true
           }
         }

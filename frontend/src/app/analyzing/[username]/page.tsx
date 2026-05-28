@@ -90,12 +90,13 @@ export default function AnalyzingPage() {
     }
   };
 
-  // 1. Trigger analysis on mount
+  // 1. Trigger analysis on mount once username is ready
   useEffect(() => {
+    if (!username) return;
     if (hasTriggered.current) return;
     hasTriggered.current = true;
     runAnalysis();
-  }, []);
+  }, [username]);
 
   // 2. Poll for status
   useEffect(() => {

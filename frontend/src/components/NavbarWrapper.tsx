@@ -5,8 +5,14 @@ import { Navbar } from "./Navbar";
 
 export function NavbarWrapper() {
   const pathname = usePathname();
-  const isAdminPage = pathname?.startsWith('/admin');
+  
+  if (!pathname) return null;
 
-  if (isAdminPage) return null;
+  const shouldHide = pathname.startsWith('/admin') ||
+                     pathname === '/login' ||
+                     pathname === '/onboarding' ||
+                     pathname.startsWith('/analyzing');
+
+  if (shouldHide) return null;
   return <Navbar />;
 }

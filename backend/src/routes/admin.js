@@ -26,6 +26,32 @@ const isAdmin = async (req, res, next) => {
 };
 
 /**
+ * POST /api/admin/verify-key
+ * Verify the administrative master key
+ */
+router.post('/verify-key', async (req, res) => {
+  try {
+    const { key } = req.body;
+    const adminPassword = process.env.MASTER_ADMIN_PASSWORD || 'sairamanladi2007@gmail.com';
+    
+    if (key === adminPassword) {
+      const admin = await prisma.user.findFirst({
+        where: { role: 'ADMIN' }
+      });
+      if (!admin) {
+        return res.status(404).json({ error: 'Admin account not seeded. Run seed-admin script first.' });
+      }
+      return res.json({ success: true, userId: admin.id, name: admin.display_name });
+    } else {
+      return res.status(401).json({ error: 'Invalid master key.' });
+    }
+  } catch (error) {
+    console.error('Verify Key Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * GET /api/admin/users
  * List all users with deep data
  */

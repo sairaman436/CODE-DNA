@@ -48,15 +48,40 @@ export default function AdminDashboard() {
     role: "USER",
     staff_type: ""
   });
+  const [adminName, setAdminName] = useState("Master Admin");
 
-  const logCategories = ["ALL", "LOGIN", "REGISTER", "PROFILE_EDIT", "REANALYZE", "ADMIN_LOGIN", "USER_UPDATE", "USER_DELETE"];
+  const logCategories = [
+    "ALL", "ANALYSIS_START", "ANALYSIS_COMPLETE", "ANALYSIS_FAIL", 
+    "LOGIN", "REGISTER", "PROFILE_EDIT", "REANALYZE", 
+    "ADMIN_LOGIN", "USER_UPDATE", "USER_DELETE"
+  ];
 
-  const handleUnlock = () => {
-    // Rely on session role — no client-side key needed
-    if ((session as any)?.role === 'ADMIN') {
-      setIsUnlocked(true);
-    } else {
-      setUnlockError("Access denied. You are not authorized as Master Admin.");
+  const handleUnlock = async () => {
+    setUnlockError("");
+    if (!masterKey.trim()) {
+      setUnlockError("Please enter a master key.");
+      return;
+    }
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${apiUrl}/api/admin/verify-key`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: masterKey })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem("adminUserId", data.userId);
+        localStorage.setItem("adminName", data.name || "Master Admin");
+        setAdminName(data.name || "Master Admin");
+        setIsUnlocked(true);
+        addToast("Administrative authentication verified.", "success");
+      } else {
+        const err = await res.json();
+        setUnlockError(err.error || "Invalid master key.");
+      }
+    } catch (err) {
+      setUnlockError("Could not connect to verify key.");
     }
   };
 
@@ -170,30 +195,30 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login");
-    if (status === "authenticated" && (session as any)?.role !== 'ADMIN') {
-      router.push("/");
-      return;
+    const savedAdminId = localStorage.getItem("adminUserId");
+    if (savedAdminId) {
+      setIsUnlocked(true);
     }
-  }, [status, router, (session as any)?.role]);
+  }, []);
 
   // Only fetch admin data after unlock
   useEffect(() => {
-    if (!isUnlocked || (session as any)?.role !== 'ADMIN') return;
+    if (!isUnlocked) return;
     
     fetchAdminData();
     // Auto-refresh every 30 seconds for real-time observation
     const interval = setInterval(fetchAdminData, 30000);
     return () => clearInterval(interval);
-  }, [isUnlocked, (session?.user as any)?.id]);
+  }, [isUnlocked]);
 
   async function fetchAdminData() {
     setLoading(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const adminUserId = localStorage.getItem("adminUserId");
       const headers = { 
         "Content-Type": "application/json",
-        "x-user-id": (session?.user as any)?.id || "" 
+        "x-user-id": adminUserId || "" 
       };
 
       const [uRes, lRes] = await Promise.all([
@@ -205,8 +230,12 @@ export default function AdminDashboard() {
         setUsers(await uRes.json());
         setLogs(await lRes.json());
       } else {
-        // If 403, redirect away
-        if (uRes.status === 403) router.push("/");
+        if (uRes.status === 403 || uRes.status === 401) {
+          localStorage.removeItem("adminUserId");
+          localStorage.removeItem("adminName");
+          setIsUnlocked(false);
+          router.push("/");
+        }
       }
     } catch (err) {
       // Silent error
@@ -215,7 +244,7 @@ export default function AdminDashboard() {
     }
   }
 
-  if (status === "loading" || loading) {
+  if (loading && !isUnlocked) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
         <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
@@ -289,10 +318,24 @@ export default function AdminDashboard() {
           <div className="h-10 w-px bg-white/10 mx-2" />
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-[11px] font-black uppercase text-zinc-100">{session?.user?.name}</p>
+              <p className="text-[11px] font-black uppercase text-zinc-100">{adminName}</p>
               <p className="text-[9px] font-bold uppercase text-emerald-500 tracking-widest">Master Admin</p>
             </div>
-            <img src={session?.user?.image || ""} className="w-10 h-10 rounded-full border border-emerald-500/20" />
+            <div className="w-10 h-10 rounded-full border border-emerald-500/20 bg-emerald-500/10 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-emerald-500" />
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                localStorage.removeItem("adminUserId");
+                localStorage.removeItem("adminName");
+                setIsUnlocked(false);
+                router.push("/");
+              }}
+              className="h-9 px-4 rounded-xl border-white/10 text-[10px] font-black uppercase tracking-wider text-rose-500 hover:bg-rose-500/10 hover:border-rose-500/20 ml-2"
+            >
+              Lock
+            </Button>
           </div>
         </div>
       </header>
@@ -862,5 +905,8 @@ function ActivityIcon({ action }: { action: string }) {
   if (action.includes('REGISTER')) return <Users className="w-4 h-4 text-emerald-500" />;
   if (action.includes('LOGIN')) return <ShieldCheck className="w-4 h-4 text-blue-500" />;
   if (action.includes('EDIT')) return <Edit3 className="w-4 h-4 text-purple-500" />;
+  if (action.includes('START')) return <Activity className="w-4 h-4 text-amber-500 animate-pulse" />;
+  if (action.includes('COMPLETE')) return <ShieldCheck className="w-4 h-4 text-emerald-500 animate-pulse" />;
+  if (action.includes('FAIL')) return <ShieldAlert className="w-4 h-4 text-rose-500 animate-bounce" />;
   return <Activity className="w-4 h-4 text-zinc-500" />;
 }

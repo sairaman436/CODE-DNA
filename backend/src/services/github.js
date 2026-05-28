@@ -42,9 +42,12 @@ async function fetchAndFilterRepos(username, token) {
   let page = 1;
   let hasMore = true;
 
+  const isSystemToken = token && process.env.GITHUB_TOKEN && token === process.env.GITHUB_TOKEN;
+  const useUserReposEndpoint = token && !isSystemToken;
+
   while (hasMore && (GITHUB_MAX_REPO_PAGES <= 0 || page <= GITHUB_MAX_REPO_PAGES)) {
-    const url = token
-      ? `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner&visibility=public`
+    const url = useUserReposEndpoint
+      ? `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&type=owner`
       : `https://api.github.com/users/${username}/repos?per_page=100&page=${page}&sort=updated&type=owner`;
 
     const response = await fetchWithTimeout(url, { headers });

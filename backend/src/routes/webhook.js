@@ -145,6 +145,16 @@ router.post('/results', async (req, res) => {
     }
 
     console.log(`✅ Analysis results saved for user ${userId} (fingerprint: ${fingerprint.id})`);
+
+    // Log the successful completion of the analysis
+    await prisma.activityLog.create({
+      data: {
+        user_id: userId,
+        action: 'ANALYSIS_COMPLETE',
+        details: `Successfully completed repository analysis (Archetype: ${results.developer_type})`
+      }
+    }).catch(err => console.error('Failed to log analysis success:', err.message));
+
     return res.status(200).json({ message: 'Results saved successfully', fingerprintId: fingerprint.id });
 
   } catch (error) {
@@ -155,6 +165,16 @@ router.post('/results', async (req, res) => {
         where: { id: req.body.jobId },
         data: { status: 'failed', error_message: error.message }
       }).catch(e => console.error('Failed to update job status:', e));
+    }
+
+    if (req.body?.userId) {
+      await prisma.activityLog.create({
+        data: {
+          user_id: req.body.userId,
+          action: 'ANALYSIS_FAIL',
+          details: `Analysis processing failed: ${error.message}`
+        }
+      }).catch(() => {});
     }
 
     return res.status(500).json({ error: 'Failed to process results' });

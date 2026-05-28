@@ -65,9 +65,11 @@ export function Navbar() {
           <div className="h-4 w-px bg-white/10 hidden md:block mx-2" />
 
           <div className="flex items-center gap-4">
-            <Link href="/login" className="h-10 px-8 rounded-full bg-white text-black hover:bg-zinc-200 flex items-center justify-center text-[11px] font-black uppercase tracking-wider transition-all active:scale-95">
-              Analyze Repository
-            </Link>
+            {!pathname?.startsWith("/profile/") && (
+              <Link href="/login" className="h-10 px-8 rounded-full bg-white text-black hover:bg-zinc-200 flex items-center justify-center text-[11px] font-black uppercase tracking-wider transition-all active:scale-95">
+                Analyze Repository
+              </Link>
+            )}
           </div>
         </div>
       </div>

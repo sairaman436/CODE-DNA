@@ -575,7 +575,7 @@ export default function ProfilePage() {
   }, [username]);
 
   const isOwner = session?.user?.name === username;
-  const avatar = profileData?.user?.avatar_url || (isOwner && session?.user?.image ? session.user.image : `https://github.com/${username}.png`);
+  const avatar = profileData?.user?.avatar_url || `https://github.com/${profileData?.user?.username}.png`;
   const displayName = profileData?.user?.display_name || username;
 
   const badgesList = profileData?.user?.pinned_badges ? profileData.user.pinned_badges.split(',').filter(Boolean) : [];

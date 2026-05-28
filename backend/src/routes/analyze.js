@@ -7,8 +7,8 @@ const ENGINE_REQUEST_TIMEOUT_MS = Number(process.env.ENGINE_REQUEST_TIMEOUT_MS |
 const ANALYSIS_GATEWAY_ENABLED = process.env.CODEDNA_ANALYSIS_GATEWAY_ENABLED !== '0';
 const PUBLIC_RATE_WINDOW_MS = Number(process.env.CODEDNA_PUBLIC_ANALYSIS_RATE_WINDOW_MS || 15 * 60 * 1000);
 const PUBLIC_RATE_MAX = Number(process.env.CODEDNA_PUBLIC_ANALYSIS_RATE_MAX || 8);
-const USER_RATE_WINDOW_MS = Number(process.env.CODEDNA_USER_ANALYSIS_RATE_WINDOW_MS || 2 * 60 * 60 * 1000);
-const USER_RATE_MAX = Number(process.env.CODEDNA_USER_ANALYSIS_RATE_MAX || 4);
+const USER_RATE_WINDOW_MS = Number(process.env.CODEDNA_USER_ANALYSIS_RATE_WINDOW_MS || 1 * 60 * 60 * 1000);
+const USER_RATE_MAX = Number(process.env.CODEDNA_USER_ANALYSIS_RATE_MAX || 6);
 const rateBuckets = new Map();
 let nextEngineIndex = 0;
 
@@ -217,11 +217,11 @@ router.post('/', async (req, res) => {
 
     if (isAnalyzingOwnRepos && !isPrivileged) {
       // 1. Rate Limiting Check: 4 analyses in 2 hours
-      const twoHoursAgo = new Date(Date.now() - USER_RATE_WINDOW_MS);
+      const windowStart = new Date(Date.now() - USER_RATE_WINDOW_MS);
       const recentJobsCount = await prisma.analysisJob.count({
         where: {
           user_id: user.id,
-          created_at: { gte: twoHoursAgo }
+          created_at: { gte: windowStart }
         }
       });
 
@@ -229,7 +229,7 @@ router.post('/', async (req, res) => {
         const oldestJob = await prisma.analysisJob.findFirst({
           where: {
             user_id: user.id,
-            created_at: { gte: twoHoursAgo }
+            created_at: { gte: windowStart }
           },
           orderBy: { created_at: 'asc' }
         });
@@ -240,15 +240,22 @@ router.post('/', async (req, res) => {
           remainingMinutes = Math.max(1, Math.ceil(diffMs / (60 * 1000)));
         }
 
+        const windowHours = Math.ceil(USER_RATE_WINDOW_MS / (60 * 60 * 1000));
+        const hourUnit = windowHours === 1 ? 'hour' : 'hours';
+
         return res.status(429).json({
           error: 'RATE_LIMIT_EXCEEDED',
-          message: `Rate limit reached. You can only analyze your repositories ${USER_RATE_MAX} times every ${Math.ceil(USER_RATE_WINDOW_MS / (60 * 60 * 1000))} hours. Please try again in ${remainingMinutes} minutes.`
+          message: `Rate limit reached. You can only analyze your repositories ${USER_RATE_MAX} times every ${windowHours} ${hourUnit}. Please try again in ${remainingMinutes} minutes.`
         });
       }
 
       // 2. Gateway Check: Star only (Follow optional/bypassed)
       if (ANALYSIS_GATEWAY_ENABLED) {
-        const gatewayResult = await checkGatewayRequirements(finalGithubUsername, tokenToUse);
+        const isSystemToken = tokenToUse === process.env.GITHUB_TOKEN;
+        const gatewayResult = await checkGatewayRequirements(
+          finalGithubUsername,
+          isSystemToken ? null : tokenToUse
+        );
 
         if (gatewayResult.error) {
           return res.status(400).json({ error: 'GATEWAY_ERROR', message: gatewayResult.error });
@@ -274,6 +281,15 @@ router.post('/', async (req, res) => {
         current_step: 'Queued for analysis',
       }
     });
+
+    // Log the start of the analysis
+    await prisma.activityLog.create({
+      data: {
+        user_id: user.id,
+        action: 'ANALYSIS_START',
+        details: `Started repository analysis for @${finalGithubUsername}`
+      }
+    }).catch(err => console.error('Failed to log analysis start:', err.message));
  
     // 3. Fetch and filter GitHub repositories (Rule 3 & 9: exclude learning/hackathon repos)
     let filteredRepos = [];
@@ -288,6 +304,13 @@ router.post('/', async (req, res) => {
       });
     } catch (githubErr) {
       console.error('GitHub fetch error:', githubErr.message);
+      await prisma.activityLog.create({
+        data: {
+          user_id: user.id,
+          action: 'ANALYSIS_FAIL',
+          details: `Failed to fetch repositories for @${finalGithubUsername}: ${githubErr.message}`
+        }
+      }).catch(() => {});
       await prisma.analysisJob.update({
         where: { id: job.id },
         data: { current_step: 'Failed to fetch repositories', status: 'failed', error_message: githubErr.message }

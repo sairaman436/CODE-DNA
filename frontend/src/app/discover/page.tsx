@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 interface NormalizedDev {
   name: string;
   username: string;
+  github_username: string;
   archetype: string;
   readability: number;
   complexity: number;
@@ -19,73 +20,6 @@ interface NormalizedDev {
   languages: { name: string; color: string; value: number }[];
   radar: { axis: string; value: number }[];
 }
-
-const FEATURED_DEVS: NormalizedDev[] = [
-  { 
-    name: "Sairaman", 
-    username: "sairaman-2662",
-    archetype: "The Architect", 
-    readability: 92, 
-    complexity: 45,
-    overall: 88, 
-    languages: [{ name: "TS", color: "#3178c6", value: 60 }, { name: "PY", color: "#3776ab", value: 30 }, { name: "RS", color: "#dea584", value: 10 }],
-    radar: [
-      { axis: "Readability", value: 92 },
-      { axis: "Complexity", value: 45 },
-      { axis: "Refactoring", value: 85 },
-      { axis: "Testing", value: 70 },
-      { axis: "Docs", value: 95 }
-    ]
-  },
-  { 
-    name: "alex-chen", 
-    username: "alex-chen",
-    archetype: "The Hacker", 
-    readability: 65, 
-    complexity: 95,
-    overall: 72,
-    languages: [{ name: "GO", color: "#00add8", value: 70 }, { name: "C++", color: "#f34b7d", value: 20 }, { name: "JS", color: "#f1e05a", value: 10 }],
-    radar: [
-      { axis: "Readability", value: 65 },
-      { axis: "Complexity", value: 95 },
-      { axis: "Refactoring", value: 40 },
-      { axis: "Testing", value: 30 },
-      { axis: "Docs", value: 20 }
-    ]
-  },
-  { 
-    name: "sarah-dev", 
-    username: "sarah-dev",
-    archetype: "The Perfectionist", 
-    readability: 98, 
-    complexity: 30,
-    overall: 91,
-    languages: [{ name: "RS", color: "#dea584", value: 80 }, { name: "TS", color: "#3178c6", value: 15 }, { name: "PY", color: "#3776ab", value: 5 }],
-    radar: [
-      { axis: "Readability", value: 98 },
-      { axis: "Complexity", value: 30 },
-      { axis: "Refactoring", value: 95 },
-      { axis: "Testing", value: 92 },
-      { axis: "Docs", value: 90 }
-    ]
-  },
-  { 
-    name: "maya-code", 
-    username: "maya-code",
-    archetype: "The Polyglot", 
-    readability: 82, 
-    complexity: 70,
-    overall: 85,
-    languages: [{ name: "PY", color: "#3776ab", value: 40 }, { name: "JS", color: "#f1e05a", value: 30 }, { name: "GO", color: "#00add8", value: 30 }],
-    radar: [
-      { axis: "Readability", value: 82 },
-      { axis: "Complexity", value: 70 },
-      { axis: "Refactoring", value: 60 },
-      { axis: "Testing", value: 50 },
-      { axis: "Docs", value: 80 }
-    ]
-  },
-];
 
 const ARCHETYPES = [
   { type: "The Architect", slug: "the-architect", count: "12%", desc: "Structured, scalable code with strong readability." },
@@ -96,19 +30,12 @@ const ARCHETYPES = [
   { type: "The Pragmatist", slug: "the-pragmatist", count: "23%", desc: "Balanced across all dimensions, ship-focused." },
 ];
 
-const ACTIVITY_ITEMS = [
-  { user: "sarah-dev", action: "analyzed", result: "The Perfectionist", time: "2m ago" },
-  { user: "alex-chen", action: "compared with", result: "devinross", time: "5m ago" },
-  { user: "maya-code", action: "analyzed", result: "The Polyglot", time: "12m ago" },
-  { user: "Sairaman", action: "analyzed", result: "The Architect", time: "18m ago" },
-  { user: "jdoe-dev", action: "analyzed", result: "The Hacker", time: "25m ago" },
-];
-
 /** Normalize API leaderboard entries into the shape this page expects */
 function normalizeDevs(raw: any[]): NormalizedDev[] {
   return raw.map(d => ({
     name: d.display_name || d.username || d.name || "Unknown",
     username: d.codedna_username || d.github_username || d.username || d.name || "unknown",
+    github_username: d.github_username || d.username || "unknown",
     archetype: d.developer_type || d.archetype || "Unknown",
     readability: d.readability_score ?? d.readability ?? 0,
     complexity: d.complexity_score ?? d.complexity ?? 0,
@@ -130,7 +57,7 @@ import { SilkBackground } from "@/components/SilkBackground";
 
 export default function DiscoverPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [liveActivity, setLiveActivity] = useState(ACTIVITY_ITEMS);
+  const [liveActivity, setLiveActivity] = useState<any[]>([]);
 
   const [developers, setDevelopers] = useState<NormalizedDev[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,8 +89,7 @@ export default function DiscoverPage() {
           setLiveActivity(actItems);
         }
       } catch (err) {
-        // Fallback to featured devs if offline or empty
-        setDevelopers(FEATURED_DEVS);
+        console.error("Failed to fetch discover data:", err);
       } finally {
         setLoading(false);
       }
@@ -293,26 +219,32 @@ export default function DiscoverPage() {
           <div className="rounded-[32px] border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl divide-y divide-white/[0.04] overflow-hidden shadow-2xl relative">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent" />
             <AnimatePresence mode="popLayout">
-              {liveActivity.slice(0, 5).map((item, i) => (
-                <motion.div
-                  key={`${item.user}-${i}`}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
-                  transition={{ duration: 0.4 }}
-                  className="px-6 py-4 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
-                    <span className="text-[13px] text-zinc-400">
-                      <span className="text-zinc-300 font-medium">{item.user}</span>
-                      {' '}{item.action}{' '}
-                      <span className="text-zinc-100/80 font-medium">{item.result}</span>
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-zinc-700 font-mono">{item.time}</span>
-                </motion.div>
-              ))}
+              {liveActivity.length > 0 ? (
+                liveActivity.slice(0, 5).map((item, i) => (
+                  <motion.div
+                    key={`${item.user}-${i}`}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    transition={{ duration: 0.4 }}
+                    className="px-6 py-4 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                      <span className="text-[13px] text-zinc-400">
+                        <span className="text-zinc-300 font-medium">{item.user}</span>
+                        {' '}{item.action}{' '}
+                        <span className="text-zinc-100/80 font-medium">{item.result}</span>
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-zinc-700 font-mono">{item.time}</span>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="px-6 py-8 text-center text-zinc-600 text-xs">
+                  No recent diagnostic activity recorded.
+                </div>
+              )}
             </AnimatePresence>
           </div>
         </div>
@@ -338,10 +270,10 @@ function DeveloperCard({ dev, index }: { dev: NormalizedDev; index: number }) {
           {/* Top: Avatar & Name */}
           <div className="flex items-center gap-4 mb-8">
             <img 
-              src={dev.avatar_url || `https://github.com/${dev.username}.png`} 
+              src={dev.avatar_url || `https://github.com/${dev.github_username}.png`} 
               alt="" 
               className="w-14 h-14 rounded-2xl border border-white/[0.1] object-cover shadow-2xl bg-zinc-900"
-              onError={(e) => { (e.target as HTMLImageElement).src = `https://avatar.vercel.sh/${dev.username}` }}
+              onError={(e) => { (e.target as HTMLImageElement).src = `https://avatar.vercel.sh/${dev.github_username}` }}
             />
             <div>
               <h4 className="text-[15px] font-bold text-zinc-100 group-hover:text-white transition-colors leading-tight">{dev.name}</h4>
