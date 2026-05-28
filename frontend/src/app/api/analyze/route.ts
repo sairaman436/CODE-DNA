@@ -9,13 +9,17 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
 
     // Allow analysis with or without session (public profile analysis)
-    const username = body.username || session?.githubLogin || session?.user?.name;
-    const githubId = session?.githubId?.toString() || username || 'anonymous';
-    const userId = session?.user?.id || body.user_id || '';
-
-    if (!username) {
+    const targetUsername = body.username || session?.githubLogin || session?.user?.name;
+    if (!targetUsername) {
       return NextResponse.json({ error: 'No username provided' }, { status: 400 });
     }
+
+    const isSelf = targetUsername.toLowerCase() === (session?.githubLogin || session?.user?.name)?.toLowerCase();
+    const githubId = isSelf ? session?.githubId?.toString() : undefined;
+    const displayName = isSelf ? session?.user?.name : targetUsername;
+    const avatarUrl = isSelf ? session?.user?.image : null;
+    const accessToken = isSelf ? session?.accessToken : undefined;
+    const userId = isSelf ? (session?.user?.id || '') : '';
 
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     
@@ -26,11 +30,11 @@ export async function POST(req: Request) {
         'x-user-id': userId
       },
       body: JSON.stringify({
-        username,
+        username: targetUsername,
         github_id: githubId,
-        display_name: session?.user?.name || username,
-        avatar_url: session?.user?.image || null,
-        access_token: session?.accessToken,
+        display_name: displayName,
+        avatar_url: avatarUrl,
+        access_token: accessToken,
       }),
     });
 

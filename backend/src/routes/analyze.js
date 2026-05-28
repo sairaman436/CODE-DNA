@@ -147,17 +147,11 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // 1. Find existing user — Priority: session > github_id > username
+    // 1. Find existing target user in the database (Priority: github_id > username)
     let user = null;
     
-    // Check if the request comes from a logged-in user (session ID from frontend)
-    const sessionUserId = req.headers['x-user-id'];
-    if (sessionUserId) {
-      user = await prisma.user.findUnique({ where: { id: sessionUserId } });
-    }
-
-    // Fallback: lookup by github_id
-    if (!user && finalGithubId) {
+    // Lookup by github_id first
+    if (finalGithubId) {
       user = await prisma.user.findUnique({ where: { github_id: finalGithubId.toString() } });
     }
     
@@ -172,12 +166,6 @@ router.post('/', async (req, res) => {
           ]
         } 
       });
-    }
-
-    // Resolve actual GitHub credentials from database if user is found
-    if (user) {
-      if (user.github_username) finalGithubUsername = user.github_username;
-      if (user.github_id) finalGithubId = user.github_id;
     }
 
     const isPrivilegedBeforeUserWrite = isPrivilegedAnalysisUser(user, finalGithubUsername);
