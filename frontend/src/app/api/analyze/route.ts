@@ -8,13 +8,29 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions) as any;
     const body = await req.json().catch(() => ({}));
 
-    // Allow analysis with or without session (public profile analysis)
-    const targetUsername = body.username || session?.githubLogin || session?.user?.name;
+    const targetUsername = body.username;
     if (!targetUsername) {
-      return NextResponse.json({ error: 'No username provided' }, { status: 400 });
+      return NextResponse.json({ error: 'GitHub username is required.' }, { status: 400 });
     }
 
-    const isSelf = targetUsername.toLowerCase() === (session?.githubLogin || session?.user?.name)?.toLowerCase();
+    if (!session) {
+      return NextResponse.json({ error: 'Authentication required. Please sign in to analyze your repositories.' }, { status: 401 });
+    }
+
+    const isAdmin = session.role === 'ADMIN';
+    if (!isAdmin) {
+      const allowedUsernames = [
+        session.githubLogin?.toLowerCase(),
+        session.codedna_username?.toLowerCase(),
+        session.user?.name?.toLowerCase()
+      ].filter(Boolean);
+
+      if (!allowedUsernames.includes(targetUsername.toLowerCase())) {
+        return NextResponse.json({ error: 'Forbidden. You can only analyze your own repositories.' }, { status: 403 });
+      }
+    }
+
+    const isSelf = targetUsername.toLowerCase() === (session?.githubLogin || session?.user?.name || session?.codedna_username)?.toLowerCase();
     const githubId = isSelf ? session?.githubId?.toString() : undefined;
     const displayName = isSelf ? session?.user?.name : targetUsername;
     const avatarUrl = isSelf ? session?.user?.image : null;
