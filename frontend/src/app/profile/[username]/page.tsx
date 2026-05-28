@@ -73,7 +73,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/u/${username}`);
+    navigator.clipboard.writeText(`${window.location.origin}/profile/${username}`);
     addToast("Link copied to clipboard!", "success");
   };
 
@@ -509,6 +509,52 @@ export default function ProfilePage() {
 
   useEffect(() => {
     async function fetchProfile() {
+      if (username === "sample_dev") {
+        setProfileData({
+          user: {
+            username: "sample_dev",
+            codedna_username: "Architect-X",
+            display_name: "The Sample Architect",
+            avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=sample",
+            last_analyzed_at: new Date().toISOString()
+          },
+          type: "System Architect",
+          summary: "A developer who prioritizes structural integrity and high-level modularity. Their code fingerprints show a deep mastery of complex design patterns and a preference for clean, decoupled architectures.",
+          strengths: ["Structural Integrity", "Decoupled Logic", "Deep AST Nesting", "Type Safety"],
+          growth_areas: ["Documentation Verbosity", "Micro-optimization"],
+          radar: [
+            { axis: "Structural Depth", value: 92 },
+            { axis: "Modularity", value: 88 },
+            { axis: "Idiomatic Expression", value: 75 },
+            { axis: "Error Resilience", value: 82 },
+            { axis: "Namespace Hygiene", value: 95 },
+            { axis: "Concurrency Pattern", value: 68 },
+            { axis: "Complexity Gradient", value: 85 },
+            { axis: "Dependency Gravity", value: 90 },
+          ],
+          languages: [
+            { language: "Rust", total_lines: 45200, total_commits: 124, trend: "+12%" },
+            { language: "TypeScript", total_lines: 32000, total_commits: 88, trend: "+5%" },
+            { language: "Python", total_lines: 15000, total_commits: 45, trend: "-2%" }
+          ],
+          commit_patterns: {
+            avg_message_length: 42,
+            commit_style: "Descriptive",
+            most_active_hour: 14,
+            most_active_day: "Monday",
+            fix_to_feature_ratio: 0.28,
+            avg_commit_size: 32,
+            naming_style: "camelCase",
+            avg_fn_length: 22
+          },
+          repos_analyzed: 14,
+          total_files_analyzed: 1240,
+          analyzed_at: new Date().toISOString()
+        });
+        setLoading(false);
+        return;
+      }
+
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
         const res = await fetch(`${apiUrl}/api/profile/${username}`);

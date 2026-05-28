@@ -167,7 +167,7 @@ export default function LeaderboardPage() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.05 }}
                     >
-                      <Link href={`/u/${entry.username}`}>
+                      <Link href={`/profile/${entry.username}`}>
                         <div className={`grid grid-cols-12 px-10 py-8 items-center group/row hover:bg-white/[0.01] transition-all cursor-pointer relative ${
                           isMe(entry) ? 'bg-white/[0.01]' : ''
                         }`}>

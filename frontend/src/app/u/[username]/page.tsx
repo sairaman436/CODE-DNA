@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Share2, ExternalLink, Check, Dna, Fingerprint, AlertCircle } from "lucide-react";
@@ -63,7 +63,12 @@ const BADGE_DETAILS: Record<string, { label: string; icon: string }> = {
 
 export default function PublicProfilePage() {
   const params = useParams();
+  const router = useRouter();
   const username = params.username as string;
+
+  useEffect(() => {
+    router.replace(`/profile/${username}`);
+  }, [username, router]);
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);

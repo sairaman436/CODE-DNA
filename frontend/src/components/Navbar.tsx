@@ -19,8 +19,8 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Hide navbar on login and onboarding pages
-  const isAuthPage = pathname === "/login" || pathname === "/onboarding";
+  // Hide navbar on login, onboarding, and analyzing pages
+  const isAuthPage = pathname === "/login" || pathname === "/onboarding" || pathname?.startsWith("/analyzing");
   if (isAuthPage) return null;
 
   const username = session?.codedna_username || session?.githubLogin || session?.user?.name;

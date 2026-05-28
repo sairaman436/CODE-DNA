@@ -179,7 +179,7 @@ export default function OnboardingPage() {
               </div>
               <div>
                 <p className="text-[15px] font-bold text-zinc-100 tracking-tight">@{username.toLowerCase()}</p>
-                <p className="text-[11px] text-zinc-600 font-mono">codedna.dev/u/{username.toLowerCase()}</p>
+                <p className="text-[11px] text-zinc-600 font-mono">codedna.dev/profile/{username.toLowerCase()}</p>
               </div>
             </div>
           </motion.div>

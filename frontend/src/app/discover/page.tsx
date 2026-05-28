@@ -330,20 +330,19 @@ function DeveloperCard({ dev, index }: { dev: NormalizedDev; index: number }) {
       transition={{ duration: 0.5, delay: index * 0.1 }}
       className="group relative"
     >
-      <Link href={`/u/${dev.username}`}>
+      <Link href={`/profile/${dev.username}`}>
         <div className="relative z-10 p-7 rounded-[32px] bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl hover:border-white/20 hover:bg-white/[0.06] transition-all h-full flex flex-col group/card">
           {/* Glass Highlight */}
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity" />
           
           {/* Top: Avatar & Name */}
           <div className="flex items-center gap-4 mb-8">
-            {dev.avatar_url ? (
-              <img src={dev.avatar_url} alt="" className="w-14 h-14 rounded-2xl border border-white/[0.1] object-cover shadow-2xl" />
-            ) : (
-              <div className="w-14 h-14 rounded-2xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center text-[12px] font-black text-zinc-600 shadow-2xl">
-                {dev.name.substring(0, 2).toUpperCase()}
-              </div>
-            )}
+            <img 
+              src={dev.avatar_url || `https://github.com/${dev.username}.png`} 
+              alt="" 
+              className="w-14 h-14 rounded-2xl border border-white/[0.1] object-cover shadow-2xl bg-zinc-900"
+              onError={(e) => { (e.target as HTMLImageElement).src = `https://avatar.vercel.sh/${dev.username}` }}
+            />
             <div>
               <h4 className="text-[15px] font-bold text-zinc-100 group-hover:text-white transition-colors leading-tight">{dev.name}</h4>
               <span className="text-[11px] font-mono text-zinc-500 block mb-1">@{dev.username}</span>

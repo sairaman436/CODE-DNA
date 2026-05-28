@@ -13,7 +13,6 @@ import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { DynamicBackground } from "@/components/DynamicBackground";
 import { SilkBackground } from "@/components/SilkBackground";
-import { Navbar } from "@/components/Navbar";
 import { RadarChart } from "@/components/RadarChart";
 import { SplitTextReveal } from "@/components/animations/SplitTextReveal";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
@@ -64,7 +63,6 @@ function PublicLanding() {
 
   return (
     <div className="min-h-screen text-zinc-100 font-sans selection:bg-white/10 relative overflow-x-hidden">
-      <Navbar />
       <main className="relative z-10">
         {/* ─── Hero Section ─── */}
         <section className="pt-32 pb-32 px-6 relative flex flex-col items-center text-center overflow-visible">
@@ -203,7 +201,7 @@ function PublicLanding() {
                 </motion.div>
               </Link>
               
-              <Link href="/u/sample_dev">
+              <Link href="/profile/sample_dev">
                 <motion.button 
                   whileHover={{ x: 5 }}
                   className="group flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors font-medium text-sm"
@@ -579,7 +577,6 @@ function UserDashboard({ session }: { session: any }) {
     <div className="min-h-screen bg-[#050505] text-zinc-100 font-sans selection:bg-white/20 relative overflow-x-hidden pb-24">
       <SilkBackground color="#050505" />
       <DynamicBackground />
-      <Navbar />
 
       <main className="relative z-10 pt-32 pb-24 px-6 max-w-6xl mx-auto">
         {/* Welcome & Stats */}

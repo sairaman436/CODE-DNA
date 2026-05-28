@@ -3,7 +3,7 @@ const prisma = require('../lib/prisma');
 const { fetchAndFilterRepos, checkGatewayRequirements } = require('../services/github');
 
 const router = express.Router();
-const ENGINE_REQUEST_TIMEOUT_MS = Number(process.env.ENGINE_REQUEST_TIMEOUT_MS || 5000);
+const ENGINE_REQUEST_TIMEOUT_MS = Number(process.env.ENGINE_REQUEST_TIMEOUT_MS || 60000);
 const ANALYSIS_GATEWAY_ENABLED = process.env.CODEDNA_ANALYSIS_GATEWAY_ENABLED !== '0';
 const PUBLIC_RATE_WINDOW_MS = Number(process.env.CODEDNA_PUBLIC_ANALYSIS_RATE_WINDOW_MS || 15 * 60 * 1000);
 const PUBLIC_RATE_MAX = Number(process.env.CODEDNA_PUBLIC_ANALYSIS_RATE_MAX || 8);
