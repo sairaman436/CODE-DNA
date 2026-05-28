@@ -65,27 +65,9 @@ export function Navbar() {
           <div className="h-4 w-px bg-white/10 hidden md:block mx-2" />
 
           <div className="flex items-center gap-4">
-            {status === "authenticated" ? (
-              <div className="flex items-center gap-6">
-                <button 
-                  onClick={() => signOut()}
-                  className="text-[11px] uppercase tracking-widest font-black text-zinc-500 hover:text-zinc-100 transition-colors"
-                >
-                  Logout
-                </button>
-                <Link href={username ? `/u/${username}` : "#"} className="relative group">
-                  <div className="absolute -inset-1 bg-white/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <img src={avatar} alt="" className="relative w-10 h-10 rounded-full border border-white/10 group-hover:border-white/50 transition-all" />
-                </Link>
-              </div>
-            ) : (
-              <div className="flex items-center gap-8">
-                <Link href="/login?mode=login" className="text-[11px] uppercase tracking-widest font-black text-zinc-400 hover:text-zinc-100 transition-colors">Login</Link>
-                <Link href="/login?mode=signup" className="h-10 px-8 rounded-full bg-white text-black hover:bg-zinc-200 flex items-center justify-center text-[11px] font-black uppercase tracking-wider transition-all active:scale-95">
-                  Get Started
-                </Link>
-              </div>
-            )}
+            <Link href="/login" className="h-10 px-8 rounded-full bg-white text-black hover:bg-zinc-200 flex items-center justify-center text-[11px] font-black uppercase tracking-wider transition-all active:scale-95">
+              Analyze Repository
+            </Link>
           </div>
         </div>
       </div>

@@ -1,229 +1,49 @@
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
+import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { GitBranch, Shield, Lock, Eye, EyeOff, Mail, Loader2, ArrowLeft, User, Phone, Globe, CheckCircle2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Shield, ArrowRight, Loader2, Star, ExternalLink } from "lucide-react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 
 import { DynamicBackground } from "@/components/DynamicBackground";
 import { SilkBackground } from "@/components/SilkBackground";
 import Footer from "@/components/Footer";
 
-type AuthMode = "login" | "signup";
-type AuthStep = "credentials" | "otp";
-
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#050505] flex items-center justify-center text-zinc-500 uppercase tracking-widest text-[11px]">Loading Gateway...</div>}>
       <LoginContent />
     </Suspense>
   );
 }
 
 function LoginContent() {
-  const { data: session } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialMode = searchParams.get("mode") as AuthMode || "login";
-
-  const [mode, setMode] = useState<AuthMode>(initialMode);
-  const [step, setStep] = useState<AuthStep>("credentials");
-
-  // Form State
-  const [formData, setFormData] = useState({
-    name: "",
-    email: searchParams.get("email") || "",
-    password: "",
-    confirmPassword: "",
-    phone: "",
-    countryCode: "+91",
-  });
-
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [verifiedUser, setVerifiedUser] = useState<any>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
-  const [timer, setTimer] = useState(120);
-  const [isExpired, setIsExpired] = useState(false);
+  const handleStartAnalysis = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
 
-  useEffect(() => {
-    if (step !== "otp") return;
-    setTimer(120);
-    setIsExpired(false);
-  }, [step]);
-
-  useEffect(() => {
-    if (step !== "otp" || timer <= 0) {
-      if (timer === 0) setIsExpired(true);
+    const trimmed = username.trim();
+    if (!trimmed) {
+      setError("Please enter a valid GitHub username.");
       return;
     }
 
-    const interval = setInterval(() => {
-      setTimer((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [step, timer]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const handleResend = async () => {
-    setOtp(["", "", "", "", "", ""]);
-    setTimer(120);
-    setIsExpired(false);
-    setError("");
-    await handleAction();
-  };
-
-  const getPasswordStrength = (pwd: string) => {
-    if (!pwd) return { score: 0, text: "", color: "bg-transparent", textClass: "text-transparent" };
-    let score = 0;
-    if (pwd.length >= 8) score++;
-    if (/[0-9]/.test(pwd)) score++;
-    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
-    if (/[^A-Za-z0-9]/.test(pwd)) score++;
-
-    const config = [
-      { text: "VERY WEAK", color: "bg-rose-500/40 w-1/4", textClass: "text-rose-500" },
-      { text: "WEAK", color: "bg-amber-500/50 w-2/4", textClass: "text-amber-500" },
-      { text: "MEDIUM", color: "bg-yellow-500/60 w-3/4", textClass: "text-yellow-500" },
-      { text: "STRONG", color: "bg-emerald-500/70 w-full", textClass: "text-emerald-500" },
-      { text: "VERY STRONG", color: "bg-emerald-400 w-full shadow-[0_0_10px_rgba(16,185,129,0.4)]", textClass: "text-emerald-400" },
-    ];
-    return config[score];
-  };
-
-  // Remove the old URL error effect since we use mode now
-
-  useEffect(() => {
-    if (session?.user) {
-      router.push("/");
-    }
-  }, [session, router]);
-
-  useEffect(() => {
-    const errorParam = searchParams.get("error");
-    if (errorParam === "GithubEmailMismatch") {
-      setError("Your mail is not the mail you used in the github");
-    }
-  }, [searchParams]);
-
-  // Keep-alive ping for Render Free Tier — keeps server CPU awake while email sends
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (step === "otp") {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      interval = setInterval(() => {
-        fetch(`${apiUrl}/api/auth/ping`).catch(() => {});
-      }, 4000);
-    }
-    return () => clearInterval(interval);
-  }, [step]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError("");
-  };
-
-  const handleAction = async () => {
-    if (mode === "signup" && formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const endpoint = mode === "signup" ? "/api/auth/register" : "/api/auth/login";
-      
-      const res = await fetch(`${apiUrl}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        if (data.bypassOtp) {
-          await finalizeAuth(data.user);
-        } else {
-          setStep("otp");
-        }
-      } else {
-        setError(data.error || "Authentication failed");
-      }
-    } catch (err) {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    const code = otp.join("");
-    if (code.length !== 6) {
-      setError("Enter the 6-digit verification code.");
+    if (/[^a-zA-Z0-9-]/.test(trimmed)) {
+      setError("Invalid GitHub username format.");
       return;
     }
 
     setLoading(true);
-    setError("");
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-      const res = await fetch(`${apiUrl}/api/auth/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email, code }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setVerifiedUser(data.user);
-        
-        // Finalize login directly
-        await finalizeAuth(data.user);
-      } else {
-        setError(data.error || "Invalid code");
-      }
-    } catch (err) {
-      setError("Verification failed.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const finalizeAuth = async (user: any) => {
-    const result = await signIn("otp", {
-      email: user.email,
-      user: JSON.stringify(user),
-      redirect: false,
-    });
-    if (result?.ok) {
-      router.push("/");
-    } else {
-      setError("Session creation failed.");
-    }
-  };
-
-  const handleOtpInput = (index: number, value: string) => {
-    if (value.length > 1) value = value.slice(-1);
-    if (!/^\d*$/.test(value)) return;
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-    if (value && index < 5) {
-      document.getElementById(`otp-${index + 1}`)?.focus();
-    }
+    // Redirect directly to the analyzing page
+    router.push(`/analyzing/${trimmed}`);
   };
 
   return (
@@ -242,281 +62,73 @@ function LoginContent() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 w-full max-w-lg"
+        className="relative z-10 w-full max-w-md"
       >
-        <AnimatePresence mode="wait">
-          {step === "credentials" && (
-            <motion.div
-              key="credentials"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.05 }}
-              className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-2xl rounded-[40px] p-10 shadow-2xl relative overflow-hidden"
+        <div className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-2xl rounded-[40px] p-10 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
+          
+          <div className="text-center mb-10">
+            <h1 className="text-3xl font-black tracking-tight text-zinc-100 mb-2 uppercase">
+              Analyze Repositories
+            </h1>
+            <p className="text-[11px] text-zinc-500 font-bold uppercase tracking-[0.2em]">
+              Enter GitHub Identity
+            </p>
+          </div>
+
+          <form onSubmit={handleStartAnalysis} className="space-y-6">
+            <div className="relative">
+              <span className="absolute left-4 top-3.5 text-zinc-600 font-mono text-sm">@</span>
+              <Input
+                type="text"
+                placeholder="GITHUB USERNAME"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setError("");
+                }}
+                className="bg-white/[0.02] border-white/[0.08] h-12 pl-8 rounded-xl text-[13px] font-bold uppercase tracking-widest focus:ring-emerald-500/20"
+              />
+            </div>
+
+            {error && (
+              <p className="text-[11px] text-rose-500 font-black uppercase tracking-widest text-center">
+                {error}
+              </p>
+            )}
+
+            <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+              <div className="flex gap-2.5 items-start">
+                <Star className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h4 className="text-[11px] font-black uppercase tracking-widest text-zinc-200">
+                    Gateway Star Required
+                  </h4>
+                  <p className="text-[10px] text-zinc-500 leading-normal">
+                    You must star the <a href="https://github.com/sairaman436/CODE-DNA" target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline inline-flex items-center gap-0.5">CODE-DNA repository <ExternalLink className="w-2.5 h-2.5" /></a> to authorize the analysis engine.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-14 mt-10 bg-zinc-100 text-black hover:bg-white rounded-2xl font-black uppercase tracking-[0.3em] text-[13px] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
             >
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
-              
-              <div className="text-center mb-10">
-                <h1 className="text-4xl font-black tracking-tight text-zinc-100 mb-2 uppercase">
-                  {mode === "login" ? "Log In" : "Create Account"}
-                </h1>
-                <p className="text-[12px] text-zinc-500 font-bold uppercase tracking-[0.2em]">
-                  {mode === "login" ? "Welcome Back" : "Create your account"}
-                </p>
-                {mode === "signup" && (
-                  <div className="mt-4 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl text-zinc-400 text-[11px] font-medium leading-relaxed uppercase tracking-wider">
-                    <span className="text-emerald-500 font-bold">Note:</span> You must register using the same primary email associated with your GitHub account.
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                {mode === "signup" && (
-                  <div className="relative">
-                    <User className="absolute left-4 top-4 w-4 h-4 text-zinc-600" />
-                    <Input
-                      name="name"
-                      placeholder="FULL NAME"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      className="bg-white/[0.02] border-white/[0.08] h-12 pl-12 rounded-xl text-[13px] font-bold uppercase tracking-widest focus:ring-emerald-500/20"
-                    />
-                  </div>
-                )}
-                
-                <div className="relative">
-                  <Mail className="absolute left-4 top-4 w-4 h-4 text-zinc-600" />
-                  <Input
-                    name="email"
-                    type="email"
-                    placeholder="EMAIL"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="bg-white/[0.02] border-white/[0.08] h-12 pl-12 rounded-xl text-[13px] font-bold uppercase tracking-widest focus:ring-emerald-500/20"
-                  />
-                </div>
-
-                <div className="relative">
-                  <Lock className="absolute left-4 top-4 w-4 h-4 text-zinc-600" />
-                  <Input
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="PASSWORD"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="bg-white/[0.02] border-white/[0.08] h-12 pl-12 pr-12 rounded-xl text-[13px] font-bold uppercase tracking-widest focus:ring-emerald-500/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-3.5 text-zinc-500 hover:text-emerald-400 transition-colors z-20"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-
-                {mode === "signup" && formData.password && (
-                  <div className="mt-2 px-1">
-                    <div className="flex justify-between items-center mb-1 text-[9px] font-black tracking-widest uppercase">
-                      <span className="text-zinc-600">Password Strength:</span>
-                      <span className={getPasswordStrength(formData.password).textClass}>
-                        {getPasswordStrength(formData.password).text}
-                      </span>
-                    </div>
-                    <div className="h-1 w-full bg-white/[0.03] border border-white/[0.02] rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-300 ${getPasswordStrength(formData.password).color}`}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {mode === "signup" && (
-                  <div className="flex gap-2">
-                    <div className="relative w-24 shrink-0">
-                      <Globe className="absolute left-4 top-4 w-4 h-4 text-zinc-600" />
-                      <Input
-                        name="countryCode"
-                        value={formData.countryCode}
-                        onChange={handleInputChange}
-                        className="bg-white/[0.02] border-white/[0.08] h-12 pl-12 rounded-xl text-[13px] font-bold focus:ring-emerald-500/20"
-                      />
-                    </div>
-                    <div className="relative flex-1">
-                      <Phone className="absolute left-4 top-4 w-4 h-4 text-zinc-600" />
-                      <Input
-                        name="phone"
-                        placeholder="PHONE NUMBER"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="bg-white/[0.02] border-white/[0.08] h-12 pl-12 rounded-xl text-[13px] font-bold uppercase tracking-widest focus:ring-emerald-500/20"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {mode === "signup" && (
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-4 w-4 h-4 text-zinc-600" />
-                    <Input
-                      name="confirmPassword"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="CONFIRM PASSWORD"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      className="bg-white/[0.02] border-white/[0.08] h-12 pl-12 pr-12 rounded-xl text-[13px] font-bold uppercase tracking-widest focus:ring-emerald-500/20"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {error && <p className="mt-6 text-[11px] text-rose-500 font-black uppercase tracking-widest text-center">{error}</p>}
-
-              <Button
-                onClick={handleAction}
-                disabled={loading}
-                className="w-full h-14 mt-10 bg-zinc-100 text-black hover:bg-white rounded-2xl font-black uppercase tracking-[0.3em] text-[13px] shadow-2xl transition-all active:scale-95"
-              >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : mode === "login" ? "Log In" : "Sign Up"}
-              </Button>
-
-              <div className="mt-4">
-                <div className="relative flex items-center justify-center my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/[0.08]"></div>
-                  </div>
-                  <span className="relative px-4 text-[10px] font-bold text-zinc-600 bg-[#050505] uppercase tracking-widest">Or Continue With</span>
-                </div>
-                <Button
-                  onClick={() => signIn("github", { callbackUrl: "/" })}
-                  className="w-full h-14 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.08] text-white rounded-2xl font-black uppercase tracking-[0.3em] text-[13px] flex items-center justify-center gap-3 transition-all"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                  </svg>
-                  Continue with GitHub
-                </Button>
-              </div>
-
-              <div className="mt-8 text-center">
-                <button
-                  onClick={() => setMode(mode === "login" ? "signup" : "login")}
-                  className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-emerald-400 transition-colors"
-                >
-                  {mode === "login" ? "Create an Account" : "Already have an account? Log In"}
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {step === "otp" && (
-            <motion.div
-              key="otp"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white/[0.03] border border-white/[0.08] backdrop-blur-2xl rounded-[40px] p-10 shadow-2xl text-center relative overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent" />
-              
-              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <Shield className="w-8 h-8 text-emerald-500" />
-              </div>
-              <h2 className="text-2xl font-black uppercase tracking-tight text-zinc-100 mb-2">Enter Verification Code</h2>
-              <p className="text-[12px] text-zinc-500 mb-6 font-bold uppercase tracking-widest">Code sent to {formData.email}</p>
-
-              {/* Dynamic Secure Countdown Timer */}
-              {!isExpired ? (
-                <div className="flex items-center justify-center gap-2 mb-8 px-4 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-full w-fit mx-auto">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">
-                    Code expires in: <span className="text-emerald-400 font-mono text-[11px]">{formatTime(timer)}</span>
-                  </span>
-                </div>
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                <div className="flex items-center justify-center gap-2 mb-8 px-4 py-2 bg-rose-500/5 border border-rose-500/10 rounded-full w-fit mx-auto animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
-                  <span className="text-[10px] text-rose-500 font-bold uppercase tracking-widest">
-                    VERIFICATION CODE EXPIRED
-                  </span>
-                </div>
+                <>
+                  Decode Sequence <ArrowRight className="w-4 h-4" />
+                </>
               )}
-
-              <div className="flex justify-center gap-3 mb-10">
-                {otp.map((digit, i) => (
-                  <input
-                    key={i}
-                    id={`otp-${i}`}
-                    type="text"
-                    maxLength={1}
-                    value={digit}
-                    disabled={isExpired}
-                    onChange={(e) => handleOtpInput(i, e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Backspace' && !otp[i] && i > 0) {
-                        document.getElementById(`otp-${i - 1}`)?.focus();
-                      }
-                    }}
-                    onPaste={(e) => {
-                      if (isExpired) return;
-                      e.preventDefault();
-                      const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-                      if (paste.length > 0) {
-                        const newOtp = [...otp];
-                        for (let j = 0; j < paste.length && i + j < 6; j++) {
-                          newOtp[i + j] = paste[j];
-                        }
-                        setOtp(newOtp);
-                        const nextIndex = Math.min(i + paste.length, 5);
-                        document.getElementById(`otp-${nextIndex}`)?.focus();
-                      }
-                    }}
-                    className={`w-12 h-16 bg-white/[0.02] border rounded-xl text-center text-2xl font-black focus:outline-none transition-all shadow-inner ${
-                      isExpired 
-                        ? 'border-rose-500/20 text-rose-500/40 cursor-not-allowed' 
-                        : 'border-white/[0.08] text-emerald-500 focus:border-emerald-500/50'
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {error && <p className="mb-6 text-[11px] text-rose-500 font-black uppercase tracking-widest">{error}</p>}
-
-              {isExpired ? (
-                <Button
-                  onClick={handleResend}
-                  disabled={loading}
-                  className="w-full h-14 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-white/10 rounded-2xl font-black uppercase tracking-[0.3em] text-[13px] transition-all flex items-center justify-center gap-2"
-                >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Resend Verification Code"}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleVerifyOtp}
-                  disabled={loading}
-                  className="w-full h-14 bg-emerald-500 text-black hover:bg-emerald-400 rounded-2xl font-black uppercase tracking-[0.3em] text-[13px] shadow-2xl transition-all"
-                >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verify & Decrypt"}
-                </Button>
-              )}
-
-              <div className="mt-8">
-                <button
-                  onClick={() => {
-                    setStep("credentials");
-                    setError("");
-                  }}
-                  className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-emerald-400 transition-colors"
-                >
-                  Back to Credentials
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* GitHub link step removed */}
-        </AnimatePresence>
+            </Button>
+          </form>
+        </div>
       </motion.div>
+
       <Footer />
     </div>
   );
 }
-

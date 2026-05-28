@@ -20,15 +20,11 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { useToast } from "@/components/Toast";
 
 export default function LandingPage() {
-  const { data: session, status } = useSession();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
 
-  if (status === "authenticated") {
-    return <UserDashboard session={session} />;
-  }
   return <PublicLanding />;
 }
 
@@ -193,7 +189,7 @@ function PublicLanding() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-              <Link href="/login?mode=signup">
+              <Link href="/login">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}

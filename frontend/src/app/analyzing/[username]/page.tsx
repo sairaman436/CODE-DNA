@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, CheckCircle2, Star, UserPlus, ArrowRight, Loader2, Lock, ExternalLink } from "lucide-react";
+import { AlertCircle, CheckCircle2, Star, ArrowRight, Loader2, Lock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Confetti } from "@/components/Confetti";
 import Link from "next/link";
@@ -257,38 +257,6 @@ export default function AnalyzingPage() {
                       className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400 hover:text-sky-300 transition-colors bg-sky-500/[0.08] hover:bg-sky-500/[0.12] border border-sky-500/25 px-2.5 py-1 rounded-md"
                     >
                       Star Repo <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {/* Task 2: Follow Creator */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.04] transition-all hover:bg-white/[0.04] hover:border-white/[0.08]">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5">
-                    <UserPlus className={`w-4 h-4 ${followedStatus ? 'text-sky-400' : 'text-zinc-500'}`} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
-                      Follow @sairaman436
-                      <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider bg-white/[0.04] px-1.5 py-0.5 rounded">Required</span>
-                    </h4>
-                    <p className="text-[11px] text-zinc-500 mt-0.5">Verify your developer graph</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {followedStatus ? (
-                    <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Completed
-                    </span>
-                  ) : (
-                    <a
-                      href="https://github.com/sairaman436"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400 hover:text-sky-300 transition-colors bg-sky-500/[0.08] hover:bg-sky-500/[0.12] border border-sky-500/25 px-2.5 py-1 rounded-md"
-                    >
-                      Follow Creator <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
                 </div>

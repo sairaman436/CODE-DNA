@@ -112,8 +112,39 @@ router.post('/', async (req, res) => {
   try {
     const { username, github_id, display_name, avatar_url } = req.body;
 
-    if (!username || !github_id) {
-      return res.status(400).json({ error: 'Missing required fields: username and github_id' });
+    if (!username) {
+      return res.status(400).json({ error: 'GitHub username is required.' });
+    }
+
+    let finalGithubUsername = username;
+    let finalGithubId = github_id;
+    let finalDisplayName = display_name;
+    let finalAvatarUrl = avatar_url;
+
+    // If github_id is missing, look it up via GitHub's public API
+    if (!finalGithubId) {
+      try {
+        console.log(`🔍 Looking up GitHub user profile for @${finalGithubUsername} publicly...`);
+        const userRes = await fetch(`https://api.github.com/users/${finalGithubUsername}`, {
+          headers: {
+            'User-Agent': 'CodeDNA-App/1.0',
+            ...(process.env.GITHUB_TOKEN ? { 'Authorization': `token ${process.env.GITHUB_TOKEN}` } : {})
+          }
+        });
+        if (!userRes.ok) {
+          if (userRes.status === 404) {
+            return res.status(404).json({ error: `GitHub user @${finalGithubUsername} not found.` });
+          }
+          throw new Error(`GitHub API returned status ${userRes.status}`);
+        }
+        const githubUser = await userRes.json();
+        finalGithubId = githubUser.id?.toString();
+        finalDisplayName = githubUser.name || githubUser.login;
+        finalAvatarUrl = githubUser.avatar_url;
+      } catch (err) {
+        console.error('Error fetching GitHub user profile:', err.message);
+        return res.status(500).json({ error: `Could not verify GitHub username: ${err.message}` });
+      }
     }
 
     // 1. Find existing user — Priority: session > github_id > username
@@ -124,9 +155,6 @@ router.post('/', async (req, res) => {
     if (sessionUserId) {
       user = await prisma.user.findUnique({ where: { id: sessionUserId } });
     }
-
-    let finalGithubId = github_id || (user ? user.github_id : null);
-    let finalGithubUsername = username || (user ? user.github_username : null);
 
     // Fallback: lookup by github_id
     if (!user && finalGithubId) {
@@ -152,10 +180,6 @@ router.post('/', async (req, res) => {
       if (user.github_id) finalGithubId = user.github_id;
     }
 
-    if (!finalGithubUsername || !finalGithubId) {
-      return res.status(400).json({ error: 'Missing required fields: username and github_id. Please link your GitHub account first.' });
-    }
-
     const isPrivilegedBeforeUserWrite = isPrivilegedAnalysisUser(user, finalGithubUsername);
     if (!isPrivilegedBeforeUserWrite) {
       const memoryLimit = checkMemoryRateLimit(clientRateKey(req, finalGithubUsername));
@@ -179,8 +203,8 @@ router.post('/', async (req, res) => {
           github_id: finalGithubId.toString(), 
           github_username: finalGithubUsername,
           username: user.username || finalGithubUsername, 
-          display_name: user.display_name || display_name, 
-          avatar_url: user.avatar_url || avatar_url,
+          display_name: user.display_name || finalDisplayName, 
+          avatar_url: user.avatar_url || finalAvatarUrl,
           codedna_username: user.codedna_username || finalGithubUsername
         }
       });
@@ -190,8 +214,8 @@ router.post('/', async (req, res) => {
           github_id: finalGithubId.toString(), 
           github_username: finalGithubUsername,
           username: finalGithubUsername, 
-          display_name, 
-          avatar_url,
+          display_name: finalDisplayName, 
+          avatar_url: finalAvatarUrl,
           codedna_username: finalGithubUsername
         }
       });
@@ -234,7 +258,7 @@ router.post('/', async (req, res) => {
         });
       }
 
-      // 2. Gateway Check: Star and Follow
+      // 2. Gateway Check: Star only (Follow optional/bypassed)
       if (ANALYSIS_GATEWAY_ENABLED) {
         const gatewayResult = await checkGatewayRequirements(finalGithubUsername, tokenToUse);
 
@@ -242,12 +266,12 @@ router.post('/', async (req, res) => {
           return res.status(400).json({ error: 'GATEWAY_ERROR', message: gatewayResult.error });
         }
 
-        if (!gatewayResult.starred || !gatewayResult.followed) {
+        if (!gatewayResult.starred) {
           return res.status(403).json({
             error: 'GATEWAY_REQUIRED',
-            message: 'To analyze your repositories, you must star the CODE-DNA repository and follow the creator on GitHub.',
+            message: 'To analyze your repositories, you must star the CODE-DNA repository on GitHub.',
             starred: gatewayResult.starred,
-            followed: gatewayResult.followed
+            followed: true // Bypassed
           });
         }
       }
