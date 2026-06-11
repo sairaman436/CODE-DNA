@@ -26,6 +26,10 @@ export async function POST(req: Request) {
     const avatarUrl = isSelf ? session?.user?.image : null;
     const accessToken = isSelf ? session?.accessToken : undefined;
     const userId = session?.user?.id || '';
+    const userEmail = session?.user?.email || '';
+    const userRole = session?.role || session?.user?.role || '';
+    const sessionGithubId = session?.githubId?.toString() || '';
+    const sessionGithubLogin = session?.githubLogin || '';
 
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     
@@ -33,7 +37,11 @@ export async function POST(req: Request) {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'x-user-id': userId
+        'x-user-id': userId,
+        'x-user-email': userEmail,
+        'x-user-role': userRole,
+        'x-github-id': sessionGithubId,
+        'x-github-login': sessionGithubLogin,
       },
       body: JSON.stringify({
         username: targetUsername,

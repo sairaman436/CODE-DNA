@@ -44,6 +44,35 @@ function isPrivilegedAnalysisUser(user, githubUsername) {
     githubUsername?.toLowerCase() === 'sairaman436';
 }
 
+async function resolveRequesterFromHeaders(headers) {
+  const requesterId = headers['x-user-id'];
+  const requesterEmail = headers['x-user-email'];
+  const requesterGithubId = headers['x-github-id'];
+  const requesterGithubLogin = headers['x-github-login'];
+
+  if (typeof requesterId === 'string' && requesterId) {
+    const requester = await prisma.user.findUnique({ where: { id: requesterId } });
+    if (requester) return requester;
+  }
+
+  if (typeof requesterEmail === 'string' && requesterEmail) {
+    const requester = await prisma.user.findUnique({ where: { email: requesterEmail } });
+    if (requester) return requester;
+  }
+
+  if (typeof requesterGithubId === 'string' && requesterGithubId) {
+    const requester = await prisma.user.findUnique({ where: { github_id: requesterGithubId } });
+    if (requester) return requester;
+  }
+
+  if (typeof requesterGithubLogin === 'string' && requesterGithubLogin) {
+    const requester = await prisma.user.findFirst({ where: { github_username: requesterGithubLogin } });
+    if (requester) return requester;
+  }
+
+  return null;
+}
+
 function engineHeaders() {
   const headers = { 'Content-Type': 'application/json' };
   if (process.env.WEBHOOK_SECRET) {
@@ -134,15 +163,8 @@ router.post('/', async (req, res) => {
 
     // Enforce profile ownership verification:
     // If a requester ID is supplied, check if they are an ADMIN (which bypasses checks).
-    const requesterId = req.headers['x-user-id'];
-    let isAdmin = false;
-    let requester = null;
-    if (requesterId) {
-      requester = await prisma.user.findUnique({ where: { id: requesterId } });
-      if (requester && requester.role === 'ADMIN') {
-        isAdmin = true;
-      }
-    }
+    const requester = await resolveRequesterFromHeaders(req.headers);
+    const isAdmin = requester?.role === 'ADMIN';
 
     // IF the target profile already exists in the database, ONLY the owner (or an ADMIN) can re-analyze it!
     if (resolvedUser && !isAdmin) {
@@ -377,4 +399,5 @@ module.exports.dispatchToEnginePool = dispatchToEnginePool;
 module.exports.getEnginePool = getEnginePool;
 module.exports.checkMemoryRateLimit = checkMemoryRateLimit;
 module.exports.isPrivilegedAnalysisUser = isPrivilegedAnalysisUser;
+module.exports.resolveRequesterFromHeaders = resolveRequesterFromHeaders;
 module.exports._rateBuckets = rateBuckets;

@@ -3,14 +3,14 @@ const test = require('node:test');
 
 const { loadRouteWithMocks } = require('./helpers');
 
-function loadAnalyzeRoute() {
+function loadAnalyzeRoute(prisma = {}) {
   return loadRouteWithMocks('src/routes/analyze.js', {
-    'src/lib/prisma.js': {},
+    'src/lib/prisma.js': prisma,
     'src/services/github.js': {
       fetchAndFilterRepos: async () => [],
       checkGatewayRequirements: async () => ({ followed: true, starred: true }),
     },
-  });
+});
 }
 
 test('getEnginePool reads comma-separated ANALYSIS_SERVICE_URLS', () => {
@@ -121,6 +121,36 @@ test('isPrivilegedAnalysisUser bypasses analysis limits for staff and admins', (
   assert.equal(route.isPrivilegedAnalysisUser({ role: 'USER' }, 'sairaman436'), true);
   assert.equal(route.isPrivilegedAnalysisUser({ role: 'USER', email: 'sairamanladi2007@gmail.com' }, 'alice'), true);
   assert.equal(route.isPrivilegedAnalysisUser({ role: 'USER' }, 'alice'), false);
+});
+
+test('resolveRequesterFromHeaders falls back to admin email when backend id is unavailable', async () => {
+  const calls = [];
+  const route = loadAnalyzeRoute({
+    user: {
+      findUnique: async (args) => {
+        calls.push(['findUnique', args.where]);
+        if (args.where.email === 'sairamanladi2007@gmail.com') {
+          return { id: 'admin-db-id', email: 'sairamanladi2007@gmail.com', role: 'ADMIN' };
+        }
+        return null;
+      },
+      findFirst: async (args) => {
+        calls.push(['findFirst', args.where]);
+        return null;
+      },
+    },
+  });
+
+  const requester = await route.resolveRequesterFromHeaders({
+    'x-user-id': 'github-provider-id-not-db-id',
+    'x-user-email': 'sairamanladi2007@gmail.com',
+  });
+
+  assert.equal(requester.id, 'admin-db-id');
+  assert.deepEqual(calls, [
+    ['findUnique', { id: 'github-provider-id-not-db-id' }],
+    ['findUnique', { email: 'sairamanladi2007@gmail.com' }],
+  ]);
 });
 
 function restoreEnv(key, value) {
