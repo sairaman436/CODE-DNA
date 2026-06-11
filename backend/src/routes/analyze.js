@@ -121,7 +121,8 @@ router.post('/', async (req, res) => {
       where: {
         OR: [
           { username: username },
-          { codedna_username: username }
+          { codedna_username: username },
+          { github_username: username }
         ]
       }
     });

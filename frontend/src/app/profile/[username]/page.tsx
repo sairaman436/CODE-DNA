@@ -18,6 +18,7 @@ import Footer from "@/components/Footer";
 
 interface ProfileData {
   user: { 
+    id?: string;
     username: string; 
     codedna_username?: string | null;
     github_username?: string | null;
@@ -593,15 +594,13 @@ export default function ProfilePage() {
     fetchProfile();
   }, [username]);
 
-  const [isOwner, setIsOwner] = useState(false);
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("codedna_username");
-      if (stored && stored.toLowerCase() === username.toLowerCase()) {
-        setIsOwner(true);
-      }
-    }
-  }, [username]);
+  const identityMatches = [
+    profileData?.user?.id && session?.user?.id === profileData.user.id,
+    profileData?.user?.github_username && session?.githubLogin?.toLowerCase() === profileData.user.github_username.toLowerCase(),
+    profileData?.user?.codedna_username && session?.codedna_username?.toLowerCase() === profileData.user.codedna_username.toLowerCase(),
+    profileData?.user?.username && session?.githubLogin?.toLowerCase() === profileData.user.username.toLowerCase(),
+  ];
+  const isOwner = identityMatches.some(Boolean);
   const avatar = profileData?.user?.avatar_url || `https://github.com/${profileData?.user?.username}.png`;
   const displayName = profileData?.user?.display_name || username;
 

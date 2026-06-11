@@ -37,7 +37,7 @@ router.get('/:username', async (req, res) => {
   try {
     const { username } = req.params;
 
-    // Try codedna_username first, then fall back to GitHub username
+    // Try Code DNA username first, then fall back to GitHub/local usernames.
     let user = await prisma.user.findFirst({
       where: { codedna_username: username },
       include: {
@@ -55,6 +55,22 @@ router.get('/:username', async (req, res) => {
     if (!user) {
       user = await prisma.user.findFirst({
         where: { username },
+        include: {
+          fingerprints: {
+            orderBy: { created_at: 'desc' },
+            take: 1,
+            include: {
+              language_stats: true,
+              commit_patterns: true
+            }
+          }
+        }
+      });
+    }
+
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: { github_username: username },
         include: {
           fingerprints: {
             orderBy: { created_at: 'desc' },

@@ -13,13 +13,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'GitHub username is required.' }, { status: 400 });
     }
 
-    const isAdmin = session?.role === 'ADMIN';
-    const isSelf = session ? (targetUsername.toLowerCase() === (session?.githubLogin || session?.user?.name || session?.codedna_username)?.toLowerCase()) : false;
+    const sessionNames = [
+      session?.githubLogin,
+      session?.codedna_username,
+      session?.user?.name,
+    ]
+      .filter(Boolean)
+      .map((value: string) => value.toLowerCase());
+    const isSelf = session ? sessionNames.includes(targetUsername.toLowerCase()) : false;
     const githubId = isSelf ? session?.githubId?.toString() : undefined;
     const displayName = isSelf ? session?.user?.name : targetUsername;
     const avatarUrl = isSelf ? session?.user?.image : null;
     const accessToken = isSelf ? session?.accessToken : undefined;
-    const userId = isSelf ? (session?.user?.id || '') : '';
+    const userId = session?.user?.id || '';
 
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     
@@ -55,4 +61,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
-

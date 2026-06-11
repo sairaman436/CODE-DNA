@@ -12,7 +12,7 @@ Added executable regression coverage for the backend API layer and Python analys
 
 Command: `npm test`
 
-Result: 34 passing tests.
+Result: 35 passing tests.
 
 Files:
 
@@ -20,6 +20,7 @@ Files:
 - `backend/tests/auth.test.js`
 - `backend/tests/github.test.js`
 - `backend/tests/mailer.test.js`
+- `backend/tests/profile.test.js`
 - `backend/tests/newsletter.test.js`
 - `backend/tests/settings.test.js`
 - `backend/tests/username.test.js`
@@ -35,6 +36,7 @@ Covered cases:
 - Newsletter signup validates email addresses and sends both owner notification and subscriber confirmation emails.
 - Production mail delivery uses Resend over HTTPS when `RESEND_API_KEY` is configured, including sender override, reply-to mapping, and comma-separated recipients.
 - Production OTP failures now return an email delivery error instead of silently claiming success when the mail provider rejects the request.
+- Public profile lookup now resolves GitHub usernames as well as Code DNA usernames, preventing false 404s for existing users.
 - GitHub repository discovery includes every non-empty owner repository by default; optional env flags can exclude forks, archived repos, or oversized repos for constrained deployments.
 - GitHub fetch uses token-authenticated endpoint correctly and returns every eligible repository.
 - GitHub repository discovery keeps paging until GitHub is exhausted by default.

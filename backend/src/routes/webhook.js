@@ -36,6 +36,14 @@ function hasValidScores(results) {
   return !!results?.scores && SCORE_KEYS.every((key) => Number.isFinite(results.scores[key]));
 }
 
+async function safeCreateActivityLog(data) {
+  if (!prisma.activityLog?.create) {
+    return null;
+  }
+
+  return prisma.activityLog.create({ data });
+}
+
 router.use(verifyWebhookSecret);
 
 // Python engine calls this endpoint when analysis is complete
@@ -148,12 +156,10 @@ router.post('/results', async (req, res) => {
     console.log(`✅ Analysis results saved for user ${userId} (fingerprint: ${fingerprint.id})`);
 
     // Log the successful completion of the analysis
-    await prisma.activityLog.create({
-      data: {
-        user_id: userId,
-        action: 'ANALYSIS_COMPLETE',
-        details: `Successfully completed repository analysis (Archetype: ${results.developer_type})`
-      }
+    await safeCreateActivityLog({
+      user_id: userId,
+      action: 'ANALYSIS_COMPLETE',
+      details: `Successfully completed repository analysis (Archetype: ${results.developer_type})`,
     }).catch(err => console.error('Failed to log analysis success:', err.message));
 
     return res.status(200).json({ message: 'Results saved successfully', fingerprintId: fingerprint.id });
@@ -169,12 +175,10 @@ router.post('/results', async (req, res) => {
     }
 
     if (req.body?.userId) {
-      await prisma.activityLog.create({
-        data: {
-          user_id: req.body.userId,
-          action: 'ANALYSIS_FAIL',
-          details: `Analysis processing failed: ${error.message}`
-        }
+      await safeCreateActivityLog({
+        user_id: req.body.userId,
+        action: 'ANALYSIS_FAIL',
+        details: `Analysis processing failed: ${error.message}`,
       }).catch(() => {});
     }
 

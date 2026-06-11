@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, CheckCircle2, Star, ArrowRight, Loader2, Lock, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,7 +39,6 @@ const SIGNALS = [
 export default function AnalyzingPage() {
   const params = useParams();
   const router = useRouter();
-  const { data: session } = useSession();
   const username = params.username as string;
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -61,25 +59,6 @@ export default function AnalyzingPage() {
   const runAnalysis = async () => {
     setError(null);
     setIsCheckingGateway(true);
-
-    // 1. Verify ownership if profile already exists in DB
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-    try {
-      const checkRes = await fetch(`${apiUrl}/api/profile/${username}`);
-      if (checkRes.ok) {
-        const stored = typeof window !== "undefined" ? localStorage.getItem("codedna_username") : null;
-        if (!stored || stored.toLowerCase() !== username.toLowerCase()) {
-          const isAdmin = session?.role === 'ADMIN';
-          if (!isAdmin) {
-            setError("Forbidden. Only the profile owner can re-analyze this profile.");
-            setIsCheckingGateway(false);
-            return;
-          }
-        }
-      }
-    } catch (e) {
-      // Ignore checking error and proceed
-    }
 
     try {
       const res = await fetch('/api/analyze', {
@@ -149,9 +128,6 @@ export default function AnalyzingPage() {
           setCurrentStep(STEPS.length - 1);
           setShowConfetti(true);
           clearInterval(interval);
-          if (typeof window !== "undefined") {
-            localStorage.setItem("codedna_username", username);
-          }
           setTimeout(() => router.push(`/profile/${username}`), 2000);
         }
 
